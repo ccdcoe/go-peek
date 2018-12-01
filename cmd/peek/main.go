@@ -141,7 +141,7 @@ func main() {
 	}()
 
 	for msg := range dec.Output {
-		fmt.Println(msg)
+		fmt.Println(msg.Source())
 	}
 }
 

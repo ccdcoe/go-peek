@@ -1,7 +1,9 @@
 package events
 
-import "encoding/json"
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type Syslog struct {
 	Timestamp time.Time `json:"@timestamp"`

@@ -12,7 +12,7 @@ import (
 
 type Decoder struct {
 	Input      *cluster.Consumer
-	Output     chan interface{}
+	Output     chan events.Event
 	Run        bool
 	EventTypes map[string]string
 	Errors     <-chan error
@@ -33,7 +33,7 @@ func NewMessageDecoder(
 		d = &Decoder{
 			Run:        true,
 			Input:      input,
-			Output:     make(chan interface{}),
+			Output:     make(chan events.Event),
 			EventTypes: eventtypes,
 			errs:       make(chan error, 256),
 			stop:       make([]chan bool, workers),
