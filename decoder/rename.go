@@ -85,10 +85,6 @@ func NewRename(dumpPath string) (*Rename, error) {
 	return r, nil
 }
 
-func (r Rename) DumpNameSet() error {
-	return utils.GobSaveFile(r.D.MappingPath(), Names{V: r.NameSet.RawValues()})
-}
-
 func (r *Rename) Check(name string) string {
 	if val, ok := r.ByName[name]; ok {
 		return val
