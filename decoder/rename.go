@@ -75,13 +75,18 @@ func NewRename(dumpPath string) (*Rename, error) {
 			return nil, err
 		}
 	} else {
-		if err := utils.GobLoadFile(r.D.MappingPath(), nameset); err != nil {
+		var decodedMap map[string]bool
+		if err := utils.GobLoadFile(r.D.MappingPath(), &decodedMap); err != nil {
 			return nil, err
 		}
-		r.NameSet = types.NewBoolValues(nameset)
+		r.NameSet = types.NewBoolValues(decodedMap)
 	}
 
 	return r, nil
+}
+
+func (r Rename) DumpNameSet() error {
+	return utils.GobSaveFile(r.D.MappingPath(), Names{V: r.NameSet.RawValues()})
 }
 
 func (r *Rename) Check(name string) string {
