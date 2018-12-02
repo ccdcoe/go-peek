@@ -19,12 +19,15 @@ type Decoder struct {
 
 	errs chan error
 	stop []chan bool
+
+	rename *Rename
 }
 
 func NewMessageDecoder(
 	workers int,
 	input *cluster.Consumer,
 	eventtypes map[string]string,
+	spooldir string,
 ) (*Decoder, error) {
 	if eventtypes == nil || len(eventtypes) == 0 {
 		return nil, fmt.Errorf("Event Type map undefined")
@@ -38,8 +41,13 @@ func NewMessageDecoder(
 			errs:       make(chan error, 256),
 			stop:       make([]chan bool, workers),
 		}
-		wg sync.WaitGroup
+		wg  sync.WaitGroup
+		err error
 	)
+
+	if d.rename, err = NewRename(spooldir); err != nil {
+		return nil, err
+	}
 
 	for i := range d.stop {
 		d.stop[i] = make(chan bool, 1)
@@ -81,6 +89,7 @@ loop:
 			); err != nil {
 				d.errs <- err
 			} else if ev != nil {
+				ev.Rename(d.rename.Check(ev.Source().Host))
 				d.Output <- ev
 				d.Input.MarkOffset(msg, "")
 			}

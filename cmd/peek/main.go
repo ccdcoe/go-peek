@@ -26,8 +26,13 @@ var (
 )
 
 type mainConf struct {
+	General    generalConf
 	Kafka      kafkaConf
 	EventTypes map[string]mapTopics
+}
+
+type generalConf struct {
+	Spooldir string
 }
 
 type kafkaConf struct {
@@ -42,6 +47,9 @@ type mapTopics struct {
 
 func defaultConfg() *mainConf {
 	return &mainConf{
+		General: generalConf{
+			Spooldir: "/var/spool/gopeek",
+		},
 		Kafka: kafkaConf{
 			Input:         []string{"localhost:9092"},
 			Output:        []string{"localhost:9093"},
@@ -129,6 +137,7 @@ func main() {
 		int(*workers),
 		consumer,
 		appConfg.MapEventTypes(),
+		appConfg.General.Spooldir,
 	); err != nil {
 		printErr(err)
 		os.Exit(1)
