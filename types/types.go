@@ -38,8 +38,8 @@ func (v *BoolValues) UnSet(key string) *BoolValues {
 }
 
 func (v BoolValues) Get(key string) bool {
-	v.RLock()
-	defer v.RUnlock()
+	v.Lock()
+	defer v.Unlock()
 	return v.m[key]
 }
 
@@ -62,14 +62,14 @@ func (v BoolValues) GetRandom(remove bool) string {
 	var k string
 
 	vals := v.RawValues()
-	v.RLock()
+	v.Lock()
 	for k = range vals {
 		if i == 0 {
 			break
 		}
 		i--
 	}
-	v.RUnlock()
+	v.Unlock()
 
 	if remove {
 		v.Del(k)
@@ -80,8 +80,8 @@ func (v BoolValues) GetRandom(remove bool) string {
 }
 
 func (v BoolValues) RawValues() map[string]bool {
-	v.RLock()
-	defer v.RUnlock()
+	v.Lock()
+	defer v.Unlock()
 	return v.m
 }
 
@@ -105,10 +105,20 @@ func (v *StringValues) Set(key, val string) *StringValues {
 }
 
 func (v StringValues) Get(key string) (string, bool) {
-	v.RLock()
-	defer v.RUnlock()
+	v.Lock()
+	defer v.Unlock()
 	if val, ok := v.m[key]; ok {
 		return val, true
 	}
 	return "", false
+}
+
+func (v StringValues) RawValues() map[string]string {
+	v.Lock()
+	defer v.Unlock()
+	vals := map[string]string{}
+	for k, val := range v.m {
+		vals[k] = val
+	}
+	return vals
 }

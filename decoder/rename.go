@@ -89,7 +89,10 @@ func (r *Rename) Check(name string) string {
 	if val, ok := r.ByName.Get(name); ok {
 		return val
 	}
+	r.ByName.Lock()
 	val := r.NameSet.GetRandom(true)
+	r.ByName.Unlock()
+
 	r.ByName.Set(name, val)
 	return val
 }
