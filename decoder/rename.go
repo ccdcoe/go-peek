@@ -56,11 +56,8 @@ func NewRename(dumpPath string) (*Rename, error) {
 	if err = d.CheckDir(); err != nil {
 		return nil, err
 	}
-	r = &Rename{
-		ByName: types.NewStringValues(),
-		D:      d,
-	}
-	if _, err = os.Stat(r.D.MappingPath()); os.IsNotExist(err) {
+	r = &Rename{D: d}
+	if _, err = os.Stat(r.D.NamePath()); os.IsNotExist(err) {
 		if resp, err = http.Get(names); err != nil {
 			return nil, err
 		}
@@ -71,15 +68,28 @@ func NewRename(dumpPath string) (*Rename, error) {
 		}
 		r.NameSet = types.NewBoolValues(nameset)
 
-		if err = utils.GobSaveFile(r.D.MappingPath(), nameset); err != nil {
+		if err = r.SaveNames(); err != nil {
 			return nil, err
 		}
 	} else {
 		var decodedMap map[string]bool
-		if err := utils.GobLoadFile(r.D.MappingPath(), &decodedMap); err != nil {
+		if err := utils.GobLoadFile(r.D.NamePath(), &decodedMap); err != nil {
 			return nil, err
 		}
 		r.NameSet = types.NewBoolValues(decodedMap)
+	}
+
+	if _, err = os.Stat(r.D.MappingPath()); os.IsNotExist(err) {
+		r.ByName = types.NewEmptyStringValues()
+		if err := r.SaveMappings(); err != nil {
+			return nil, err
+		}
+	} else {
+		var decodedMap map[string]string
+		if err := utils.GobLoadFile(r.D.MappingPath(), &decodedMap); err != nil {
+			return nil, err
+		}
+		r.ByName = types.NewStringValues(decodedMap)
 	}
 
 	return r, nil
@@ -95,6 +105,14 @@ func (r *Rename) Check(name string) string {
 
 	r.ByName.Set(name, val)
 	return val
+}
+
+func (r Rename) SaveNames() error {
+	return utils.GobSaveFile(r.D.NamePath(), r.NameSet.RawValues())
+}
+
+func (r Rename) SaveMappings() error {
+	return utils.GobSaveFile(r.D.MappingPath(), r.ByName.RawValues())
 }
 
 func NameSetFromCSV(src io.Reader) (map[string]bool, error) {

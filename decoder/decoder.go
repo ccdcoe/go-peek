@@ -11,14 +11,16 @@ import (
 )
 
 type Decoder struct {
-	Input      *cluster.Consumer
-	Output     chan events.Event
-	Run        bool
-	EventTypes map[string]string
-	Errors     <-chan error
+	Input         *cluster.Consumer
+	Output        chan events.Event
+	Run           bool
+	EventTypes    map[string]string
+	Errors        <-chan error
+	Notifications <-chan string
 
-	errs chan error
-	stop []chan bool
+	errs   chan error
+	notify chan string
+	stop   []chan bool
 
 	rename *Rename
 }
@@ -39,6 +41,7 @@ func NewMessageDecoder(
 			Output:     make(chan events.Event),
 			EventTypes: eventtypes,
 			errs:       make(chan error, 256),
+			notify:     make(chan string, 256),
 			stop:       make([]chan bool, workers),
 		}
 		wg  sync.WaitGroup
@@ -53,6 +56,7 @@ func NewMessageDecoder(
 		d.stop[i] = make(chan bool, 1)
 	}
 	d.Errors = d.errs
+	d.Notifications = d.notify
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt)
@@ -64,11 +68,25 @@ func NewMessageDecoder(
 
 	go func() {
 		defer close(d.Output)
+		defer close(d.errs)
+		defer close(d.notify)
+
 		for i := 0; i < workers; i++ {
 			wg.Add(1)
 			go DecodeWorker(*d, &wg, i)
 		}
 		wg.Wait()
+
+		d.sendNotify(fmt.Sprintf("dumping mappings"))
+		if err = d.rename.SaveMappings(); err != nil {
+			d.errs <- err
+		}
+		d.sendNotify(fmt.Sprintf("dumping mapped names"))
+		if err = d.rename.SaveNames(); err != nil {
+			d.errs <- err
+		}
+		d.sendNotify(fmt.Sprintf("done, exiting"))
+
 	}()
 
 	return d, nil
@@ -110,4 +128,11 @@ func (d Decoder) sendErr(err error) {
 		<-d.errs
 	}
 	d.errs <- err
+}
+
+func (d Decoder) sendNotify(msg string) {
+	if len(d.notify) == 256 {
+		<-d.notify
+	}
+	d.notify <- fmt.Sprintf("[decoder] %s", msg)
 }

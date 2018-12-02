@@ -90,7 +90,13 @@ type StringValues struct {
 	m map[string]string
 }
 
-func NewStringValues() *StringValues {
+func NewStringValues(vals map[string]string) *StringValues {
+	return &StringValues{
+		RWMutex: &sync.RWMutex{},
+		m:       vals,
+	}
+}
+func NewEmptyStringValues() *StringValues {
 	return &StringValues{
 		RWMutex: &sync.RWMutex{},
 		m:       map[string]string{},

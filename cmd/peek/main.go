@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -145,21 +144,25 @@ func main() {
 
 	go func() {
 		for err := range dec.Errors {
-			printErr(err)
+			log.Printf("Error: %s\n", err.Error())
+		}
+	}()
+
+	go func() {
+		for ntf := range dec.Notifications {
+			log.Printf("Info: %s\n", ntf)
 		}
 	}()
 
 	for msg := range dec.Output {
 		fmt.Println(msg.Source())
 	}
+	if len(dec.Notifications) > 0 {
+		fmt.Println(<-dec.Notifications)
+	}
+	fmt.Println("All done")
 }
 
 func printErr(err error) {
 	fmt.Fprintf(os.Stderr, "%s\n", err.Error())
-}
-
-func jsonUnmarshalErrHandle(msg []byte, target interface{}) {
-	if err := json.Unmarshal(msg, &target); err != nil {
-		printErr(err)
-	}
 }
