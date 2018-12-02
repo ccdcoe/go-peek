@@ -36,7 +36,7 @@ func (d Dump) MappingPath() string {
 
 type Rename struct {
 	NameSet *types.BoolValues
-	ByName  map[string]string
+	ByName  *types.StringValues
 	D       Dump
 }
 
@@ -57,7 +57,7 @@ func NewRename(dumpPath string) (*Rename, error) {
 		return nil, err
 	}
 	r = &Rename{
-		ByName: make(map[string]string),
+		ByName: types.NewStringValues(),
 		D:      d,
 	}
 	if _, err = os.Stat(r.D.MappingPath()); os.IsNotExist(err) {
@@ -86,11 +86,11 @@ func NewRename(dumpPath string) (*Rename, error) {
 }
 
 func (r *Rename) Check(name string) string {
-	if val, ok := r.ByName[name]; ok {
+	if val, ok := r.ByName.Get(name); ok {
 		return val
 	}
 	val := r.NameSet.GetRandom(true)
-	r.ByName[name] = val
+	r.ByName.Set(name, val)
 	return val
 }
 

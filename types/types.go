@@ -6,20 +6,20 @@ import (
 )
 
 type BoolValues struct {
-	*sync.Mutex
+	*sync.RWMutex
 	m map[string]bool
 }
 
 func NewEmptyBoolValues() *BoolValues {
 	return &BoolValues{
-		Mutex: &sync.Mutex{},
-		m:     map[string]bool{},
+		RWMutex: &sync.RWMutex{},
+		m:       map[string]bool{},
 	}
 }
 func NewBoolValues(vals map[string]bool) *BoolValues {
 	return &BoolValues{
-		Mutex: &sync.Mutex{},
-		m:     vals,
+		RWMutex: &sync.RWMutex{},
+		m:       vals,
 	}
 }
 
@@ -38,11 +38,16 @@ func (v *BoolValues) UnSet(key string) *BoolValues {
 }
 
 func (v BoolValues) Get(key string) bool {
+	v.RLock()
+	defer v.RUnlock()
 	return v.m[key]
 }
 
 func (v BoolValues) Len() int {
-	return len(v.m)
+	v.Lock()
+	defer v.Unlock()
+	l := len(v.m)
+	return l
 }
 
 func (v *BoolValues) Del(key string) *BoolValues {
@@ -55,12 +60,17 @@ func (v *BoolValues) Del(key string) *BoolValues {
 func (v BoolValues) GetRandom(remove bool) string {
 	i := rand.Intn(v.Len())
 	var k string
-	for k = range v.m {
+
+	vals := v.RawValues()
+	v.RLock()
+	for k = range vals {
 		if i == 0 {
 			break
 		}
 		i--
 	}
+	v.RUnlock()
+
 	if remove {
 		v.Del(k)
 	} else {
@@ -70,18 +80,20 @@ func (v BoolValues) GetRandom(remove bool) string {
 }
 
 func (v BoolValues) RawValues() map[string]bool {
+	v.RLock()
+	defer v.RUnlock()
 	return v.m
 }
 
 type StringValues struct {
-	*sync.Mutex
+	*sync.RWMutex
 	m map[string]string
 }
 
 func NewStringValues() *StringValues {
 	return &StringValues{
-		Mutex: &sync.Mutex{},
-		m:     map[string]string{},
+		RWMutex: &sync.RWMutex{},
+		m:       map[string]string{},
 	}
 }
 
@@ -92,6 +104,11 @@ func (v *StringValues) Set(key, val string) *StringValues {
 	return v
 }
 
-func (v StringValues) Get(key string) string {
-	return v.m[key]
+func (v StringValues) Get(key string) (string, bool) {
+	v.RLock()
+	defer v.RUnlock()
+	if val, ok := v.m[key]; ok {
+		return val, true
+	}
+	return "", false
 }
