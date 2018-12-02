@@ -6,7 +6,7 @@ import (
 )
 
 func TestRename(t *testing.T) {
-	ren, err := NewRename("/tmp/rename.gob")
+	ren, err := NewRename("/tmp/")
 	if err != nil {
 		t.Fatal(err)
 	}

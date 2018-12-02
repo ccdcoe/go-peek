@@ -2,56 +2,83 @@ package decoder
 
 import (
 	"encoding/csv"
-	"encoding/gob"
+	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"os"
-	"sync"
+	"path/filepath"
+
+	"github.com/ccdcoe/go-peek/types"
+	"github.com/ccdcoe/go-peek/utils"
 )
 
 const names = "https://raw.githubusercontent.com/hadley/data-baby-names/master/baby-names.csv"
 
-type RenameConf struct {
-	GobFile, YAMLfile string
+type Dump struct {
+	Dir, Names, Mappings string
+}
+
+func (d Dump) CheckDir() error {
+	if stat, err := os.Stat(d.Dir); err != nil {
+		return err
+	} else if !stat.IsDir() {
+		return fmt.Errorf("requested path %s is not directory", d.Dir)
+	}
+	return nil
+}
+
+func (d Dump) NamePath() string {
+	return filepath.Join(d.Dir, d.Names)
+}
+func (d Dump) MappingPath() string {
+	return filepath.Join(d.Dir, d.Mappings)
 }
 
 type Rename struct {
-	mu sync.Mutex
-
-	NameSet         map[string]bool
-	ByName, BySrcIp map[string]string
-	DumpPath        string
+	NameSet *types.BoolValues
+	ByName  map[string]string
+	D       Dump
 }
 
-func NewRename(dumpfile string) (*Rename, error) {
+func NewRename(dumpPath string) (*Rename, error) {
 	var (
-		r    *Rename
-		resp *http.Response
-		err  error
+		r       *Rename
+		d       Dump
+		resp    *http.Response
+		err     error
+		nameset = map[string]bool{}
 	)
-	if _, err = os.Stat(dumpfile); os.IsNotExist(err) {
-		r = &Rename{
-			ByName:   make(map[string]string),
-			BySrcIp:  make(map[string]string),
-			DumpPath: dumpfile,
-		}
+	d = Dump{
+		Dir:      dumpPath,
+		Names:    "names.gob",
+		Mappings: "mappings.gob",
+	}
+	if err = d.CheckDir(); err != nil {
+		return nil, err
+	}
+	r = &Rename{
+		ByName: make(map[string]string),
+		D:      d,
+	}
+	if _, err = os.Stat(r.D.MappingPath()); os.IsNotExist(err) {
 		if resp, err = http.Get(names); err != nil {
 			return nil, err
 		}
 		defer resp.Body.Close()
 
-		if r.NameSet, err = NameSetFromCSV(resp.Body); err != nil {
+		if nameset, err = NameSetFromCSV(resp.Body); err != nil {
 			return nil, err
 		}
-		if err = GobSaveFile(r.DumpPath, r); err != nil {
+		r.NameSet = types.NewBoolValues(nameset)
+
+		if err = utils.GobSaveFile(r.D.MappingPath(), nameset); err != nil {
 			return nil, err
 		}
 	} else {
-		r = &Rename{}
-		if err := GobLoadFile(dumpfile, r); err != nil {
+		if err := utils.GobLoadFile(r.D.MappingPath(), nameset); err != nil {
 			return nil, err
 		}
+		r.NameSet = types.NewBoolValues(nameset)
 	}
 
 	return r, nil
@@ -61,26 +88,9 @@ func (r *Rename) Check(name string) string {
 	if val, ok := r.ByName[name]; ok {
 		return val
 	}
-	val := r.GetRandomName()
-	r.mu.Lock()
+	val := r.NameSet.GetRandom(true)
 	r.ByName[name] = val
-	r.mu.Unlock()
 	return val
-}
-
-func (r *Rename) GetRandomName() string {
-	i := rand.Intn(len(r.NameSet))
-	var k string
-	for k = range r.NameSet {
-		if i == 0 {
-			break
-		}
-		i--
-	}
-	r.mu.Lock()
-	delete(r.NameSet, k)
-	r.mu.Unlock()
-	return k
 }
 
 func NameSetFromCSV(src io.Reader) (map[string]bool, error) {
@@ -104,38 +114,4 @@ func NameSetFromCSV(src io.Reader) (map[string]bool, error) {
 		lines++
 	}
 	return nameSet, nil
-}
-
-func GobLoadFile(path string, object interface{}) error {
-	var (
-		err  error
-		file io.ReadCloser
-	)
-	if file, err = os.Open(path); err != nil {
-		return err
-	}
-	defer file.Close()
-
-	decoder := gob.NewDecoder(file)
-	if err = decoder.Decode(object); err != nil {
-		return err
-	}
-	return nil
-}
-
-func GobSaveFile(path string, object interface{}) error {
-	var (
-		err  error
-		file io.WriteCloser
-	)
-	if file, err = os.Create(path); err != nil {
-		return err
-	}
-	defer file.Close()
-
-	var encoder = gob.NewEncoder(file)
-	if err = encoder.Encode(object); err != nil {
-		return err
-	}
-	return nil
 }
