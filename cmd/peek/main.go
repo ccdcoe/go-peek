@@ -9,6 +9,7 @@ import (
 	"runtime"
 
 	"github.com/BurntSushi/toml"
+	"github.com/Shopify/sarama"
 	cluster "github.com/bsm/sarama-cluster"
 	"github.com/ccdcoe/go-peek/decoder"
 )
@@ -41,7 +42,8 @@ type kafkaConf struct {
 }
 
 type mapTopics struct {
-	Type string
+	Type  string
+	Topic string
 }
 
 func defaultConfg() *mainConf {
@@ -51,7 +53,6 @@ func defaultConfg() *mainConf {
 		},
 		Kafka: kafkaConf{
 			Input:         []string{"localhost:9092"},
-			Output:        []string{"localhost:9093"},
 			ConsumerGroup: "peek",
 		},
 		EventTypes: map[string]mapTopics{},
@@ -81,6 +82,10 @@ func (c mainConf) MapEventTypes() map[string]string {
 		types[k] = v.Type
 	}
 	return types
+}
+
+func (c mainConf) GetDestTopic(src string) string {
+	return c.EventTypes[src].Topic
 }
 
 // Kafka handler
@@ -154,13 +159,51 @@ func main() {
 		}
 	}()
 
-	for msg := range dec.Output {
-		fmt.Println(msg.Source())
+	producerConfig := sarama.NewConfig()
+	producerConfig.Producer.RequiredAcks = sarama.NoResponse
+	producerConfig.Producer.Retry.Max = 5
+	producerConfig.Producer.Compression = sarama.CompressionSnappy
+
+	var errs = make(chan error, len(appConfg.EventTypes))
+
+	go func() {
+		for err := range errs {
+			log.Printf("Error: %s\n", err.Error())
+		}
+	}()
+
+	producer, err := sarama.NewAsyncProducer(appConfg.Kafka.Output, producerConfig)
+	if err != nil {
+		printErr(err)
 	}
+	go func() {
+		for err := range producer.Errors() {
+			errs <- fmt.Errorf("Failed to write msg: %s", err.Error())
+		}
+	}()
+
+loop:
+	for {
+		select {
+		case msg, ok := <-dec.Output:
+			if !ok {
+				break loop
+			}
+			//fmt.Println(msg.Topic, appConfg.GetDestTopic(msg.Topic), string(msg.Val))
+			producer.Input() <- &sarama.ProducerMessage{
+				Topic: appConfg.GetDestTopic(msg.Topic),
+				Value: sarama.ByteEncoder(msg.Val),
+				Key:   sarama.ByteEncoder(msg.Key),
+			}
+		}
+	}
+
 	if len(dec.Notifications) > 0 {
 		fmt.Println(<-dec.Notifications)
 	}
+
 	fmt.Println("All done")
+	fmt.Println(appConfg)
 }
 
 func printErr(err error) {

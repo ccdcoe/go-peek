@@ -5,14 +5,22 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"time"
 
 	cluster "github.com/bsm/sarama-cluster"
 	"github.com/ccdcoe/go-peek/events"
 )
 
+type DecodedMessage struct {
+	Val   []byte
+	Topic string
+	Key   string
+	Time  time.Time
+}
+
 type Decoder struct {
 	Input         *cluster.Consumer
-	Output        chan events.Event
+	Output        chan DecodedMessage
 	Run           bool
 	EventTypes    map[string]string
 	Errors        <-chan error
@@ -38,7 +46,7 @@ func NewMessageDecoder(
 		d = &Decoder{
 			Run:        true,
 			Input:      input,
-			Output:     make(chan events.Event),
+			Output:     make(chan DecodedMessage),
 			EventTypes: eventtypes,
 			errs:       make(chan error, 256),
 			notify:     make(chan string, 256),
@@ -105,10 +113,18 @@ loop:
 				d.EventTypes[msg.Topic],
 				msg.Value,
 			); err != nil {
-				d.errs <- err
+				d.sendErr(err)
 			} else if ev != nil {
 				ev.Rename(d.rename.Check(ev.Source().Host))
-				d.Output <- ev
+				if json, err := ev.JSON(); err != nil {
+					d.sendErr(err)
+				} else {
+					d.Output <- DecodedMessage{
+						Val:   json,
+						Time:  time.Now(),
+						Topic: msg.Topic,
+					}
+				}
 				d.Input.MarkOffset(msg, "")
 			}
 		case <-d.stop[id]:

@@ -43,11 +43,7 @@ func NewEvent(topic string, payload []byte) (Event, error) {
 		}
 
 	case "eventlog":
-		var m EventLog
-		if err := json.Unmarshal(payload, &m); err != nil {
-			return nil, err
-		}
-		return &m, nil
+		return NewDynaEventLog(payload)
 
 	default:
 		return nil, fmt.Errorf("Unsupported topic %s",
