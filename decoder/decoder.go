@@ -156,3 +156,7 @@ func (d Decoder) sendNotify(msg string) {
 	}
 	d.notify <- fmt.Sprintf("[decoder] %s", msg)
 }
+
+func (d Decoder) Names() map[string]string {
+	return d.rename.ByName.RawValues()
+}

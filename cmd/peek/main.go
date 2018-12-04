@@ -51,7 +51,9 @@ type kafkaConf struct {
 }
 
 type esConf struct {
-	Output []string
+	Output       []string
+	NameMapDump  []string
+	NameMapIndex string
 }
 
 type mapTopics struct {
@@ -214,15 +216,39 @@ func main() {
 		os.Exit(1)
 	}
 
+	var dumpNames = time.NewTicker(5 * time.Second)
+	go func() {
+		elaNameDumper := NewBulk(appConfg.ElasticSearch.NameMapDump)
+	loop:
+		for {
+			select {
+			case _, ok := <-dumpNames.C:
+				if !ok {
+					break loop
+				}
+				for k, v := range dec.Names() {
+					data, _ := json.Marshal(struct {
+						Original, Pretty string
+					}{
+						Original: k,
+						Pretty:   v,
+					})
+					elaNameDumper.AddIndex(data, appConfg.ElasticSearch.NameMapIndex, k)
+				}
+				elaNameDumper.Flush()
+			}
+		}
+
+	}()
+
 	go func(input chan decoder.DecodedMessage) {
 		defer wg.Done()
-		/*
-			var (
-				bulk = ela.Bulk()
-			)
-		*/
-		var send = time.NewTicker(3 * time.Second)
-		ela := NewBulk(appConfg.ElasticSearch.Output)
+		defer dumpNames.Stop()
+
+		var (
+			send = time.NewTicker(3 * time.Second)
+			ela  = NewBulk(appConfg.ElasticSearch.Output)
+		)
 
 	loop:
 		for {
@@ -285,13 +311,17 @@ func (b ElaBulk) Errors() <-chan error {
 	return b.errors
 }
 
-func (b *ElaBulk) AddIndex(item []byte, index string) *ElaBulk {
-	meta, _ := json.Marshal(map[string]map[string]string{
+func (b *ElaBulk) AddIndex(item []byte, index string, id ...string) *ElaBulk {
+	var m = map[string]map[string]string{
 		"index": {
 			"_index": index,
 			"_type":  "doc",
 		},
-	})
+	}
+	if len(id) > 0 {
+		m["index"]["_id"] = id[0]
+	}
+	meta, _ := json.Marshal(m)
 	b.Data = append(b.Data, meta)
 	b.Data = append(b.Data, item)
 	return b
