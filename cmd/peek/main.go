@@ -1,19 +1,25 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/Shopify/sarama"
 	cluster "github.com/bsm/sarama-cluster"
 	"github.com/ccdcoe/go-peek/decoder"
 )
+
+const esTimeFormat = "2006.01.02.15"
 
 var (
 	mainFlags = flag.NewFlagSet("main", flag.ExitOnError)
@@ -27,9 +33,10 @@ var (
 )
 
 type mainConf struct {
-	General    generalConf
-	Kafka      kafkaConf
-	EventTypes map[string]mapTopics
+	General       generalConf
+	Kafka         kafkaConf
+	ElasticSearch esConf
+	EventTypes    map[string]mapTopics
 }
 
 type generalConf struct {
@@ -40,6 +47,10 @@ type kafkaConf struct {
 	Input, Output []string
 	Topics        []string
 	ConsumerGroup string
+}
+
+type esConf struct {
+	Output string
 }
 
 type mapTopics struct {
@@ -56,6 +67,9 @@ func defaultConfg() *mainConf {
 		Kafka: kafkaConf{
 			Input:         []string{"localhost:9092"},
 			ConsumerGroup: "peek",
+		},
+		ElasticSearch: esConf{
+			Output: "http://localhost:9200",
 		},
 		EventTypes: map[string]mapTopics{},
 	}
@@ -193,8 +207,22 @@ func main() {
 	// Multiplexer / Output start
 	var wg sync.WaitGroup
 	wg.Add(1)
+
+	if err != nil {
+		printErr(err)
+		os.Exit(1)
+	}
+
 	go func(input chan decoder.DecodedMessage) {
 		defer wg.Done()
+		/*
+			var (
+				bulk = ela.Bulk()
+			)
+		*/
+		var send = time.NewTicker(3 * time.Second)
+		ela := NewBulk([]string{appConfg.ElasticSearch.Output})
+
 	loop:
 		for {
 			select {
@@ -202,21 +230,29 @@ func main() {
 				if !ok {
 					break loop
 				}
+				// Main produce
 				producer.Input() <- &sarama.ProducerMessage{
 					Topic:     appConfg.GetDestTopic(msg.Topic),
 					Value:     sarama.ByteEncoder(msg.Val),
 					Key:       sarama.ByteEncoder(msg.Key),
 					Timestamp: msg.Time,
 				}
+
+				// Sagan produce
 				producer.Input() <- &sarama.ProducerMessage{
 					Topic:     appConfg.GetDestSaganTopic(msg.Topic),
 					Value:     sarama.StringEncoder(msg.Sagan),
 					Key:       sarama.ByteEncoder(msg.Key),
 					Timestamp: msg.Time,
 				}
+
+				idxName := fmt.Sprintf("%s-%s", msg.Topic, msg.Time.Format(esTimeFormat))
+				ela.AddIndex(msg.Val, idxName)
+
+			case <-send.C:
+				ela.Flush()
 			}
 		}
-
 	}(dec.Output)
 	wg.Wait()
 
@@ -226,6 +262,61 @@ func main() {
 
 	fmt.Println("All done")
 	fmt.Println(appConfg)
+}
+
+type ElaBulk struct {
+	Data   [][]byte
+	Hosts  []string
+	Resps  chan *http.Response
+	errors chan error
+}
+
+func NewBulk(hosts []string) *ElaBulk {
+	return &ElaBulk{
+		Hosts:  hosts,
+		Data:   make([][]byte, 0),
+		Resps:  make(chan *http.Response, 256),
+		errors: make(chan error, 256),
+	}
+}
+
+func (b ElaBulk) Errors() <-chan error {
+	return b.errors
+}
+
+func (b *ElaBulk) AddIndex(item []byte, index string) *ElaBulk {
+	meta, _ := json.Marshal(map[string]map[string]string{
+		"index": {
+			"_index": index,
+			"_type":  "doc",
+		},
+	})
+	b.Data = append(b.Data, meta)
+	b.Data = append(b.Data, item)
+	return b
+}
+
+func (b *ElaBulk) Flush() *ElaBulk {
+	go func(data []byte) {
+		buf := bytes.NewBuffer(data)
+		buf.WriteRune('\n')
+		resp, err := http.Post(b.Hosts[0]+"/_bulk", "application/x-ndjson", buf)
+		if err != nil {
+			if len(b.errors) == 256 {
+				<-b.errors
+			}
+			b.errors <- err
+		}
+		if resp != nil {
+			resp.Body.Close()
+			if len(b.Resps) == 256 {
+				<-b.Resps
+			}
+			b.Resps <- resp
+		}
+	}(append(bytes.Join(b.Data, []byte("\n"))))
+	b.Data = make([][]byte, 0)
+	return b
 }
 
 func printErr(err error) {
