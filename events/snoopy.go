@@ -2,6 +2,7 @@ package events
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -46,4 +47,20 @@ func (s Snoopy) Key() string {
 
 func (s Snoopy) EventTime() time.Time {
 	return s.Timestamp
+}
+func (s Snoopy) GetSyslogTime() time.Time {
+	return s.Timestamp
+}
+func (s Snoopy) SaganString() string {
+	return fmt.Sprintf("%s|%s|%s|%s|%s|%s|%s|%s|%s",
+		s.Host,
+		s.Facility,
+		s.Severity,
+		s.Severity,
+		s.Program,
+		s.GetSyslogTime().Format(saganDateFormat),
+		s.GetSyslogTime().Format(saganTimeFormat),
+		s.Program,
+		s.Cmd,
+	)
 }

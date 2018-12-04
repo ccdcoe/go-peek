@@ -26,6 +26,7 @@ func (t *eventLogTs) UnmarshalJSON(b []byte) error {
 //type DynaEventLog struct{ Vals *gabs.Container }
 type DynaEventLog struct {
 	Vals      *gabs.Container
+	Timestamp time.Time
 	EventTime time.Time
 }
 
@@ -51,6 +52,8 @@ func NewDynaEventLog(raw []byte) (*DynaEventLog, error) {
 			return nil, err
 		}
 	}
+	// TODO! Get syslog time in addition to messed up reported
+	e.Timestamp = e.EventTime
 
 	return e, nil
 }
@@ -96,6 +99,23 @@ func (s DynaEventLog) Key() string {
 
 func (s DynaEventLog) GetEventTime() time.Time {
 	return s.EventTime
+}
+func (s DynaEventLog) GetSyslogTime() time.Time {
+	return s.Timestamp
+}
+
+func (s DynaEventLog) SaganString() string {
+	return fmt.Sprintf("%s|%s|%s|%s|%s|%s|%s|%s|%s",
+		s.getStringField("Hostname"),
+		s.getStringField("SourceName"),
+		s.getStringField("Severity"),
+		s.getStringField("Severity"),
+		s.getStringField("Channel"),
+		s.GetSyslogTime().Format(saganDateFormat),
+		s.GetSyslogTime().Format(saganTimeFormat),
+		s.getStringField("program"),
+		s.getStringField("Message"),
+	)
 }
 
 type SimpleEventLog struct {

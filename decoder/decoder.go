@@ -15,6 +15,7 @@ type DecodedMessage struct {
 	Val   []byte
 	Topic string
 	Key   string
+	Sagan string
 	Time  time.Time
 }
 
@@ -125,6 +126,7 @@ loop:
 						Topic: msg.Topic,
 						Key:   ev.Key(),
 						Time:  ev.GetEventTime(),
+						Sagan: ev.SaganString(),
 					}
 				}
 				d.Input.MarkOffset(msg, "")

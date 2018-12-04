@@ -8,6 +8,9 @@ import (
 	"time"
 )
 
+const saganDateFormat = "2006-01-02"
+const saganTimeFormat = "15:04:05"
+
 type stringIP struct{ net.IP }
 
 func (t *stringIP) UnmarshalJSON(b []byte) error {
@@ -32,6 +35,8 @@ type Event interface {
 	Rename(string)
 	Key() string
 	GetEventTime() time.Time
+	GetSyslogTime() time.Time
+	SaganString() string
 }
 
 type EventRenamer interface {
@@ -48,6 +53,7 @@ type EventIdentifier interface {
 }
 type EventTimeReporter interface {
 	GetEventTime() time.Time
+	GetSyslogTime() time.Time
 }
 
 func NewEvent(topic string, payload []byte) (Event, error) {

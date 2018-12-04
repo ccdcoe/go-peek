@@ -51,8 +51,14 @@ func (s Eve) Key() string {
 	return s.EventType
 }
 
-func (s Eve) EventTime() time.Time {
+func (s Eve) GetEventTime() time.Time {
 	return s.SuriTime.Time
+}
+func (s Eve) GetSyslogTime() time.Time {
+	return s.Timestamp
+}
+func (s Eve) SaganString() string {
+	return "NOT IMPLEMENTED"
 }
 
 // Logical grouping of varous EVE.json components

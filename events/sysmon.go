@@ -77,3 +77,6 @@ func (s Sysmon) Key() string {
 func (s Sysmon) GetEventTime() time.Time {
 	return s.EventReceivedTime.Time
 }
+func (s Sysmon) GetSyslogTime() time.Time {
+	return s.Timestamp
+}

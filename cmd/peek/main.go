@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"sync"
 
 	"github.com/BurntSushi/toml"
 	"github.com/Shopify/sarama"
@@ -42,8 +43,9 @@ type kafkaConf struct {
 }
 
 type mapTopics struct {
-	Type  string
-	Topic string
+	Type       string
+	Topic      string
+	SaganTopic string
 }
 
 func defaultConfg() *mainConf {
@@ -86,6 +88,10 @@ func (c mainConf) MapEventTypes() map[string]string {
 
 func (c mainConf) GetDestTopic(src string) string {
 	return c.EventTypes[src].Topic
+}
+
+func (c mainConf) GetDestSaganTopic(src string) string {
+	return c.EventTypes[src].SaganTopic
 }
 
 // Kafka handler
@@ -184,40 +190,35 @@ func main() {
 			errs <- fmt.Errorf("Failed to write msg: %s", err.Error())
 		}
 	}()
-	/*
-		ela, err := elastic.NewClient(elastic.SetURL("http://192.168.0.10:9200"))
-		if err != nil {
-			printErr(err)
-			os.Exit(1)
+	// Multiplexer / Output start
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func(input chan decoder.DecodedMessage) {
+		defer wg.Done()
+	loop:
+		for {
+			select {
+			case msg, ok := <-input:
+				if !ok {
+					break loop
+				}
+				producer.Input() <- &sarama.ProducerMessage{
+					Topic:     appConfg.GetDestTopic(msg.Topic),
+					Value:     sarama.ByteEncoder(msg.Val),
+					Key:       sarama.ByteEncoder(msg.Key),
+					Timestamp: msg.Time,
+				}
+				producer.Input() <- &sarama.ProducerMessage{
+					Topic:     appConfg.GetDestSaganTopic(msg.Topic),
+					Value:     sarama.StringEncoder(msg.Sagan),
+					Key:       sarama.ByteEncoder(msg.Key),
+					Timestamp: msg.Time,
+				}
+			}
 		}
 
-		bulk := ela.Bulk()
-		send := time.NewTicker(3 * time.Second)
-	*/
-loop:
-	for {
-		select {
-		case msg, ok := <-dec.Output:
-			if !ok {
-				break loop
-			}
-			//fmt.Println(msg.Topic, appConfg.GetDestTopic(msg.Topic), string(msg.Val))
-			producer.Input() <- &sarama.ProducerMessage{
-				Topic:     appConfg.GetDestTopic(msg.Topic),
-				Value:     sarama.ByteEncoder(msg.Val),
-				Key:       sarama.ByteEncoder(msg.Key),
-				Timestamp: msg.Time,
-			}
-			/*
-					idx := elastic.NewBulkIndexRequest().Index(msg.Topic).Type("doc").Doc(msg.Val)
-					bulk.Add(idx)
-				case <-send.C:
-					if _, err := bulk.Do(context.TODO()); err != nil {
-						fmt.Println(err.Error())
-					}
-			*/
-		}
-	}
+	}(dec.Output)
+	wg.Wait()
 
 	if len(dec.Notifications) > 0 {
 		fmt.Println(<-dec.Notifications)

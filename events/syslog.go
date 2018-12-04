@@ -2,6 +2,7 @@ package events
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"time"
 )
@@ -36,7 +37,23 @@ func (s Syslog) Key() string {
 }
 
 func (s Syslog) GetEventTime() time.Time {
+	return s.GetSyslogTime()
+}
+func (s Syslog) GetSyslogTime() time.Time {
 	return s.Timestamp
+}
+func (s Syslog) SaganString() string {
+	return fmt.Sprintf("%s|%s|%s|%s|%s|%s|%s|%s|%s",
+		s.Host,
+		s.Facility,
+		s.Severity,
+		s.Severity,
+		s.Program,
+		s.GetSyslogTime().Format(saganDateFormat),
+		s.GetSyslogTime().Format(saganTimeFormat),
+		s.Program,
+		s.Message,
+	)
 }
 
 // NewSyslogTestMessage is a helper function for usage in _test.go files
