@@ -1,18 +1,23 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"path"
 	"runtime"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/Shopify/sarama"
 	cluster "github.com/bsm/sarama-cluster"
 	"github.com/ccdcoe/go-peek/decoder"
+	"github.com/olivere/elastic"
 )
+
+const esTimeFormat = "2006.01.02.15"
 
 var (
 	mainFlags = flag.NewFlagSet("main", flag.ExitOnError)
@@ -26,9 +31,10 @@ var (
 )
 
 type mainConf struct {
-	General    generalConf
-	Kafka      kafkaConf
-	EventTypes map[string]mapTopics
+	General       generalConf
+	Kafka         kafkaConf
+	ElasticSearch esConf
+	EventTypes    map[string]mapTopics
 }
 
 type generalConf struct {
@@ -39,6 +45,10 @@ type kafkaConf struct {
 	Input, Output []string
 	Topics        []string
 	ConsumerGroup string
+}
+
+type esConf struct {
+	Output string
 }
 
 type mapTopics struct {
@@ -54,6 +64,9 @@ func defaultConfg() *mainConf {
 		Kafka: kafkaConf{
 			Input:         []string{"localhost:9092"},
 			ConsumerGroup: "peek",
+		},
+		ElasticSearch: esConf{
+			Output: "http://localhost:9200",
 		},
 		EventTypes: map[string]mapTopics{},
 	}
@@ -184,16 +197,18 @@ func main() {
 			errs <- fmt.Errorf("Failed to write msg: %s", err.Error())
 		}
 	}()
-	/*
-		ela, err := elastic.NewClient(elastic.SetURL("http://192.168.0.10:9200"))
-		if err != nil {
-			printErr(err)
-			os.Exit(1)
-		}
 
-		bulk := ela.Bulk()
-		send := time.NewTicker(3 * time.Second)
-	*/
+	ela, err := elastic.NewSimpleClient(
+		elastic.SetURL(appConfg.ElasticSearch.Output),
+	)
+	if err != nil {
+		printErr(err)
+		os.Exit(1)
+	}
+
+	bulk := ela.Bulk()
+	send := time.NewTicker(3 * time.Second)
+
 loop:
 	for {
 		select {
@@ -208,14 +223,17 @@ loop:
 				Key:       sarama.ByteEncoder(msg.Key),
 				Timestamp: msg.Time,
 			}
-			/*
-					idx := elastic.NewBulkIndexRequest().Index(msg.Topic).Type("doc").Doc(msg.Val)
-					bulk.Add(idx)
-				case <-send.C:
-					if _, err := bulk.Do(context.TODO()); err != nil {
-						fmt.Println(err.Error())
-					}
-			*/
+
+			//fmt.Println(msg.Time.Format(esTimeFormat))
+			idxName := fmt.Sprintf("%s-%s", msg.Topic, msg.Time.Format(esTimeFormat))
+
+			idx := elastic.NewBulkIndexRequest().Index(idxName).Type("doc").Doc(msg.Val)
+			bulk.Add(idx)
+		case <-send.C:
+			if _, err := bulk.Do(context.TODO()); err != nil {
+				fmt.Println(err.Error())
+			}
+
 		}
 	}
 
