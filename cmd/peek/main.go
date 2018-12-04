@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"path"
@@ -50,7 +51,7 @@ type kafkaConf struct {
 }
 
 type esConf struct {
-	Output string
+	Output []string
 }
 
 type mapTopics struct {
@@ -69,7 +70,7 @@ func defaultConfg() *mainConf {
 			ConsumerGroup: "peek",
 		},
 		ElasticSearch: esConf{
-			Output: "http://localhost:9200",
+			Output: []string{"http://localhost:9200"},
 		},
 		EventTypes: map[string]mapTopics{},
 	}
@@ -221,7 +222,7 @@ func main() {
 			)
 		*/
 		var send = time.NewTicker(3 * time.Second)
-		ela := NewBulk([]string{appConfg.ElasticSearch.Output})
+		ela := NewBulk(appConfg.ElasticSearch.Output)
 
 	loop:
 		for {
@@ -300,7 +301,8 @@ func (b *ElaBulk) Flush() *ElaBulk {
 	go func(data []byte) {
 		buf := bytes.NewBuffer(data)
 		buf.WriteRune('\n')
-		resp, err := http.Post(b.Hosts[0]+"/_bulk", "application/x-ndjson", buf)
+		randProxy := rand.Int() % len(b.Hosts)
+		resp, err := http.Post(b.Hosts[randProxy]+"/_bulk", "application/x-ndjson", buf)
 		if err != nil {
 			if len(b.errors) == 256 {
 				<-b.errors
