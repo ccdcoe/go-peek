@@ -119,10 +119,12 @@ loop:
 				if json, err := ev.JSON(); err != nil {
 					d.sendErr(err)
 				} else {
+					//fmt.Println(ev.GetEventTime(), ev.Key())
 					d.Output <- DecodedMessage{
 						Val:   json,
-						Time:  time.Now(),
 						Topic: msg.Topic,
+						Key:   ev.Key(),
+						Time:  ev.GetEventTime(),
 					}
 				}
 				d.Input.MarkOffset(msg, "")

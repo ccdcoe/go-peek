@@ -2,11 +2,15 @@ package events
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/Jeffail/gabs"
 )
+
+const eventLogTsFormatSlash = "2006/01/02 15:04:05"
+const eventLogTsFormatDash = "2006-01-02 15:04:05"
 
 type eventLogTs struct{ time.Time }
 
@@ -15,22 +19,56 @@ func (t *eventLogTs) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	t.Time, err = time.Parse("2006-01-02 15:04:05", raw)
+	t.Time, err = time.Parse(eventLogTsFormatSlash, raw)
 	return err
 }
 
 //type DynaEventLog struct{ Vals *gabs.Container }
-type DynaEventLog struct{ Vals *gabs.Container }
-
-func NewDynaEventLog(raw []byte) (*DynaEventLog, error) {
-	var parsed *gabs.Container
-	var err error
-	if parsed, err = gabs.ParseJSON(raw); err != nil {
-		return nil, err
-	}
-	return &DynaEventLog{Vals: parsed}, nil
+type DynaEventLog struct {
+	Vals      *gabs.Container
+	EventTime time.Time
 }
 
+func NewDynaEventLog(raw []byte) (*DynaEventLog, error) {
+	var err error
+	var e = &DynaEventLog{}
+	var tsFormat = eventLogTsFormatDash
+	if e.Vals, err = gabs.ParseJSON(raw); err != nil {
+		return nil, err
+	}
+	switch v := e.Vals.Path("SourceName").Data().(string); {
+	case v == "Microsoft-Windows-Sysmon":
+		e.EventTime, err = time.Parse(tsFormat, e.getStringField("EventReceivedTime"))
+		if err != nil {
+			fmt.Println(e.getStringField("Channel"))
+			return nil, err
+		}
+	default:
+		field := e.getStringField("EventTime")
+		e.EventTime, err = time.Parse(tsFormat, field)
+		if err != nil {
+			fmt.Println(e.Vals.String())
+			return nil, err
+		}
+	}
+
+	return e, nil
+}
+
+func (s DynaEventLog) getStringField(key string) string {
+	return s.Vals.Path(key).Data().(string)
+}
+
+func (s *DynaEventLog) parseTime(format string) error {
+	raw, err := strconv.Unquote(s.Vals.Path("EventReceivedTime").Data().(string))
+	if err != nil {
+		return err
+	}
+	if s.EventTime, err = time.Parse(format, raw); err != nil {
+		return err
+	}
+	return nil
+}
 func (s DynaEventLog) JSON() ([]byte, error) {
 	return s.Vals.Bytes(), nil
 }
@@ -49,15 +87,24 @@ func (s DynaEventLog) Source() Source {
 func (s *DynaEventLog) Rename(pretty string) {
 	s.Vals.Set(pretty, "host")
 	s.Vals.Set(pretty, "Hostname")
-	s.Vals.DeleteP("ip")
+	//s.Vals.DeleteP("ip")
+}
+
+func (s DynaEventLog) Key() string {
+	return s.Vals.Path("SourceName").Data().(string)
+}
+
+func (s DynaEventLog) GetEventTime() time.Time {
+	return s.EventTime
 }
 
 type SimpleEventLog struct {
 	Syslog
 
-	EventTime *eventLogTs `json:"EventTime"`
-	Channel   string      `json:"Channel"`
-	Hostname  string      `json:"Hostname"`
+	EventTime  *eventLogTs `json:"EventTime"`
+	Channel    string      `json:"Channel"`
+	Hostname   string      `json:"Hostname"`
+	SourceName string      `json:"SourceName"`
 }
 
 func (s SimpleEventLog) JSON() ([]byte, error) {
@@ -74,4 +121,8 @@ func (s SimpleEventLog) Source() Source {
 func (s *SimpleEventLog) Rename(pretty string) {
 	s.Host = pretty
 	s.Hostname = pretty
+}
+
+func (s SimpleEventLog) GetEventTime() time.Time {
+	return s.EventTime.Time
 }

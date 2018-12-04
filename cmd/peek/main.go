@@ -105,6 +105,7 @@ func main() {
 	}
 	fmt.Println(appConfg.Topics())
 
+	// consumer start
 	config := cluster.NewConfig()
 	config.Consumer.Return.Errors = true
 	config.Group.Return.Notifications = true
@@ -137,6 +138,7 @@ func main() {
 		}
 	}()
 
+	// decoder / worker start
 	if dec, err = decoder.NewMessageDecoder(
 		int(*workers),
 		consumer,
@@ -159,6 +161,7 @@ func main() {
 		}
 	}()
 
+	// Producer start
 	producerConfig := sarama.NewConfig()
 	producerConfig.Producer.RequiredAcks = sarama.NoResponse
 	producerConfig.Producer.Retry.Max = 5
@@ -181,7 +184,16 @@ func main() {
 			errs <- fmt.Errorf("Failed to write msg: %s", err.Error())
 		}
 	}()
+	/*
+		ela, err := elastic.NewClient(elastic.SetURL("http://192.168.0.10:9200"))
+		if err != nil {
+			printErr(err)
+			os.Exit(1)
+		}
 
+		bulk := ela.Bulk()
+		send := time.NewTicker(3 * time.Second)
+	*/
 loop:
 	for {
 		select {
@@ -191,10 +203,19 @@ loop:
 			}
 			//fmt.Println(msg.Topic, appConfg.GetDestTopic(msg.Topic), string(msg.Val))
 			producer.Input() <- &sarama.ProducerMessage{
-				Topic: appConfg.GetDestTopic(msg.Topic),
-				Value: sarama.ByteEncoder(msg.Val),
-				Key:   sarama.ByteEncoder(msg.Key),
+				Topic:     appConfg.GetDestTopic(msg.Topic),
+				Value:     sarama.ByteEncoder(msg.Val),
+				Key:       sarama.ByteEncoder(msg.Key),
+				Timestamp: msg.Time,
 			}
+			/*
+					idx := elastic.NewBulkIndexRequest().Index(msg.Topic).Type("doc").Doc(msg.Val)
+					bulk.Add(idx)
+				case <-send.C:
+					if _, err := bulk.Do(context.TODO()); err != nil {
+						fmt.Println(err.Error())
+					}
+			*/
 		}
 	}
 

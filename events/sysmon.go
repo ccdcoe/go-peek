@@ -2,6 +2,7 @@ package events
 
 import (
 	"encoding/json"
+	"time"
 )
 
 type Sysmon struct {
@@ -9,7 +10,7 @@ type Sysmon struct {
 	EventTime         string      `json:"EventTime"`
 	Hostname          string      `json:"Hostname"`
 	Keywords          int64       `json:"Keywords"`
-	EventType         *eventLogTs `json:"EventType"`
+	EventType         string      `json:"EventType"`
 	SeverityValue     int         `json:"SeverityValue"`
 	Severity          string      `json:"Severity"`
 	EventID           int         `json:"EventID"`
@@ -48,7 +49,7 @@ type Sysmon struct {
 	ParentProcessID   string      `json:"ParentProcessId"`
 	ParentImage       string      `json:"ParentImage"`
 	ParentCommandLine string      `json:"ParentCommandLine"`
-	EventReceivedTime string      `json:"EventReceivedTime"`
+	EventReceivedTime *eventLogTs `json:"EventReceivedTime"`
 	SourceModuleName  string      `json:"SourceModuleName"`
 	SourceModuleType  string      `json:"SourceModuleType"`
 }
@@ -67,4 +68,12 @@ func (s Sysmon) Source() Source {
 func (s *Sysmon) Rename(pretty string) {
 	s.Host = pretty
 	s.Hostname = pretty
+}
+
+func (s Sysmon) Key() string {
+	return s.Image
+}
+
+func (s Sysmon) GetEventTime() time.Time {
+	return s.EventReceivedTime.Time
 }

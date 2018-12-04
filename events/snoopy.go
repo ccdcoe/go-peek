@@ -1,6 +1,9 @@
 package events
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
 
 type Snoopy struct {
 	Syslog
@@ -29,10 +32,18 @@ func (s Snoopy) JSON() ([]byte, error) {
 func (s Snoopy) Source() Source {
 	return Source{
 		Host: s.Host,
-		IP:   s.IP,
+		IP:   s.IP.String(),
 	}
 }
 
 func (s *Snoopy) Rename(pretty string) {
 	s.Host = pretty
+}
+
+func (s Snoopy) Key() string {
+	return s.Filename
+}
+
+func (s Snoopy) EventTime() time.Time {
+	return s.Timestamp
 }

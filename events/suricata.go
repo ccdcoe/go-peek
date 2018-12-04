@@ -38,7 +38,7 @@ func (s Eve) JSON() ([]byte, error) {
 func (s Eve) Source() Source {
 	return Source{
 		Host: s.Host,
-		IP:   s.IP,
+		IP:   s.IP.String(),
 	}
 }
 
@@ -47,18 +47,26 @@ func (s *Eve) Rename(pretty string) {
 	s.Host = pretty
 }
 
+func (s Eve) Key() string {
+	return s.EventType
+}
+
+func (s Eve) EventTime() time.Time {
+	return s.SuriTime.Time
+}
+
 // Logical grouping of varous EVE.json components
 
 type EveBase struct {
-	FlowID      int64  `json:"flow_id"`
-	InIface     string `json:"in_iface"`
-	EventType   string `json:"event_type"`
-	SrcIP       string `json:"src_ip"`
-	SrcPort     int    `json:"src_port"`
-	DestIP      string `json:"dest_ip"`
-	DestPort    int    `json:"dest_port"`
-	Proto       string `json:"proto"`
-	CommunityID string `json:"community_id"`
+	FlowID      int64     `json:"flow_id"`
+	InIface     string    `json:"in_iface"`
+	EventType   string    `json:"event_type"`
+	SrcIP       *stringIP `json:"src_ip"`
+	SrcPort     int       `json:"src_port"`
+	DestIP      *stringIP `json:"dest_ip"`
+	DestPort    int       `json:"dest_port"`
+	Proto       string    `json:"proto"`
+	CommunityID string    `json:"community_id"`
 }
 
 type EveAlert struct {
