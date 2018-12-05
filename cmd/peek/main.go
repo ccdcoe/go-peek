@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -57,10 +58,20 @@ type esConf struct {
 }
 
 type mapTopics struct {
-	Type       string
-	Topic      string
-	SaganTopic string
+	Type         string
+	Topic        string
+	SaganTopic   string
+	ElasticIndex elaIndex
 }
+
+type elaIndex string
+
+func (e elaIndex) Format(timestamp time.Time) string {
+	return strings.Join([]string{e.String(), timestamp.Format(e.Hourly())}, "-")
+}
+func (e elaIndex) Hourly() string { return "2006.01.02.15" }
+func (e elaIndex) Daily() string  { return "2006.01.02" }
+func (e elaIndex) String() string { return string(e) }
 
 func defaultConfg() *mainConf {
 	return &mainConf{
@@ -109,6 +120,14 @@ func (c mainConf) GetDestTopic(src string) string {
 
 func (c mainConf) GetDestSaganTopic(src string) string {
 	return c.EventTypes[src].SaganTopic
+}
+
+func (c mainConf) GetDestElaIndex(src string) string {
+	return c.EventTypes[src].ElasticIndex.String()
+}
+
+func (c mainConf) GetDestTimeElaIndex(timestamp time.Time, src string) string {
+	return c.EventTypes[src].ElasticIndex.Format(timestamp)
 }
 
 // Kafka handler
@@ -273,8 +292,7 @@ func main() {
 					Timestamp: msg.Time,
 				}
 
-				idxName := fmt.Sprintf("%s-%s", msg.Topic, msg.Time.Format(esTimeFormat))
-				ela.AddIndex(msg.Val, idxName)
+				ela.AddIndex(msg.Val, appConfg.GetDestTimeElaIndex(msg.Time, msg.Topic))
 
 			case <-send.C:
 				ela.Flush()

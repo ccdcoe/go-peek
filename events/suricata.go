@@ -20,13 +20,13 @@ func (t *suriTS) UnmarshalJSON(b []byte) error {
 type Eve struct {
 	Syslog
 	EveBase
-	SuriTime *suriTS     `json:"timestamp"`
-	Alert    EveAlert    `json:"alert,omitempty"`
-	DNS      EveDNS      `json:"dns,omitempty"`
-	TLS      EveTLS      `json:"tls,omitempty"`
-	SMB      EveSmb      `json:"smb,omitempty"`
-	Http     EveHttp     `json:"http,omitempty"`
-	Fileinfo EveFileInfo `json:"fileinfo,omitempty"`
+	SuriTime *suriTS      `json:"timestamp"`
+	Alert    *EveAlert    `json:"alert,omitempty"`
+	DNS      *EveDNS      `json:"dns,omitempty"`
+	TLS      *EveTLS      `json:"tls,omitempty"`
+	SMB      *EveSmb      `json:"smb,omitempty"`
+	Http     *EveHttp     `json:"http,omitempty"`
+	Fileinfo *EveFileInfo `json:"fileinfo,omitempty"`
 }
 
 // JSON implements Event
@@ -73,17 +73,32 @@ type EveBase struct {
 	DestPort    int       `json:"dest_port"`
 	Proto       string    `json:"proto"`
 	CommunityID string    `json:"community_id"`
+	SuriHost    string    `json:"host"`
+	NetInfo     *NetInfo  `json:"net_info,omitempty"`
+}
+
+type NetInfo struct {
+	Src  []string `json:"src"`
+	Dest []string `json:"dest"`
+}
+
+type SrcTargetInfo struct {
+	IP      string   `json:"ip"`
+	Port    int      `json:"port"`
+	NetInfo []string `json:"net_info"`
 }
 
 type EveAlert struct {
-	Action      string      `json:"action"`
-	Gid         int         `json:"gid"`
-	SignatureID int         `json:"signature_id"`
-	Rev         int         `json:"rev"`
-	Signature   string      `json:"signature"`
-	Category    string      `json:"category"`
-	Severity    int         `json:"severity"`
-	Metadata    EveMetadata `json:"metadata,omitempty"`
+	Action      string         `json:"action"`
+	Gid         int            `json:"gid"`
+	SignatureID int            `json:"signature_id"`
+	Rev         int            `json:"rev"`
+	Signature   string         `json:"signature"`
+	Category    string         `json:"category"`
+	Severity    int            `json:"severity"`
+	Metadata    *EveMetadata   `json:"metadata,omitempty"`
+	Source      *SrcTargetInfo `json:"source,omitempty"`
+	Target      *SrcTargetInfo `json:"target,omitempty"`
 }
 
 type EveFlow struct {
@@ -110,7 +125,7 @@ type EveDNS struct {
 	Ra      bool   `json:"ra"`
 	Rcode   string `json:"rcode"`
 
-	EveDNSanswer
+	*EveDNSanswer
 
 	//Grouped map[string]EveDNSanswer `json:"grouped,omitempty"`
 	Answers []EveDNSanswer `json:"answers,omitempty"`
