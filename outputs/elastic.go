@@ -5,7 +5,18 @@ import (
 	"encoding/json"
 	"math/rand"
 	"net/http"
+	"strings"
+	"time"
 )
+
+type ElaIndex string
+
+func (e ElaIndex) Format(timestamp time.Time) string {
+	return strings.Join([]string{e.String(), timestamp.Format(e.Hourly())}, "-")
+}
+func (e ElaIndex) Hourly() string { return "2006.01.02.15" }
+func (e ElaIndex) Daily() string  { return "2006.01.02" }
+func (e ElaIndex) String() string { return string(e) }
 
 type ElaBulk struct {
 	Data   [][]byte
