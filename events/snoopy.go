@@ -56,7 +56,7 @@ func (s Snoopy) GetSyslogTime() time.Time {
 }
 func (s Snoopy) SaganString() string {
 	return fmt.Sprintf("%s|%s|%s|%s|%s|%s|%s|%s|%s",
-		s.Host,
+		s.IP,
 		s.Facility,
 		s.Severity,
 		s.Severity,

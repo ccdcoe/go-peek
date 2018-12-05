@@ -165,9 +165,16 @@ type EveSmb struct {
 			Version   string `json:"version"`
 			AckResult int    `json:"ack_result"`
 			AckReason int    `json:"ack_reason"`
-		} `json:"interfaces"`
+		} `json:"interfaces,omitempty"`
 		CallID int `json:"call_id"`
-	} `json:"dcerpc"`
+	} `json:"dcerpc,omitempty"`
+}
+
+type EveSmbInterfaces struct {
+	UUID      string `json:"uuid"`
+	Version   string `json:"version"`
+	AckResult int    `json:"ack_result"`
+	AckReason int    `json:"ack_reason"`
 }
 
 type EveHttp struct {

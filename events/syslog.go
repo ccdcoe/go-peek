@@ -46,7 +46,7 @@ func (s Syslog) GetSyslogTime() time.Time {
 }
 func (s Syslog) SaganString() string {
 	return fmt.Sprintf("%s|%s|%s|%s|%s|%s|%s|%s|%s",
-		s.Host,
+		s.IP.String(),
 		s.Facility,
 		s.Severity,
 		s.Severity,

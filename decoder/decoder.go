@@ -120,7 +120,6 @@ loop:
 				if json, err := ev.JSON(); err != nil {
 					d.sendErr(err)
 				} else {
-					//fmt.Println(ev.GetEventTime(), ev.Key())
 					d.Output <- DecodedMessage{
 						Val:   json,
 						Topic: msg.Topic,

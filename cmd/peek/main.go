@@ -57,11 +57,16 @@ type esConf struct {
 	NameMapIndex string
 }
 
+type saganConf struct {
+	Brokers []string
+	Topic   string
+}
+
 type mapTopics struct {
 	Type         string
 	Topic        string
-	SaganTopic   string
 	ElasticIndex elaIndex
+	Sagan        *saganConf
 }
 
 type elaIndex string
@@ -119,7 +124,7 @@ func (c mainConf) GetDestTopic(src string) string {
 }
 
 func (c mainConf) GetDestSaganTopic(src string) string {
-	return c.EventTypes[src].SaganTopic
+	return c.EventTypes[src].Sagan.Topic
 }
 
 func (c mainConf) GetDestElaIndex(src string) string {
@@ -141,11 +146,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	fmt.Println("Loading config")
 	if _, err := toml.DecodeFile(*confPath, &appConfg); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		os.Exit(1)
 	}
-	fmt.Println(appConfg.Topics())
+	//fmt.Println(appConfg.Topics())
+	fmt.Println(appConfg)
 
 	// consumer start
 	config := cluster.NewConfig()
@@ -158,6 +165,7 @@ func main() {
 		err      error
 	)
 
+	fmt.Println("starting consumer")
 	if consumer, err = cluster.NewConsumer(
 		appConfg.Kafka.Input,
 		appConfg.Kafka.ConsumerGroup,
@@ -180,6 +188,7 @@ func main() {
 		}
 	}()
 
+	fmt.Println("Starting decoder")
 	// decoder / worker start
 	if dec, err = decoder.NewMessageDecoder(
 		int(*workers),
@@ -209,7 +218,9 @@ func main() {
 	producerConfig.Producer.Retry.Max = 5
 	producerConfig.Producer.Compression = sarama.CompressionSnappy
 
-	var errs = make(chan error, len(appConfg.EventTypes))
+	fmt.Println(len(appConfg.EventTypes))
+
+	var errs = make(chan error)
 
 	go func() {
 		for err := range errs {
@@ -217,6 +228,7 @@ func main() {
 		}
 	}()
 
+	fmt.Println("starting main sarama producer")
 	producer, err := sarama.NewAsyncProducer(appConfg.Kafka.Output, producerConfig)
 	if err != nil {
 		printErr(err)
@@ -226,6 +238,7 @@ func main() {
 			errs <- fmt.Errorf("Failed to write msg: %s", err.Error())
 		}
 	}()
+
 	// Multiplexer / Output start
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -237,6 +250,7 @@ func main() {
 
 	var dumpNames = time.NewTicker(5 * time.Second)
 	go func() {
+		fmt.Println("starting elastic name dumper")
 		elaNameDumper := NewBulk(appConfg.ElasticSearch.NameMapDump)
 	loop:
 		for {
@@ -257,9 +271,66 @@ func main() {
 				elaNameDumper.Flush()
 			}
 		}
+		fmt.Println("elastic name dumper done")
 
 	}()
 
+	fmt.Println("starting channels for sagan producer messages")
+	var saganChannels = make(map[string]chan decoder.DecodedMessage)
+	for k, v := range appConfg.EventTypes {
+		if v.Sagan != nil {
+			fmt.Fprintf(os.Stdout, "Making channel sagan for %s to %s topic %s\n", k,
+				strings.Join(appConfg.EventTypes[k].Sagan.Brokers, ","),
+				appConfg.EventTypes[k].Sagan.Topic)
+			saganChannels[k] = make(chan decoder.DecodedMessage)
+		}
+	}
+
+	// sagan kafka topics send
+	for k, v := range appConfg.EventTypes {
+		if v.Sagan != nil {
+			wg.Add(1)
+			fmt.Fprintf(os.Stdout, "Starting channel consumer for %s\n", k)
+			go func(id string, input chan decoder.DecodedMessage) {
+				defer wg.Done()
+
+				var topic = appConfg.EventTypes[id].Sagan.Topic
+				saganProducer, err := sarama.NewAsyncProducer(
+					appConfg.EventTypes[id].Sagan.Brokers,
+					producerConfig)
+
+				if err != nil {
+					printErr(err)
+					errs <- err
+				}
+				defer saganProducer.Close()
+
+			loop:
+				for {
+					select {
+					case msg, ok := <-input:
+						if !ok {
+							break loop
+						}
+						// Sagan produce
+						saganProducer.Input() <- &sarama.ProducerMessage{
+							Topic:     topic,
+							Value:     sarama.StringEncoder(msg.Sagan),
+							Key:       sarama.ByteEncoder(msg.Key),
+							Timestamp: msg.Time,
+						}
+					}
+				}
+				fmt.Fprintf(os.Stdout, "Sagan consumer %s done\n", k)
+			}(k, saganChannels[k])
+		}
+	}
+	if len(errs) > 0 {
+		printErr(<-errs)
+		os.Exit(1)
+	}
+
+	fmt.Println("Starting main decoded message consumer")
 	go func(input chan decoder.DecodedMessage) {
 		defer wg.Done()
 		defer dumpNames.Stop()
@@ -284,19 +355,18 @@ func main() {
 					Timestamp: msg.Time,
 				}
 
-				// Sagan produce
-				producer.Input() <- &sarama.ProducerMessage{
-					Topic:     appConfg.GetDestSaganTopic(msg.Topic),
-					Value:     sarama.StringEncoder(msg.Sagan),
-					Key:       sarama.ByteEncoder(msg.Key),
-					Timestamp: msg.Time,
+				if _, ok := saganChannels[msg.Topic]; ok {
+					saganChannels[msg.Topic] <- msg
 				}
-
 				ela.AddIndex(msg.Val, appConfg.GetDestTimeElaIndex(msg.Time, msg.Topic))
 
 			case <-send.C:
 				ela.Flush()
 			}
+		}
+		fmt.Println("Message consumer done")
+		for k := range saganChannels {
+			close(saganChannels[k])
 		}
 	}(dec.Output)
 	wg.Wait()

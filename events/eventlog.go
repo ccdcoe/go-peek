@@ -107,7 +107,7 @@ func (s DynaEventLog) GetSyslogTime() time.Time {
 
 func (s DynaEventLog) SaganString() string {
 	return fmt.Sprintf("%s|%s|%s|%s|%s|%s|%s|%s|%s",
-		s.getStringField("Hostname"),
+		s.getStringField("ip"),
 		s.getStringField("SourceName"),
 		s.getStringField("Severity"),
 		s.getStringField("Severity"),
