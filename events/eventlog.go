@@ -28,6 +28,7 @@ type DynaEventLog struct {
 	Vals      *gabs.Container
 	Timestamp time.Time
 	EventTime time.Time
+	GameMeta  *GameMeta `json:"gamemeta,omitempty"`
 }
 
 func NewDynaEventLog(raw []byte) (*DynaEventLog, error) {
@@ -116,6 +117,14 @@ func (s DynaEventLog) SaganString() string {
 		s.getStringField("program"),
 		s.getStringField("Message"),
 	)
+}
+
+func (s *DynaEventLog) Meta(topic, iter string) Event {
+	s.GameMeta = &GameMeta{
+		Iter:  iter,
+		Topic: topic,
+	}
+	return s
 }
 
 type SimpleEventLog struct {

@@ -15,6 +15,8 @@ type Syslog struct {
 	Facility  string    `json:"facility"`
 	IP        *stringIP `json:"ip"`
 	Message   string    `json:"message"`
+
+	GameMeta *GameMeta `json:"gamemeta,omitempty"`
 }
 
 func (s Syslog) JSON() ([]byte, error) {
@@ -54,6 +56,14 @@ func (s Syslog) SaganString() string {
 		s.Program,
 		s.Message,
 	)
+}
+
+func (s *Syslog) Meta(topic, iter string) Event {
+	s.GameMeta = &GameMeta{
+		Iter:  iter,
+		Topic: topic,
+	}
+	return s
 }
 
 // NewSyslogTestMessage is a helper function for usage in _test.go files

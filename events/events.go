@@ -26,9 +26,6 @@ type Source struct {
 	Host, IP string
 }
 
-type Meta struct {
-}
-
 type Event interface {
 	JSON() ([]byte, error)
 	Source() Source
@@ -37,6 +34,7 @@ type Event interface {
 	GetEventTime() time.Time
 	GetSyslogTime() time.Time
 	SaganString() string
+	Meta(string, string) Event
 }
 
 type EventRenamer interface {

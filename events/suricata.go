@@ -20,6 +20,7 @@ func (t *suriTS) UnmarshalJSON(b []byte) error {
 type Eve struct {
 	Syslog
 	EveBase
+
 	SuriTime *suriTS      `json:"timestamp"`
 	Alert    *EveAlert    `json:"alert,omitempty"`
 	DNS      *EveDNS      `json:"dns,omitempty"`
@@ -27,6 +28,8 @@ type Eve struct {
 	SMB      *EveSmb      `json:"smb,omitempty"`
 	Http     *EveHttp     `json:"http,omitempty"`
 	Fileinfo *EveFileInfo `json:"fileinfo,omitempty"`
+
+	GameMeta *GameMeta `json:"gamemeta,omitempty"`
 }
 
 // JSON implements Event
@@ -59,6 +62,14 @@ func (s Eve) GetSyslogTime() time.Time {
 }
 func (s Eve) SaganString() string {
 	return "NOT IMPLEMENTED"
+}
+
+func (s *Eve) Meta(topic, iter string) Event {
+	s.GameMeta = &GameMeta{
+		Iter:  iter,
+		Topic: topic,
+	}
+	return s
 }
 
 // Logical grouping of varous EVE.json components

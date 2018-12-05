@@ -8,6 +8,7 @@ import (
 
 type Snoopy struct {
 	Syslog
+
 	Cmd      string `json:"cmd"`
 	Filename string `json:"filename"`
 	Cwd      string `json:"cwd"`
@@ -24,6 +25,8 @@ type Snoopy struct {
 		SrcIP   string `json:"src_ip"`
 	} `json:"ssh"`
 	Login string `json:"login"`
+
+	GameMeta *GameMeta `json:"gamemeta,omitempty"`
 }
 
 func (s Snoopy) JSON() ([]byte, error) {
@@ -63,4 +66,12 @@ func (s Snoopy) SaganString() string {
 		s.Program,
 		s.Cmd,
 	)
+}
+
+func (s *Snoopy) Meta(topic, iter string) Event {
+	s.GameMeta = &GameMeta{
+		Iter:  iter,
+		Topic: topic,
+	}
+	return s
 }
