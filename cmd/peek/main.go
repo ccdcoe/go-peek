@@ -1,13 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
-	"math/rand"
-	"net/http"
 	"os"
 	"path"
 	"runtime"
@@ -19,6 +16,7 @@ import (
 	"github.com/Shopify/sarama"
 	cluster "github.com/bsm/sarama-cluster"
 	"github.com/ccdcoe/go-peek/decoder"
+	"github.com/ccdcoe/go-peek/outputs"
 )
 
 const esTimeFormat = "2006.01.02.15"
@@ -248,32 +246,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	var dumpNames = time.NewTicker(5 * time.Second)
-	go func() {
-		fmt.Println("starting elastic name dumper")
-		elaNameDumper := NewBulk(appConfg.ElasticSearch.NameMapDump)
-	loop:
-		for {
-			select {
-			case _, ok := <-dumpNames.C:
-				if !ok {
-					break loop
-				}
-				for k, v := range dec.Names() {
-					data, _ := json.Marshal(struct {
-						Original, Pretty string
-					}{
-						Original: k,
-						Pretty:   v,
-					})
-					elaNameDumper.AddIndex(data, appConfg.ElasticSearch.NameMapIndex, k)
-				}
-				elaNameDumper.Flush()
-			}
-		}
-		fmt.Println("elastic name dumper done")
-
-	}()
+	go dumpNames(
+		time.NewTicker(5*time.Second),
+		appConfg,
+		dec,
+		errs,
+	)
 
 	fmt.Println("starting channels for sagan producer messages")
 	var saganChannels = make(map[string]chan decoder.DecodedMessage)
@@ -291,38 +269,14 @@ func main() {
 		if v.Sagan != nil {
 			wg.Add(1)
 			fmt.Fprintf(os.Stdout, "Starting channel consumer for %s\n", k)
-			go func(id string, input chan decoder.DecodedMessage) {
-				defer wg.Done()
-
-				var topic = appConfg.EventTypes[id].Sagan.Topic
-				saganProducer, err := sarama.NewAsyncProducer(
-					appConfg.EventTypes[id].Sagan.Brokers,
-					producerConfig)
-
-				if err != nil {
-					printErr(err)
-					errs <- err
-				}
-				defer saganProducer.Close()
-
-			loop:
-				for {
-					select {
-					case msg, ok := <-input:
-						if !ok {
-							break loop
-						}
-						// Sagan produce
-						saganProducer.Input() <- &sarama.ProducerMessage{
-							Topic:     topic,
-							Value:     sarama.StringEncoder(msg.Sagan),
-							Key:       sarama.ByteEncoder(msg.Key),
-							Timestamp: msg.Time,
-						}
-					}
-				}
-				fmt.Fprintf(os.Stdout, "Sagan consumer %s done\n", k)
-			}(k, saganChannels[k])
+			go saganProducer(
+				k,
+				saganChannels[k],
+				&wg,
+				appConfg,
+				producerConfig,
+				errs,
+			)
 		}
 	}
 	if len(errs) > 0 {
@@ -331,44 +285,13 @@ func main() {
 	}
 
 	fmt.Println("Starting main decoded message consumer")
-	go func(input chan decoder.DecodedMessage) {
-		defer wg.Done()
-		defer dumpNames.Stop()
-
-		var (
-			send = time.NewTicker(3 * time.Second)
-			ela  = NewBulk(appConfg.ElasticSearch.Output)
-		)
-
-	loop:
-		for {
-			select {
-			case msg, ok := <-input:
-				if !ok {
-					break loop
-				}
-				// Main produce
-				producer.Input() <- &sarama.ProducerMessage{
-					Topic:     appConfg.GetDestTopic(msg.Topic),
-					Value:     sarama.ByteEncoder(msg.Val),
-					Key:       sarama.ByteEncoder(msg.Key),
-					Timestamp: msg.Time,
-				}
-
-				if _, ok := saganChannels[msg.Topic]; ok {
-					saganChannels[msg.Topic] <- msg
-				}
-				ela.AddIndex(msg.Val, appConfg.GetDestTimeElaIndex(msg.Time, msg.Topic))
-
-			case <-send.C:
-				ela.Flush()
-			}
-		}
-		fmt.Println("Message consumer done")
-		for k := range saganChannels {
-			close(saganChannels[k])
-		}
-	}(dec.Output)
+	go decodedMessageConsumer(
+		dec.Output,
+		&wg,
+		appConfg,
+		saganChannels,
+		producer,
+	)
 	wg.Wait()
 
 	if len(dec.Notifications) > 0 {
@@ -379,66 +302,121 @@ func main() {
 	fmt.Println(appConfg)
 }
 
-type ElaBulk struct {
-	Data   [][]byte
-	Hosts  []string
-	Resps  chan *http.Response
-	errors chan error
-}
-
-func NewBulk(hosts []string) *ElaBulk {
-	return &ElaBulk{
-		Hosts:  hosts,
-		Data:   make([][]byte, 0),
-		Resps:  make(chan *http.Response, 256),
-		errors: make(chan error, 256),
-	}
-}
-
-func (b ElaBulk) Errors() <-chan error {
-	return b.errors
-}
-
-func (b *ElaBulk) AddIndex(item []byte, index string, id ...string) *ElaBulk {
-	var m = map[string]map[string]string{
-		"index": {
-			"_index": index,
-			"_type":  "doc",
-		},
-	}
-	if len(id) > 0 {
-		m["index"]["_id"] = id[0]
-	}
-	meta, _ := json.Marshal(m)
-	b.Data = append(b.Data, meta)
-	b.Data = append(b.Data, item)
-	return b
-}
-
-func (b *ElaBulk) Flush() *ElaBulk {
-	go func(data []byte) {
-		buf := bytes.NewBuffer(data)
-		buf.WriteRune('\n')
-		randProxy := rand.Int() % len(b.Hosts)
-		resp, err := http.Post(b.Hosts[randProxy]+"/_bulk", "application/x-ndjson", buf)
-		if err != nil {
-			if len(b.errors) == 256 {
-				<-b.errors
-			}
-			b.errors <- err
-		}
-		if resp != nil {
-			resp.Body.Close()
-			if len(b.Resps) == 256 {
-				<-b.Resps
-			}
-			b.Resps <- resp
-		}
-	}(append(bytes.Join(b.Data, []byte("\n"))))
-	b.Data = make([][]byte, 0)
-	return b
-}
-
 func printErr(err error) {
 	fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+}
+
+func decodedMessageConsumer(
+	input chan decoder.DecodedMessage,
+	wg *sync.WaitGroup,
+	appConfg *mainConf,
+	saganChannels map[string]chan decoder.DecodedMessage,
+	producer sarama.AsyncProducer,
+) {
+	defer wg.Done()
+
+	var (
+		send = time.NewTicker(3 * time.Second)
+		ela  = outputs.NewBulk(appConfg.ElasticSearch.Output)
+	)
+
+loop:
+	for {
+		select {
+		case msg, ok := <-input:
+			if !ok {
+				break loop
+			}
+			// Main produce
+			producer.Input() <- &sarama.ProducerMessage{
+				Topic:     appConfg.GetDestTopic(msg.Topic),
+				Value:     sarama.ByteEncoder(msg.Val),
+				Key:       sarama.ByteEncoder(msg.Key),
+				Timestamp: msg.Time,
+			}
+
+			if _, ok := saganChannels[msg.Topic]; ok {
+				saganChannels[msg.Topic] <- msg
+			}
+			ela.AddIndex(msg.Val, appConfg.GetDestTimeElaIndex(msg.Time, msg.Topic))
+
+		case <-send.C:
+			ela.Flush()
+		}
+	}
+	fmt.Println("Message consumer done")
+	for k := range saganChannels {
+		close(saganChannels[k])
+	}
+}
+
+func saganProducer(
+	id string,
+	input chan decoder.DecodedMessage,
+	wg *sync.WaitGroup,
+	appConfg *mainConf,
+	producerConfig *sarama.Config,
+	errs chan error,
+) {
+	defer wg.Done()
+	defer fmt.Fprintf(os.Stdout, "Sagan consumer %s done\n", id)
+
+	var topic = appConfg.EventTypes[id].Sagan.Topic
+	saganProducer, err := sarama.NewAsyncProducer(
+		appConfg.EventTypes[id].Sagan.Brokers,
+		producerConfig)
+
+	if err != nil {
+		printErr(err)
+		errs <- err
+	}
+	defer saganProducer.Close()
+
+loop:
+	for {
+		select {
+		case msg, ok := <-input:
+			if !ok {
+				break loop
+			}
+			// Sagan produce
+			saganProducer.Input() <- &sarama.ProducerMessage{
+				Topic:     topic,
+				Value:     sarama.StringEncoder(msg.Sagan),
+				Key:       sarama.ByteEncoder(msg.Key),
+				Timestamp: msg.Time,
+			}
+		}
+	}
+}
+
+func dumpNames(
+	dumpNames *time.Ticker,
+	appConfg *mainConf,
+	dec *decoder.Decoder,
+	errs chan error,
+) {
+	defer dumpNames.Stop()
+	fmt.Println("starting elastic name dumper")
+	elaNameDumper := outputs.NewBulk(appConfg.ElasticSearch.NameMapDump)
+loop:
+	for {
+		select {
+		case _, ok := <-dumpNames.C:
+			if !ok {
+				break loop
+			}
+			for k, v := range dec.Names() {
+				data, _ := json.Marshal(struct {
+					Original, Pretty string
+				}{
+					Original: k,
+					Pretty:   v,
+				})
+				elaNameDumper.AddIndex(data, appConfg.ElasticSearch.NameMapIndex, k)
+			}
+			elaNameDumper.Flush()
+		}
+	}
+	fmt.Println("elastic name dumper done")
 }
