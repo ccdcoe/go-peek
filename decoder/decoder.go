@@ -116,7 +116,13 @@ loop:
 			); err != nil {
 				d.sendErr(err)
 			} else if ev != nil {
-				ev.Rename(d.rename.Check(ev.Source().Host))
+				pretty, notseen := d.rename.Check(ev.Source().IP)
+				if notseen {
+					d.sendNotify(fmt.Sprintf("New host %s, ip %s observed, name will be %s",
+						ev.Source().Host, ev.Source().IP, pretty))
+				}
+				ev.Rename(pretty)
+				// ADD META HERE
 				if json, err := ev.JSON(); err != nil {
 					d.sendErr(err)
 				} else {

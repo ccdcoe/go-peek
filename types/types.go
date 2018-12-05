@@ -2,8 +2,21 @@ package types
 
 import (
 	"math/rand"
+	"net"
+	"strconv"
 	"sync"
 )
+
+type StringIP struct{ net.IP }
+
+func (t *StringIP) UnmarshalJSON(b []byte) error {
+	raw, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	t.IP = net.ParseIP(raw)
+	return err
+}
 
 type BoolValues struct {
 	*sync.RWMutex

@@ -42,7 +42,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		os.Exit(1)
 	}
-	//fmt.Println(appConfg.Topics())
 	fmt.Println(appConfg)
 
 	// consumer start

@@ -41,7 +41,7 @@ func AsyncNameCheck(workers int, input chan events.Event, ren *Rename) chan stri
 						if !ok {
 							break loop
 						}
-						pretty := ren.Check(msg.Source().Host)
+						pretty := ren.Check(msg.Source().IP)
 						output <- pretty
 					}
 				}
