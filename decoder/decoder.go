@@ -9,6 +9,7 @@ import (
 
 	cluster "github.com/bsm/sarama-cluster"
 	"github.com/ccdcoe/go-peek/events"
+	"github.com/ccdcoe/go-peek/types"
 )
 
 type DecodedMessage struct {
@@ -27,9 +28,10 @@ type Decoder struct {
 	Errors        <-chan error
 	Notifications <-chan string
 
-	errs   chan error
-	notify chan string
-	stop   []chan bool
+	errs          chan error
+	notify        chan string
+	stop          []chan bool
+	stopInventory chan bool
 
 	rename *Rename
 }
@@ -39,19 +41,22 @@ func NewMessageDecoder(
 	input *cluster.Consumer,
 	eventtypes map[string]string,
 	spooldir string,
+	inventoryHost string,
+	inventoryIndex string,
 ) (*Decoder, error) {
 	if eventtypes == nil || len(eventtypes) == 0 {
 		return nil, fmt.Errorf("Event Type map undefined")
 	}
 	var (
 		d = &Decoder{
-			Run:        true,
-			Input:      input,
-			Output:     make(chan DecodedMessage),
-			EventTypes: eventtypes,
-			errs:       make(chan error, 256),
-			notify:     make(chan string, 256),
-			stop:       make([]chan bool, workers),
+			Run:           true,
+			Input:         input,
+			Output:        make(chan DecodedMessage),
+			EventTypes:    eventtypes,
+			errs:          make(chan error, 256),
+			notify:        make(chan string, 256),
+			stop:          make([]chan bool, workers),
+			stopInventory: make(chan bool, 1),
 		}
 		wg  sync.WaitGroup
 		err error
@@ -75,6 +80,18 @@ func NewMessageDecoder(
 		d.halt()
 	}()
 
+	// MOVE THIS PART
+	inventory := &types.ElaTargetInventory{}
+	if err := inventory.Get(inventoryHost, inventoryIndex); err != nil {
+		return nil, err
+	}
+	d.rename.IpToStringName = types.NewStringValues(
+		inventory.MapKnownIP(
+			d.rename.ByName.RawValues(),
+		),
+	)
+	// END MOVE THIS PART
+
 	go func() {
 		defer close(d.Output)
 		defer close(d.errs)
@@ -96,6 +113,30 @@ func NewMessageDecoder(
 		}
 		d.sendNotify(fmt.Sprintf("done, exiting"))
 
+	}()
+
+	go func() {
+		poll := time.NewTicker(30 * time.Second)
+	loop:
+		for {
+			select {
+			case <-poll.C:
+				inventory := &types.ElaTargetInventory{}
+				d.sendNotify("refreshing inventory")
+				if err := inventory.Get(inventoryHost, inventoryIndex); err != nil {
+					d.sendErr(err)
+					continue loop
+				}
+				d.rename.IpToStringName = types.NewStringValues(
+					inventory.MapKnownIP(
+						d.rename.ByName.RawValues(),
+					),
+				)
+			case <-d.stopInventory:
+				d.sendNotify("stopping inventory refresh routine")
+				break loop
+			}
+		}
 	}()
 
 	return d, nil
@@ -146,6 +187,7 @@ func (d Decoder) halt() {
 	for i := range d.stop {
 		d.stop[i] <- true
 	}
+	d.stopInventory <- true
 }
 
 func (d Decoder) sendErr(err error) {
@@ -164,4 +206,8 @@ func (d Decoder) sendNotify(msg string) {
 
 func (d Decoder) Names() map[string]string {
 	return d.rename.ByName.RawValues()
+}
+
+func (d Decoder) IPmaps() map[string]string {
+	return d.rename.IpToStringName.RawValues()
 }

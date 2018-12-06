@@ -26,9 +26,19 @@ type kafkaConf struct {
 }
 
 type esConf struct {
-	Output       []string
-	NameMapDump  []string
-	NameMapIndex string
+	Output    []string
+	RenameMap *esRenameMapConf
+	Inventory *esInventoryConf
+}
+
+type esRenameMapConf struct {
+	Hosts       []string
+	Index       string
+	IPaddrIndex string
+}
+
+type esInventoryConf struct {
+	Host, Index string
 }
 
 type saganConf struct {
@@ -54,6 +64,15 @@ func defaultConfg() *mainConf {
 		},
 		ElasticSearch: esConf{
 			Output: []string{"http://localhost:9200"},
+			RenameMap: &esRenameMapConf{
+				Hosts:       []string{"http://localhost:9200"},
+				Index:       "ladys",
+				IPaddrIndex: "ipaddr-map",
+			},
+			Inventory: &esInventoryConf{
+				Host:  "http://localhost",
+				Index: "inventory-latest",
+			},
 		},
 		EventTypes: map[string]mapTopics{},
 	}

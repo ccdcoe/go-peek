@@ -2,7 +2,6 @@ package types
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 	"path"
@@ -32,7 +31,7 @@ type ElaTargetInventory struct {
 	} `json:"hits"`
 }
 
-func (t *ElaTargetInventory) ElaGet(host, index string) error {
+func (t *ElaTargetInventory) Get(host, index string) error {
 	var (
 		err  error
 		resp *http.Response
@@ -44,9 +43,8 @@ func (t *ElaTargetInventory) ElaGet(host, index string) error {
 	}
 	u.Path = path.Join(u.Path, index)
 	s := u.String()
-	fmt.Println(s)
 
-	if resp, err = http.Get(s + "/_search?size=200"); err != nil {
+	if resp, err = http.Get(s + "/_search?size=400"); err != nil {
 		return err
 	}
 	defer resp.Body.Close()
@@ -62,6 +60,18 @@ func (t ElaTargetInventory) JSON() ([]byte, error) {
 	return json.Marshal(t)
 }
 
-func (t ElaTargetInventory) MapKnownIP(ip2host map[string]string) {
-	//return nil, nil
+func (t ElaTargetInventory) MapKnownIP(ip2pretty map[string]string) map[string]string {
+	var mapped = make(map[string]string)
+	for _, grain := range t.Hits.Hits {
+		addrs := grain.Source.GetAddrs()
+		for k, v := range ip2pretty {
+			if addrs.ContainS(k) {
+				for _, a := range addrs {
+					mapped[a.String()] = v
+				}
+			}
+		}
+	}
+
+	return mapped
 }

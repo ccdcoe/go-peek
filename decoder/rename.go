@@ -35,10 +35,10 @@ func (d Dump) MappingPath() string {
 }
 
 type Rename struct {
-	NameSet *types.BoolValues
-	ByName  *types.StringValues
-	BySrcIp *types.StringValues
-	D       Dump
+	NameSet        *types.BoolValues
+	ByName         *types.StringValues
+	IpToStringName *types.StringValues
+	D              Dump
 }
 
 func NewRename(dumpPath string) (*Rename, error) {
@@ -57,7 +57,10 @@ func NewRename(dumpPath string) (*Rename, error) {
 	if err = d.CheckDir(); err != nil {
 		return nil, err
 	}
-	r = &Rename{D: d}
+	r = &Rename{
+		D: d,
+	}
+
 	if _, err = os.Stat(r.D.NamePath()); os.IsNotExist(err) {
 		if resp, err = http.Get(names); err != nil {
 			return nil, err

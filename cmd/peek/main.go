@@ -15,6 +15,7 @@ import (
 	"github.com/Shopify/sarama"
 	cluster "github.com/bsm/sarama-cluster"
 	"github.com/ccdcoe/go-peek/decoder"
+	"github.com/ccdcoe/go-peek/types"
 )
 
 var (
@@ -85,10 +86,22 @@ func main() {
 		consumer,
 		appConfg.MapEventTypes(),
 		appConfg.General.Spooldir,
+		appConfg.ElasticSearch.Inventory.Host,
+		appConfg.ElasticSearch.Inventory.Index,
 	); err != nil {
 		printErr(err)
 		os.Exit(1)
 	}
+
+	var inventory = types.ElaTargetInventory{}
+	if err := inventory.Get(
+		appConfg.ElasticSearch.Inventory.Host,
+		appConfg.ElasticSearch.Inventory.Index,
+	); err != nil {
+		printErr(err)
+		os.Exit(1)
+	}
+	fmt.Println(inventory.MapKnownIP(dec.Names()))
 
 	go func() {
 		for err := range dec.Errors {

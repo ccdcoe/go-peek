@@ -104,7 +104,7 @@ func dumpNames(
 ) {
 	defer dumpNames.Stop()
 	fmt.Println("starting elastic name dumper")
-	elaNameDumper := outputs.NewBulk(appConfg.ElasticSearch.NameMapDump)
+	elaNameDumper := outputs.NewBulk(appConfg.ElasticSearch.RenameMap.Hosts)
 loop:
 	for {
 		select {
@@ -119,7 +119,18 @@ loop:
 					Original: k,
 					Pretty:   v,
 				})
-				elaNameDumper.AddIndex(data, appConfg.ElasticSearch.NameMapIndex, k)
+				elaNameDumper.AddIndex(data,
+					appConfg.ElasticSearch.RenameMap.Index, k)
+			}
+			for k, v := range dec.IPmaps() {
+				data, _ := json.Marshal(struct {
+					Addr, Pretty string
+				}{
+					Addr:   k,
+					Pretty: v,
+				})
+				elaNameDumper.AddIndex(data,
+					appConfg.ElasticSearch.RenameMap.IPaddrIndex, k)
 			}
 			elaNameDumper.Flush()
 		}

@@ -7,6 +7,18 @@ import (
 	"sync"
 )
 
+type AddrSlice []*StringIP
+
+func (s AddrSlice) ContainS(ip string) bool {
+	addr := net.ParseIP(ip)
+	for _, v := range s {
+		if v.Equal(addr) {
+			return true
+		}
+	}
+	return false
+}
+
 type StringIP struct{ net.IP }
 
 func (t *StringIP) UnmarshalJSON(b []byte) error {
