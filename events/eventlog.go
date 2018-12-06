@@ -25,10 +25,12 @@ func (t *eventLogTs) UnmarshalJSON(b []byte) error {
 
 //type DynaEventLog struct{ Vals *gabs.Container }
 type DynaEventLog struct {
-	Vals      *gabs.Container
+	Vals *gabs.Container
+
 	Timestamp time.Time
 	EventTime time.Time
-	GameMeta  *GameMeta `json:"gamemeta,omitempty"`
+
+	GameMeta *Source `json:"gamemeta"`
 }
 
 func NewDynaEventLog(raw []byte) (*DynaEventLog, error) {
@@ -77,15 +79,17 @@ func (s DynaEventLog) JSON() ([]byte, error) {
 	return s.Vals.Bytes(), nil
 }
 
-func (s DynaEventLog) Source() Source {
+func (s *DynaEventLog) Source() *Source {
 	var (
 		name = s.Vals.Path("Hostname").Data().(string)
 		ip   = s.Vals.Path("ip").Data().(string)
 	)
-	return Source{
+	fmt.Println(name)
+	s.GameMeta = &Source{
 		Host: name,
 		IP:   ip,
 	}
+	return s.GameMeta
 }
 
 func (s *DynaEventLog) Rename(pretty string) {
@@ -119,14 +123,6 @@ func (s DynaEventLog) SaganString() string {
 	)
 }
 
-func (s *DynaEventLog) Meta(topic, iter string) Event {
-	s.GameMeta = &GameMeta{
-		Iter:  iter,
-		Topic: topic,
-	}
-	return s
-}
-
 type SimpleEventLog struct {
 	Syslog
 
@@ -140,13 +136,6 @@ func (s SimpleEventLog) JSON() ([]byte, error) {
 	return json.Marshal(s)
 }
 
-func (s SimpleEventLog) Source() Source {
-	return Source{
-		Host: s.Hostname,
-		IP:   s.Host,
-	}
-}
-
 func (s *SimpleEventLog) Rename(pretty string) {
 	s.Host = pretty
 	s.Hostname = pretty
@@ -154,4 +143,11 @@ func (s *SimpleEventLog) Rename(pretty string) {
 
 func (s SimpleEventLog) GetEventTime() time.Time {
 	return s.EventTime.Time
+}
+func (s *SimpleEventLog) Source() *Source {
+	s.GameMeta = &Source{
+		Host: s.Hostname,
+		IP:   s.Host,
+	}
+	return s.GameMeta
 }

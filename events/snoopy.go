@@ -26,21 +26,25 @@ type Snoopy struct {
 	} `json:"ssh"`
 	Login string `json:"login"`
 
-	GameMeta *GameMeta `json:"gamemeta,omitempty"`
+	GameMeta *Source `json:"gamemeta"`
 }
 
 func (s Snoopy) JSON() ([]byte, error) {
 	return json.Marshal(s)
 }
 
-func (s Snoopy) Source() Source {
-	return Source{
+func (s *Snoopy) Source() *Source {
+	s.GameMeta = &Source{
 		Host: s.Host,
 		IP:   s.IP.String(),
 	}
+	return s.GameMeta
 }
 
 func (s *Snoopy) Rename(pretty string) {
+	if s.GameMeta != nil {
+		s.GameMeta.Host = pretty
+	}
 	s.Host = pretty
 }
 
@@ -68,10 +72,6 @@ func (s Snoopy) SaganString() string {
 	)
 }
 
-func (s *Snoopy) Meta(topic, iter string) Event {
-	s.GameMeta = &GameMeta{
-		Iter:  iter,
-		Topic: topic,
-	}
+func (s *Snoopy) Meta(topic, iter string, lookups map[string]string) Event {
 	return s
 }

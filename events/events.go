@@ -24,17 +24,48 @@ func (t *stringIP) UnmarshalJSON(b []byte) error {
 
 type Source struct {
 	Host, IP string
+
+	Src  *Source
+	Dest *Source
+}
+
+func (s *Source) SetSrcDestNames(src, dest string) *Source {
+	if src != "" {
+		if s.Src == nil {
+			s.Src = &Source{}
+		}
+		s.Src.Host = src
+	}
+	if dest != "" {
+		if s.Dest == nil {
+			s.Dest = &Source{}
+		}
+		s.Dest.Host = dest
+	}
+	return s
+}
+
+func (s Source) GetSrcIp() (string, bool) {
+	if s.Src != nil {
+		return s.Src.IP, true
+	}
+	return s.IP, false
+}
+func (s Source) GetDestIp() (string, bool) {
+	if s.Dest != nil {
+		return s.Dest.IP, true
+	}
+	return s.IP, false
 }
 
 type Event interface {
 	JSON() ([]byte, error)
-	Source() Source
+	Source() *Source
 	Rename(string)
 	Key() string
 	GetEventTime() time.Time
 	GetSyslogTime() time.Time
 	SaganString() string
-	Meta(string, string) Event
 }
 
 type EventRenamer interface {

@@ -29,7 +29,7 @@ type Eve struct {
 	Http     *EveHttp     `json:"http,omitempty"`
 	Fileinfo *EveFileInfo `json:"fileinfo,omitempty"`
 
-	GameMeta *GameMeta `json:"gamemeta,omitempty"`
+	GameMeta *Source `json:"gamemeta"`
 }
 
 // JSON implements Event
@@ -38,11 +38,31 @@ func (s Eve) JSON() ([]byte, error) {
 }
 
 // Source implements Event
-func (s Eve) Source() Source {
-	return Source{
+func (s *Eve) Source() *Source {
+	s.GameMeta = &Source{
 		Host: s.Host,
 		IP:   s.IP.String(),
+		Src:  &Source{},
+		Dest: &Source{},
 	}
+	switch v := s.EventType; {
+	case v == "alert":
+		if s.Alert.Source != nil {
+			s.GameMeta.Src.IP = s.Alert.Source.IP
+		} else {
+			s.GameMeta.Src.IP = s.SrcIP.String()
+		}
+		if s.Alert.Target != nil {
+			s.GameMeta.Dest.IP = s.Alert.Target.IP
+		} else {
+			s.GameMeta.Dest.IP = s.DestIP.String()
+		}
+	case v != "stats":
+		s.GameMeta.Src.IP = s.SrcIP.String()
+		s.GameMeta.Dest.IP = s.DestIP.String()
+	}
+
+	return s.GameMeta
 }
 
 // Rename implements Event
@@ -64,16 +84,7 @@ func (s Eve) SaganString() string {
 	return "NOT IMPLEMENTED"
 }
 
-func (s *Eve) Meta(topic, iter string) Event {
-	s.GameMeta = &GameMeta{
-		Iter:  iter,
-		Topic: topic,
-	}
-	return s
-}
-
 // Logical grouping of varous EVE.json components
-
 type EveBase struct {
 	FlowID      int64     `json:"flow_id"`
 	InIface     string    `json:"in_iface"`

@@ -16,21 +16,25 @@ type Syslog struct {
 	IP        *stringIP `json:"ip"`
 	Message   string    `json:"message"`
 
-	GameMeta *GameMeta `json:"gamemeta,omitempty"`
+	GameMeta *Source `json:"gamemeta"`
 }
 
 func (s Syslog) JSON() ([]byte, error) {
 	return json.Marshal(s)
 }
 
-func (s Syslog) Source() Source {
-	return Source{
+func (s *Syslog) Source() *Source {
+	s.GameMeta = &Source{
 		Host: s.Host,
 		IP:   s.IP.String(),
 	}
+	return s.GameMeta
 }
 
 func (s *Syslog) Rename(pretty string) {
+	if s.GameMeta != nil {
+		s.GameMeta.Host = pretty
+	}
 	s.Host = pretty
 }
 
@@ -58,11 +62,7 @@ func (s Syslog) SaganString() string {
 	)
 }
 
-func (s *Syslog) Meta(topic, iter string) Event {
-	s.GameMeta = &GameMeta{
-		Iter:  iter,
-		Topic: topic,
-	}
+func (s *Syslog) Meta() Event {
 	return s
 }
 

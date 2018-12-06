@@ -12,6 +12,8 @@ import (
 	"github.com/ccdcoe/go-peek/types"
 )
 
+const defaultName = "Kerrigan"
+
 type DecodedMessage struct {
 	Val   []byte
 	Topic string
@@ -144,6 +146,10 @@ func NewMessageDecoder(
 
 func DecodeWorker(d Decoder, wg *sync.WaitGroup, id int) {
 	defer wg.Done()
+
+	// Local copy, TODO: thread safe periodic update
+	var ip2name = d.rename.IpToStringName.RawValues()
+	//fmt.Println(ip2name)
 loop:
 	for {
 		select {
@@ -157,13 +163,29 @@ loop:
 			); err != nil {
 				d.sendErr(err)
 			} else if ev != nil {
+				// TODO! nil pointer on eventlog
 				pretty, notseen := d.rename.Check(ev.Source().IP)
 				if notseen {
 					d.sendNotify(fmt.Sprintf("New host %s, ip %s observed, name will be %s",
 						ev.Source().Host, ev.Source().IP, pretty))
 				}
 				ev.Rename(pretty)
-				// ADD META HERE
+				// TODO! Functions are good
+				var (
+					srcPretty  = defaultName
+					destPretty = defaultName
+				)
+				if src, ok := ev.Source().GetSrcIp(); ok {
+					if val, ok := ip2name[src]; ok {
+						srcPretty = val
+					}
+				}
+				if dest, ok := ev.Source().GetDestIp(); ok {
+					if val, ok := ip2name[dest]; ok {
+						destPretty = val
+					}
+				}
+				ev.Source().SetSrcDestNames(srcPretty, destPretty)
 				if json, err := ev.JSON(); err != nil {
 					d.sendErr(err)
 				} else {
