@@ -8,4 +8,5 @@ type TargetInfo struct {
 
 	IPv4 []net.IP
 	IPv6 []net.IP
+	MAC  []net.HardwareAddr
 }

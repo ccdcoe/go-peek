@@ -163,29 +163,33 @@ loop:
 			); err != nil {
 				d.sendErr(err)
 			} else if ev != nil {
-				// TODO! nil pointer on eventlog
-				pretty, notseen := d.rename.Check(ev.Source().IP)
+
+				shipper := ev.Source()
+				pretty, notseen := d.rename.Check(shipper.IP)
+
 				if notseen {
 					d.sendNotify(fmt.Sprintf("New host %s, ip %s observed, name will be %s",
-						ev.Source().Host, ev.Source().IP, pretty))
+						shipper.Host, shipper.IP, pretty))
 				}
 				ev.Rename(pretty)
+
 				// TODO! Functions are good
 				var (
 					srcPretty  = defaultName
 					destPretty = defaultName
 				)
-				if src, ok := ev.Source().GetSrcIp(); ok {
+				if src, ok := shipper.GetSrcIp(); ok {
 					if val, ok := ip2name[src]; ok {
 						srcPretty = val
 					}
 				}
-				if dest, ok := ev.Source().GetDestIp(); ok {
+				if dest, ok := shipper.GetDestIp(); ok {
 					if val, ok := ip2name[dest]; ok {
 						destPretty = val
 					}
 				}
-				ev.Source().SetSrcDestNames(srcPretty, destPretty)
+
+				shipper.SetSrcDestNames(srcPretty, destPretty)
 				if json, err := ev.JSON(); err != nil {
 					d.sendErr(err)
 				} else {

@@ -2,6 +2,7 @@ package events
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"time"
 )
@@ -21,7 +22,7 @@ type Eve struct {
 	Syslog
 	EveBase
 
-	SuriTime *suriTS      `json:"timestamp"`
+	SuriTime *suriTS      `json:"timestamp,omitempty"`
 	Alert    *EveAlert    `json:"alert,omitempty"`
 	DNS      *EveDNS      `json:"dns,omitempty"`
 	TLS      *EveTLS      `json:"tls,omitempty"`
@@ -29,7 +30,7 @@ type Eve struct {
 	Http     *EveHttp     `json:"http,omitempty"`
 	Fileinfo *EveFileInfo `json:"fileinfo,omitempty"`
 
-	GameMeta *Source `json:"gamemeta"`
+	GameMeta *Source `json:"gamemeta,omitempty"`
 }
 
 // JSON implements Event
@@ -40,7 +41,7 @@ func (s Eve) JSON() ([]byte, error) {
 // Source implements Event
 func (s *Eve) Source() *Source {
 	s.GameMeta = &Source{
-		Host: s.Host,
+		Host: s.Syslog.Host,
 		IP:   s.IP.String(),
 		Src:  &Source{},
 		Dest: &Source{},
@@ -80,72 +81,74 @@ func (s Eve) GetEventTime() time.Time {
 func (s Eve) GetSyslogTime() time.Time {
 	return s.Timestamp
 }
-func (s Eve) SaganString() string {
-	return "NOT IMPLEMENTED"
+func (s Eve) SaganString() (string, error) {
+	return "NOT IMPLEMENTED", fmt.Errorf(
+		"SaganString method not implemented for suricata eve.json",
+	)
 }
 
 // Logical grouping of varous EVE.json components
 type EveBase struct {
-	FlowID      int64     `json:"flow_id"`
-	InIface     string    `json:"in_iface"`
-	EventType   string    `json:"event_type"`
-	SrcIP       *stringIP `json:"src_ip"`
-	SrcPort     int       `json:"src_port"`
-	DestIP      *stringIP `json:"dest_ip"`
-	DestPort    int       `json:"dest_port"`
-	Proto       string    `json:"proto"`
-	CommunityID string    `json:"community_id"`
-	SuriHost    string    `json:"host"`
+	FlowID      int64     `json:"flow_id,omitempty"`
+	InIface     string    `json:"in_iface,omitempty"`
+	EventType   string    `json:"event_type,omitempty"`
+	SrcIP       *stringIP `json:"src_ip,omitempty"`
+	SrcPort     int       `json:"src_port,omitempty"`
+	DestIP      *stringIP `json:"dest_ip,omitempty"`
+	DestPort    int       `json:"dest_port,omitempty"`
+	Proto       string    `json:"proto,omitempty"`
+	CommunityID string    `json:"community_id,omitempty"`
+	SuriHost    string    `json:"host,omitempty"`
 	NetInfo     *NetInfo  `json:"net_info,omitempty"`
 }
 
 type NetInfo struct {
-	Src  []string `json:"src"`
-	Dest []string `json:"dest"`
+	Src  []string `json:"src,omitempty"`
+	Dest []string `json:"dest,omitempty"`
 }
 
 type SrcTargetInfo struct {
-	IP      string   `json:"ip"`
-	Port    int      `json:"port"`
-	NetInfo []string `json:"net_info"`
+	IP      string   `json:"ip,omitempty"`
+	Port    int      `json:"port,omitempty"`
+	NetInfo []string `json:"net_info,omitempty"`
 }
 
 type EveAlert struct {
-	Action      string         `json:"action"`
-	Gid         int            `json:"gid"`
-	SignatureID int            `json:"signature_id"`
-	Rev         int            `json:"rev"`
-	Signature   string         `json:"signature"`
-	Category    string         `json:"category"`
-	Severity    int            `json:"severity"`
+	Action      string         `json:"action,omitempty"`
+	Gid         int            `json:"gid,omitempty"`
+	SignatureID int            `json:"signature_id,omitempty"`
+	Rev         int            `json:"rev,omitempty"`
+	Signature   string         `json:"signature,omitempty"`
+	Category    string         `json:"category,omitempty"`
+	Severity    int            `json:"severity,omitempty"`
 	Metadata    *EveMetadata   `json:"metadata,omitempty"`
 	Source      *SrcTargetInfo `json:"source,omitempty"`
 	Target      *SrcTargetInfo `json:"target,omitempty"`
 }
 
 type EveFlow struct {
-	PktsToserver  int    `json:"pkts_toserver"`
-	PktsToclient  int    `json:"pkts_toclient"`
-	BytesToserver int    `json:"bytes_toserver"`
-	BytesToclient int    `json:"bytes_toclient"`
-	Start         string `json:"start"`
+	PktsToserver  int    `json:"pkts_toserver,omitempty"`
+	PktsToclient  int    `json:"pkts_toclient,omitempty"`
+	BytesToserver int    `json:"bytes_toserver,omitempty"`
+	BytesToclient int    `json:"bytes_toclient,omitempty"`
+	Start         string `json:"start,omitempty"`
 }
 
 type EveMetadata struct {
-	UpdatedAt      []string `json:"updated_at"`
-	CreatedAt      []string `json:"created_at"`
-	FormerCategory []string `json:"former_category"`
+	UpdatedAt      []string `json:"updated_at,omitempty"`
+	CreatedAt      []string `json:"created_at,omitempty"`
+	FormerCategory []string `json:"former_category,omitempty"`
 }
 
 type EveDNS struct {
-	Version int    `json:"version"`
-	Type    string `json:"type"`
-	ID      int    `json:"id"`
-	Flags   string `json:"flags"`
-	Qr      bool   `json:"qr"`
-	Rd      bool   `json:"rd"`
-	Ra      bool   `json:"ra"`
-	Rcode   string `json:"rcode"`
+	Version int    `json:"version,omitempty"`
+	Type    string `json:"type,omitempty"`
+	ID      int    `json:"id,omitempty"`
+	Flags   string `json:"flags,omitempty"`
+	Qr      bool   `json:"qr,omitempty"`
+	Rd      bool   `json:"rd,omitempty"`
+	Ra      bool   `json:"ra,omitempty"`
+	Rcode   string `json:"rcode,omitempty"`
 
 	*EveDNSanswer
 
@@ -154,74 +157,74 @@ type EveDNS struct {
 }
 
 type EveDNSanswer struct {
-	Rrname string `json:"rrname"`
-	Rrtype string `json:"rrtype"`
-	TTL    int    `json:"ttl"`
-	Rdata  string `json:"rdata"`
+	Rrname string `json:"rrname,omitempty"`
+	Rrtype string `json:"rrtype,omitempty"`
+	TTL    int    `json:"ttl,omitempty"`
+	Rdata  string `json:"rdata,omitempty"`
 }
 
 type EveSmb struct {
-	ID         int    `json:"id"`
-	Dialect    string `json:"dialect"`
-	Command    string `json:"command"`
-	Status     string `json:"status"`
-	StatusCode string `json:"status_code"`
-	SessionID  int64  `json:"session_id"`
-	TreeID     int    `json:"tree_id"`
+	ID         int    `json:"id,omitempty"`
+	Dialect    string `json:"dialect,omitempty"`
+	Command    string `json:"command,omitempty"`
+	Status     string `json:"status,omitempty"`
+	StatusCode string `json:"status_code,omitempty"`
+	SessionID  int64  `json:"session_id,omitempty"`
+	TreeID     int    `json:"tree_id,omitempty"`
 	Dcerpc     struct {
-		Request    string `json:"request"`
-		Response   string `json:"response"`
+		Request    string `json:"request,omitempty"`
+		Response   string `json:"response,omitempty"`
+		CallID     int    `json:"call_id,omitempty"`
 		Interfaces []struct {
-			UUID      string `json:"uuid"`
-			Version   string `json:"version"`
-			AckResult int    `json:"ack_result"`
-			AckReason int    `json:"ack_reason"`
+			UUID      string `json:"uuid,omitempty"`
+			Version   string `json:"version,omitempty"`
+			AckResult int    `json:"ack_result,omitempty"`
+			AckReason int    `json:"ack_reason,omitempty"`
 		} `json:"interfaces,omitempty"`
-		CallID int `json:"call_id"`
 	} `json:"dcerpc,omitempty"`
 }
 
 type EveSmbInterfaces struct {
-	UUID      string `json:"uuid"`
-	Version   string `json:"version"`
-	AckResult int    `json:"ack_result"`
-	AckReason int    `json:"ack_reason"`
+	UUID      string `json:"uuid,omitempty"`
+	Version   string `json:"version,omitempty"`
+	AckResult int    `json:"ack_result,omitempty"`
+	AckReason int    `json:"ack_reason,omitempty"`
 }
 
 type EveHttp struct {
-	Hostname        string `json:"hostname"`
-	URL             string `json:"url"`
-	HTTPUserAgent   string `json:"http_user_agent"`
-	HTTPContentType string `json:"http_content_type"`
-	HTTPRefer       string `json:"http_refer"`
-	HTTPMethod      string `json:"http_method"`
-	Protocol        string `json:"protocol"`
-	Status          int    `json:"status"`
-	Length          int    `json:"length"`
+	Hostname        string `json:"hostname,omitempty"`
+	URL             string `json:"url,omitempty"`
+	HTTPUserAgent   string `json:"http_user_agent,omitempty"`
+	HTTPContentType string `json:"http_content_type,omitempty"`
+	HTTPRefer       string `json:"http_refer,omitempty"`
+	HTTPMethod      string `json:"http_method,omitempty"`
+	Protocol        string `json:"protocol,omitempty"`
+	Status          int    `json:"status,omitempty"`
+	Length          int    `json:"length,omitempty"`
 }
 
 type EveTLS struct {
-	Subject     string `json:"subject"`
-	Issuerdn    string `json:"issuerdn"`
-	Serial      string `json:"serial"`
-	Fingerprint string `json:"fingerprint"`
-	Sni         string `json:"sni"`
-	Version     string `json:"version"`
-	Notbefore   string `json:"notbefore"`
-	Notafter    string `json:"notafter"`
+	Subject     string `json:"subject,omitempty"`
+	Issuerdn    string `json:"issuerdn,omitempty"`
+	Serial      string `json:"serial,omitempty"`
+	Fingerprint string `json:"fingerprint,omitempty"`
+	Sni         string `json:"sni,omitempty"`
+	Version     string `json:"version,omitempty"`
+	Notbefore   string `json:"notbefore,omitempty"`
+	Notafter    string `json:"notafter,omitempty"`
 }
 
 type EveTftp struct {
-	Packet string `json:"packet"`
-	File   string `json:"file"`
-	Mode   string `json:"mode"`
+	Packet string `json:"packet,omitempty"`
+	File   string `json:"file,omitempty"`
+	Mode   string `json:"mode,omitempty"`
 }
 
 type EveFileInfo struct {
-	Filename string `json:"filename"`
-	Gaps     bool   `json:"gaps"`
-	State    string `json:"state"`
-	Stored   bool   `json:"stored"`
-	Size     int    `json:"size"`
-	TxID     int    `json:"tx_id"`
+	Filename string `json:"filename,omitempty"`
+	Gaps     bool   `json:"gaps,omitempty"`
+	State    string `json:"state,omitempty"`
+	Stored   bool   `json:"stored,omitempty"`
+	Size     int    `json:"size,omitempty"`
+	TxID     int    `json:"tx_id,omitempty"`
 }
