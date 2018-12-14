@@ -19,15 +19,23 @@ type Syslog struct {
 	GameMeta *Source `json:"gamemeta"`
 }
 
+func NewSyslog(raw []byte) (*Syslog, error) {
+	var s = &Syslog{}
+	if err := json.Unmarshal(raw, s); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
 func (s Syslog) JSON() ([]byte, error) {
 	return json.Marshal(s)
 }
 
-func (s *Syslog) Source() *Source {
+func (s *Syslog) Source() (*Source, error) {
 	if s.GameMeta == nil {
 		s.GameMeta = &Source{Host: s.Host, IP: s.IP.String()}
 	}
-	return s.GameMeta
+	return s.GameMeta, nil
 }
 
 func (s *Syslog) Rename(pretty string) {

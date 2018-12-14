@@ -85,6 +85,9 @@ loop:
 			if !ok {
 				break loop
 			}
+			if msg.Sagan == "" || msg.Sagan == "NOT IMPLEMENTED" {
+				continue loop
+			}
 			// Sagan produce
 			saganProducer.Input() <- &sarama.ProducerMessage{
 				Topic:     topic,
@@ -104,7 +107,9 @@ func dumpNames(
 ) {
 	defer dumpNames.Stop()
 	fmt.Println("starting elastic name dumper")
-	elaNameDumper := outputs.NewBulk(appConfg.ElasticSearch.RenameMap.Hosts)
+	elaNameDumper := outputs.NewBulk(
+		appConfg.ElasticSearch.RenameMap.Hosts,
+	)
 loop:
 	for {
 		select {

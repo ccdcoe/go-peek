@@ -12,14 +12,17 @@ import (
 	"github.com/ccdcoe/go-peek/types"
 )
 
-const defaultName = "Kerrigan"
+const (
+	defaultName   = "Kerrigan"
+	errBufSize    = 256
+	notifyBufSize = 256
+)
 
 type DecodedMessage struct {
-	Val   []byte
-	Topic string
-	Key   string
-	Sagan string
-	Time  time.Time
+	Val  []byte
+	Time time.Time
+
+	Topic, Key, Sagan string
 }
 
 type Decoder struct {
@@ -55,8 +58,8 @@ func NewMessageDecoder(
 			Input:         input,
 			Output:        make(chan DecodedMessage),
 			EventTypes:    eventtypes,
-			errs:          make(chan error, 256),
-			notify:        make(chan string, 256),
+			errs:          make(chan error, errBufSize),
+			notify:        make(chan string, notifyBufSize),
 			stop:          make([]chan bool, workers),
 			stopInventory: make(chan bool, 1),
 		}
@@ -146,10 +149,20 @@ func NewMessageDecoder(
 
 func DecodeWorker(d Decoder, wg *sync.WaitGroup, id int) {
 	defer wg.Done()
+	// Local variables
+	var (
+		err error
 
-	// Local copy, TODO: thread safe periodic update
+		ev      events.Event
+		shipper *events.Source
+
+		data []byte
+
+		pretty, sagan string
+		notseen       bool
+	)
+	// Local copy of rename mappings, TODO: thread safe periodic update
 	var ip2name = d.rename.IpToStringName.RawValues()
-	//fmt.Println(ip2name)
 loop:
 	for {
 		select {
@@ -157,52 +170,68 @@ loop:
 			if !ok {
 				break loop
 			}
-			if ev, err := events.NewEvent(
+			if ev, err = events.NewEvent(
 				d.EventTypes[msg.Topic],
 				msg.Value,
 			); err != nil {
 				d.sendErr(err)
-			} else if ev != nil {
-
-				shipper := ev.Source()
-				pretty, notseen := d.rename.Check(shipper.IP)
-
-				if notseen {
-					d.sendNotify(fmt.Sprintf("New host %s, ip %s observed, name will be %s",
-						shipper.Host, shipper.IP, pretty))
-				}
-				ev.Rename(pretty)
-
-				// TODO! Functions are good
-				var (
-					srcPretty  = defaultName
-					destPretty = defaultName
-				)
-				if src, ok := shipper.GetSrcIp(); ok {
-					if val, ok := ip2name[src]; ok {
-						srcPretty = val
-					}
-				}
-				if dest, ok := shipper.GetDestIp(); ok {
-					if val, ok := ip2name[dest]; ok {
-						destPretty = val
-					}
-				}
-
-				shipper.SetSrcDestNames(srcPretty, destPretty)
-				if json, err := ev.JSON(); err != nil {
-					d.sendErr(err)
-				} else {
-					d.Output <- DecodedMessage{
-						Val:   json,
-						Topic: msg.Topic,
-						Key:   ev.Key(),
-						Time:  ev.GetEventTime(),
-						Sagan: ev.SaganString(),
-					}
-				}
-				d.Input.MarkOffset(msg, "")
+				continue loop
 			}
+
+			if shipper, err = ev.Source(); err != nil {
+				d.sendErr(err)
+				continue loop
+			}
+
+			if pretty, notseen = d.rename.Check(shipper.IP); notseen {
+				d.sendNotify(fmt.Sprintf(
+					"New host %s, ip %s observed, name will be %s",
+					shipper.Host,
+					shipper.IP,
+					pretty,
+				))
+			}
+			ev.Rename(pretty)
+
+			// *TODO* move to functions / methods
+			var (
+				srcPretty  = defaultName
+				destPretty = defaultName
+			)
+			if src, ok := shipper.GetSrcIp(); ok {
+				if val, ok := ip2name[src]; ok {
+					srcPretty = val
+				}
+			}
+			if dest, ok := shipper.GetDestIp(); ok {
+				if val, ok := ip2name[dest]; ok {
+					destPretty = val
+				}
+			}
+			shipper.SetSrcDestNames(srcPretty, destPretty)
+			//
+
+			if data, err = ev.JSON(); err != nil {
+				d.sendErr(err)
+				continue loop
+			}
+			if sagan, err = ev.SaganString(); err != nil {
+				switch err.(type) {
+				case *types.ErrNotImplemented:
+					sagan = ""
+					// *TODO* Warn maybe?
+				default:
+					d.sendErr(err)
+				}
+			}
+			d.Output <- DecodedMessage{
+				Val:   data,
+				Topic: msg.Topic,
+				Key:   ev.Key(),
+				Time:  ev.GetEventTime(),
+				Sagan: sagan,
+			}
+			d.Input.MarkOffset(msg, "")
 		case <-d.stop[id]:
 			break loop
 		}
@@ -217,14 +246,14 @@ func (d Decoder) halt() {
 }
 
 func (d Decoder) sendErr(err error) {
-	if len(d.errs) == 256 {
+	if len(d.errs) == errBufSize {
 		<-d.errs
 	}
 	d.errs <- err
 }
 
 func (d Decoder) sendNotify(msg string) {
-	if len(d.notify) == 256 {
+	if len(d.notify) == notifyBufSize {
 		<-d.notify
 	}
 	d.notify <- fmt.Sprintf("[decoder] %s", msg)

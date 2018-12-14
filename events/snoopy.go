@@ -29,16 +29,26 @@ type Snoopy struct {
 	GameMeta *Source `json:"gamemeta"`
 }
 
+func NewSnoopy(raw []byte) (*Snoopy, error) {
+	var s = &Snoopy{}
+	if err := json.Unmarshal(raw, s); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
 func (s Snoopy) JSON() ([]byte, error) {
 	return json.Marshal(s)
 }
 
-func (s *Snoopy) Source() *Source {
-	s.GameMeta = &Source{
-		Host: s.Host,
-		IP:   s.IP.String(),
+func (s *Snoopy) Source() (*Source, error) {
+	if s.GameMeta == nil {
+		s.GameMeta = &Source{
+			Host: s.Host,
+			IP:   s.IP.String(),
+		}
 	}
-	return s.GameMeta
+	return s.GameMeta, nil
 }
 
 func (s *Snoopy) Rename(pretty string) {

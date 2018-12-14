@@ -90,8 +90,8 @@ func (s *DynaEventLog) JSON() ([]byte, error) {
 	return s.Vals.Bytes(), nil
 }
 
-func (s *DynaEventLog) Source() *Source {
-	return s.GameMeta
+func (s *DynaEventLog) Source() (*Source, error) {
+	return s.GameMeta, nil
 }
 
 func (s *DynaEventLog) Rename(pretty string) {

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"github.com/ccdcoe/go-peek/types"
 )
 
 type suriTS struct{ time.Time }
@@ -33,37 +35,25 @@ type Eve struct {
 	GameMeta *Source `json:"gamemeta,omitempty"`
 }
 
+func NewEVE(raw []byte) (*Eve, error) {
+	var s = &Eve{}
+	if err := json.Unmarshal(raw, s); err != nil {
+		return nil, err
+	}
+	return s.setMeta(), nil
+}
+
 // JSON implements Event
 func (s Eve) JSON() ([]byte, error) {
 	return json.Marshal(s)
 }
 
 // Source implements Event
-func (s *Eve) Source() *Source {
-	s.GameMeta = &Source{
-		Host: s.Syslog.Host,
-		IP:   s.IP.String(),
-		Src:  &Source{},
-		Dest: &Source{},
+func (s *Eve) Source() (*Source, error) {
+	if s.GameMeta == nil {
+		s.setMeta()
 	}
-	switch v := s.EventType; {
-	case v == "alert":
-		if s.Alert.Source != nil {
-			s.GameMeta.Src.IP = s.Alert.Source.IP
-		} else {
-			s.GameMeta.Src.IP = s.SrcIP.String()
-		}
-		if s.Alert.Target != nil {
-			s.GameMeta.Dest.IP = s.Alert.Target.IP
-		} else {
-			s.GameMeta.Dest.IP = s.DestIP.String()
-		}
-	case v != "stats":
-		s.GameMeta.Src.IP = s.SrcIP.String()
-		s.GameMeta.Dest.IP = s.DestIP.String()
-	}
-
-	return s.GameMeta
+	return s.GameMeta, nil
 }
 
 // Rename implements Event
@@ -82,9 +72,58 @@ func (s Eve) GetSyslogTime() time.Time {
 	return s.Timestamp
 }
 func (s Eve) SaganString() (string, error) {
-	return "NOT IMPLEMENTED", fmt.Errorf(
-		"SaganString method not implemented for suricata eve.json",
-	)
+	return "NOT IMPLEMENTED", &types.ErrNotImplemented{
+		Err: fmt.Errorf(
+			"SaganString method not implemented for suricata eve.json",
+		),
+	}
+}
+
+func (s *Eve) setMeta() *Eve {
+	s.GameMeta = &Source{
+		Host: s.Syslog.Host,
+		IP:   s.IP.String(),
+	}
+	switch v := s.EventType; {
+	case v == "alert":
+		s.checkMetaSrcDest().setMetaAlertSrc().setMetaAlertDest()
+	case v == "stats":
+	default:
+		s.checkMetaSrcDest().setMetaDefaultSrcDest()
+	}
+	return s
+}
+
+func (s *Eve) setMetaDefaultSrcDest() *Eve {
+	s.GameMeta.Src.IP = s.SrcIP.String()
+	s.GameMeta.Dest.IP = s.DestIP.String()
+	return s
+}
+func (s *Eve) setMetaAlertSrc() *Eve {
+	if s.Alert.Source != nil {
+		s.GameMeta.Src.IP = s.Alert.Source.IP.String()
+	} else {
+		s.GameMeta.Src.IP = s.SrcIP.String()
+	}
+	return s
+}
+func (s *Eve) setMetaAlertDest() *Eve {
+	if s.Alert.Target != nil {
+		s.GameMeta.Dest.IP = s.Alert.Target.IP.String()
+	} else {
+		s.GameMeta.Dest.IP = s.DestIP.String()
+	}
+	return s
+}
+
+func (s *Eve) checkMetaSrcDest() *Eve {
+	if s.GameMeta.Src == nil {
+		s.GameMeta.Src = &Source{}
+	}
+	if s.GameMeta.Dest == nil {
+		s.GameMeta.Dest = &Source{}
+	}
+	return s
 }
 
 // Logical grouping of varous EVE.json components
@@ -108,9 +147,9 @@ type NetInfo struct {
 }
 
 type SrcTargetInfo struct {
-	IP      string   `json:"ip,omitempty"`
-	Port    int      `json:"port,omitempty"`
-	NetInfo []string `json:"net_info,omitempty"`
+	IP      *stringIP `json:"ip,omitempty"`
+	Port    int       `json:"port,omitempty"`
+	NetInfo []string  `json:"net_info,omitempty"`
 }
 
 type EveAlert struct {

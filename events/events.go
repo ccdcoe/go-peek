@@ -1,27 +1,33 @@
 package events
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 )
 
-const saganDateFormat = "2006-01-02"
-const saganTimeFormat = "15:04:05"
+const (
+	saganDateFormat = "2006-01-02"
+	saganTimeFormat = "15:04:05"
+)
 
 type Event interface {
 	EventReporter
 	EventSourceModifier
 	EventFormatter
-	EventTimer
+	EventTimeReporter
 }
 
 type EventReporter interface {
 	Key() string
 }
 
+type EventTimeReporter interface {
+	GetEventTime() time.Time
+	GetSyslogTime() time.Time
+}
+
 type EventSourceModifier interface {
-	Source() *Source
+	Source() (*Source, error)
 	Rename(string)
 }
 
@@ -30,39 +36,24 @@ type EventFormatter interface {
 	SaganString() (string, error)
 }
 
-type EventTimer interface {
-	GetEventTime() time.Time
-	GetSyslogTime() time.Time
-}
-
 func NewEvent(topic string, payload []byte) (Event, error) {
 
 	switch topic {
 	case "syslog":
-		var m Syslog
-		if err := json.Unmarshal(payload, &m); err != nil {
-			return nil, err
-		}
-		return &m, nil
+		return NewSyslog(payload)
 
 	case "snoopy":
-		var m Snoopy
-		if err := json.Unmarshal(payload, &m); err != nil {
-			return nil, err
-		}
-		return &m, nil
+		return NewSnoopy(payload)
 
 	case "suricata":
-		var m Eve
-		if err := json.Unmarshal(payload, &m); err != nil {
-			return nil, err
-		}
-		return &m, nil
+		return NewEVE(payload)
 
 	case "eventlog":
 		return NewDynaEventLog(payload)
 
 	default:
+		// *TODO* This doesn't have to fail.
+		// We can use a generic gabs / map[string]interface{} with time.now instead
 		return nil, fmt.Errorf("Unsupported topic %s",
 			topic)
 	}
