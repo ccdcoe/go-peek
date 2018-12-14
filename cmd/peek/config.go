@@ -16,7 +16,9 @@ type mainConf struct {
 }
 
 type generalConf struct {
-	Spooldir string
+	Spooldir      string
+	Errors        logConfig
+	Notifications logConfig
 }
 
 type kafkaConf struct {
@@ -53,10 +55,23 @@ type mapTopics struct {
 	Sagan        *saganConf
 }
 
+type logConfig struct {
+	Log    bool
+	Sample int
+}
+
 func defaultConfg() *mainConf {
 	return &mainConf{
 		General: generalConf{
 			Spooldir: "/var/spool/gopeek",
+			Errors: logConfig{
+				Log:    true,
+				Sample: -1,
+			},
+			Notifications: logConfig{
+				Log:    true,
+				Sample: -1,
+			},
 		},
 		Kafka: kafkaConf{
 			Input:         []string{"localhost:9092"},

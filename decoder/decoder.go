@@ -219,7 +219,6 @@ loop:
 				switch err.(type) {
 				case *types.ErrNotImplemented:
 					sagan = ""
-					// *TODO* Warn maybe?
 				default:
 					d.sendErr(err)
 				}

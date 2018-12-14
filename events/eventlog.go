@@ -67,12 +67,14 @@ func NewDynaEventLog(raw []byte) (*DynaEventLog, error) {
 		}
 	}
 
-	if e.EventTime, err = e.parseTimeFromGabInterface(
-		syslogTsKey,
-		syslogTsFormat,
-	); err != nil {
-		return e, err
-	}
+	/*
+		if e.EventTime, err = e.parseTimeFromGabInterface(
+			syslogTsKey,
+			syslogTsFormat,
+		); err != nil {
+			return e, err
+		}
+	*/
 
 	if err = e.setDefaultEventShipperSource(
 		syslogHostKey,
@@ -112,7 +114,7 @@ func (s DynaEventLog) GetSyslogTime() time.Time {
 
 func (s DynaEventLog) SaganString() (string, error) {
 	var keys = []string{
-		syslogTsKey,
+		syslogIPKey,
 		eventLogSourceKey,
 		eventLogSevKey,
 		eventLogSevKey,
@@ -184,10 +186,10 @@ func (s DynaEventLog) parseTimeFromGabInterface(key, format string) (time.Time, 
 		timestamp time.Time
 		err       error
 	)
-	if stringval, err = s.getStringFieldWithErr(syslogTsKey); err != nil {
-		return time.Now(), &EventParseErr{key: syslogTsKey, err: err, raw: s.Vals.Bytes()}
+	if stringval, err = s.getStringFieldWithErr(key); err != nil {
+		return time.Now(), &EventParseErr{key: key, err: err, raw: s.Vals.Bytes()}
 	}
-	if timestamp, err = time.Parse(time.RFC3339Nano, stringval); err != nil {
+	if timestamp, err = time.Parse(format, stringval); err != nil {
 		return time.Now(), &EventParseErr{key: stringval, err: err, raw: s.Vals.Bytes()}
 	}
 	return timestamp, nil

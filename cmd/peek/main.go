@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path"
 	"runtime"
@@ -67,18 +66,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	go func() {
-		for err := range consumer.Errors() {
-			log.Printf("Error: %s\n", err.Error())
-		}
-	}()
-
-	go func() {
-		for ntf := range consumer.Notifications() {
-			log.Printf("Rebalanced: %+v\n", ntf)
-		}
-	}()
-
 	fmt.Println("Starting decoder")
 	// decoder / worker start
 	if dec, err = decoder.NewMessageDecoder(
@@ -103,18 +90,6 @@ func main() {
 	}
 	fmt.Println(inventory.MapKnownIP(dec.Names()))
 
-	go func() {
-		for err := range dec.Errors {
-			log.Printf("Error: %s\n", err.Error())
-		}
-	}()
-
-	go func() {
-		for ntf := range dec.Notifications {
-			log.Printf("Info: %s\n", ntf)
-		}
-	}()
-
 	// Producer start
 	producerConfig := sarama.NewConfig()
 	producerConfig.Producer.RequiredAcks = sarama.NoResponse
@@ -125,22 +100,28 @@ func main() {
 
 	var errs = make(chan error)
 
-	go func() {
-		for err := range errs {
-			log.Printf("Error: %s\n", err.Error())
-		}
-	}()
-
 	fmt.Println("starting main sarama producer")
 	producer, err := sarama.NewAsyncProducer(appConfg.Kafka.Output, producerConfig)
 	if err != nil {
 		printErr(err)
 	}
-	go func() {
-		for err := range producer.Errors() {
-			errs <- fmt.Errorf("Failed to write msg: %s", err.Error())
-		}
-	}()
+
+	if appConfg.General.Errors.Log {
+		go logErrs(
+			appConfg.General.Errors.Sample,
+			consumer.Errors(),
+			producer.Errors(),
+			dec.Errors,
+			errs,
+		)
+	}
+	if appConfg.General.Notifications.Log {
+		go logNotifications(
+			appConfg.General.Notifications.Sample,
+			dec.Notifications,
+			consumer.Notifications(),
+		)
+	}
 
 	// Multiplexer / Output start
 	var wg sync.WaitGroup

@@ -3,11 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/Shopify/sarama"
+	cluster "github.com/bsm/sarama-cluster"
 	"github.com/ccdcoe/go-peek/decoder"
 	"github.com/ccdcoe/go-peek/outputs"
 )
@@ -141,4 +143,74 @@ loop:
 		}
 	}
 	fmt.Println("elastic name dumper done")
+}
+
+func logErrs(
+	sample int,
+	consumeErrs <-chan error,
+	produceErrs <-chan *sarama.ProducerError,
+	decodeErrs <-chan error,
+	mainErrs <-chan error,
+) {
+	var errcounts [4]int
+	for {
+		select {
+		case err, ok := <-consumeErrs:
+			// Handle input errors
+			if ok {
+				if sample < 1 || errcounts[0]%sample == 0 {
+					log.Printf("ERROR [consumer]: %s\n", err.Error())
+				}
+				errcounts[0]++
+			}
+		case err, ok := <-produceErrs:
+			// Handle output errors
+			if ok {
+				if sample < 1 || errcounts[1]%sample == 0 {
+					log.Printf("ERROR [producer]: %s\n", err.Error())
+				}
+				errcounts[1]++
+			}
+		case err, ok := <-decodeErrs:
+			// Handle decoder errors
+			if ok {
+				if sample < 1 || errcounts[2]%sample == 0 {
+					// *TODO*
+					// type switch to handle different scenarios
+					log.Printf("Decode error: %s\n", err.Error())
+				}
+				errcounts[2]++
+			}
+		case err, ok := <-mainErrs:
+			if ok {
+				if sample < 1 || errcounts[3]%sample == 0 {
+					log.Printf("Main error: %s\n", err.Error())
+				}
+				errcounts[3]++
+			}
+		}
+	}
+}
+
+func logNotifications(
+	sample int,
+	decodeN <-chan string,
+	consumeN <-chan *cluster.Notification,
+) {
+	var notifycounts int
+	for {
+		select {
+		case msg, ok := <-decodeN:
+			if ok {
+				if sample < 1 || notifycounts%sample == 0 {
+					log.Printf("Decode Info: %s\n", msg)
+				}
+				notifycounts++
+			}
+		case ntf, ok := <-consumeN:
+			if ok {
+				log.Printf("Sarama cluster rebalance: %+v\n", ntf)
+			}
+		}
+	}
 }
