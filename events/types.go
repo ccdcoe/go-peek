@@ -17,24 +17,26 @@ func (t *stringIP) UnmarshalJSON(b []byte) error {
 }
 
 type Source struct {
-	Host, IP string
-
-	Src  *Source
-	Dest *Source
+	Host string  `json:"Host"`
+	IP   string  `json:"IP"`
+	Src  *Source `json:"Src"`
+	Dest *Source `json:"Dest"`
 }
 
 func (s *Source) SetSrcDestNames(src, dest string) *Source {
-	if src != "" {
-		if s.Src == nil {
-			s.Src = &Source{}
-		}
-		s.Src.Host = src
+	return s.SetSrcName(src).SetDestName(dest)
+}
+
+func (s *Source) SetSrcName(name string) *Source {
+	if name != "" && s.Src != nil {
+		s.Src.Host = name
 	}
-	if dest != "" {
-		if s.Dest == nil {
-			s.Dest = &Source{}
-		}
-		s.Dest.Host = dest
+	return s
+}
+
+func (s *Source) SetDestName(name string) *Source {
+	if name != "" && s.Dest != nil {
+		s.Dest.Host = name
 	}
 	return s
 }

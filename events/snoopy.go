@@ -9,24 +9,33 @@ import (
 type Snoopy struct {
 	Syslog
 
-	Cmd      string `json:"cmd"`
-	Filename string `json:"filename"`
-	Cwd      string `json:"cwd"`
-	Tty      string `json:"tty"`
-	Sid      string `json:"sid"`
-	Gid      string `json:"gid"`
-	Group    string `json:"group"`
-	UID      string `json:"uid"`
-	Username string `json:"username"`
-	SSH      struct {
-		DstPort string `json:"dst_port"`
-		DstIP   string `json:"dst_ip"`
-		SrcPort string `json:"src_port"`
-		SrcIP   string `json:"src_ip"`
-	} `json:"ssh"`
-	Login string `json:"login"`
+	Cmd      string `json:"cmd,omitempty"`
+	Filename string `json:"filename,omitempty"`
+	Cwd      string `json:"cwd,omitempty"`
+	Tty      string `json:"tty,omitempty"`
+	Sid      string `json:"sid,omitempty"`
+	Gid      string `json:"gid,omitempty"`
+	Group    string `json:"group,omitempty"`
+	UID      string `json:"uid,omitempty"`
+	Username string `json:"username,omitempty"`
+	Login    string `json:"login,omitempty"`
 
-	GameMeta *Source `json:"gamemeta"`
+	SSH      *SnoopySSH `json:"ssh,omitempty"`
+	GameMeta *Source    `json:"gamemeta,omitempty"`
+}
+
+type SnoopySSH struct {
+	DstPort string    `json:"dst_port,omitempty"`
+	DstIP   *stringIP `json:"dst_ip,omitempty"`
+	SrcPort string    `json:"src_port,omitempty"`
+	SrcIP   *stringIP `json:"src_ip,omitempty"`
+}
+
+func (s SnoopySSH) Empty() bool {
+	if s.DstIP == nil && s.DstPort == "" && s.SrcIP == nil && s.SrcPort == "" {
+		return true
+	}
+	return false
 }
 
 func NewSnoopy(raw []byte) (*Snoopy, error) {
@@ -34,7 +43,7 @@ func NewSnoopy(raw []byte) (*Snoopy, error) {
 	if err := json.Unmarshal(raw, s); err != nil {
 		return nil, err
 	}
-	return s, nil
+	return s.setMeta(), nil
 }
 
 func (s Snoopy) JSON() ([]byte, error) {
@@ -43,10 +52,7 @@ func (s Snoopy) JSON() ([]byte, error) {
 
 func (s *Snoopy) Source() (*Source, error) {
 	if s.GameMeta == nil {
-		s.GameMeta = &Source{
-			Host: s.Host,
-			IP:   s.IP.String(),
-		}
+		s.setMeta()
 	}
 	return s.GameMeta, nil
 }
@@ -82,4 +88,20 @@ func (s Snoopy) SaganString() (string, error) {
 			s.Cmd,
 		}, "|",
 	), nil
+}
+
+func (s *Snoopy) setMeta() *Snoopy {
+	s.GameMeta = &Source{
+		Host: s.Host,
+		IP:   s.IP.String(),
+	}
+	if s.SSH != nil && !s.SSH.Empty() {
+		if s.SSH.SrcIP.String() != "" && s.SSH.SrcIP.String() != s.GameMeta.IP {
+			s.GameMeta.IP = s.SSH.SrcIP.String()
+		}
+		if s.SSH.DstIP.String() != "" && s.SSH.DstIP.String() != s.GameMeta.IP {
+			s.GameMeta.IP = s.SSH.DstIP.String()
+		}
+	}
+	return s
 }

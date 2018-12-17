@@ -41,16 +41,12 @@ func NewEvent(topic string, payload []byte) (Event, error) {
 	switch topic {
 	case "syslog":
 		return NewSyslog(payload)
-
 	case "snoopy":
 		return NewSnoopy(payload)
-
 	case "suricata":
 		return NewEVE(payload)
-
 	case "eventlog":
 		return NewDynaEventLog(payload)
-
 	default:
 		// *TODO* This doesn't have to fail.
 		// We can use a generic gabs / map[string]interface{} with time.now instead
