@@ -55,6 +55,7 @@ func (s Syslog) GetEventTime() time.Time {
 func (s Syslog) GetSyslogTime() time.Time {
 	return s.Timestamp
 }
+
 func (s Syslog) SaganString() (string, error) {
 	return strings.Join(
 		[]string{

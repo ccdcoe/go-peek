@@ -59,6 +59,9 @@ func (s *Eve) Source() (*Source, error) {
 // Rename implements Event
 func (s *Eve) Rename(pretty string) {
 	s.Host = pretty
+	if s.GameMeta != nil {
+		s.GameMeta.Host = pretty
+	}
 }
 
 func (s Eve) Key() string {

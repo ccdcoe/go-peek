@@ -30,6 +30,7 @@ const (
 type DynaEventLog struct {
 	Vals *gabs.Container
 
+	Host      string    `json:"host"`
 	Timestamp time.Time `json:"@timestamp"`
 	EventTime time.Time `json:"event_time"`
 
@@ -47,6 +48,9 @@ func NewDynaEventLog(raw []byte) (*DynaEventLog, error) {
 		return nil, &EventParseErr{key: "full", err: err, raw: raw}
 	}
 
+	if e.Host, err = e.getStringFieldWithErr(eventLogHostKey); err != nil {
+		return nil, &EventParseErr{key: eventLogHostKey, err: err, raw: raw}
+	}
 	if src, err = e.getStringFieldWithErr(eventLogSourceKey); err != nil {
 		return nil, &EventParseErr{key: eventLogSourceKey, err: err, raw: raw}
 	}
@@ -67,14 +71,12 @@ func NewDynaEventLog(raw []byte) (*DynaEventLog, error) {
 		}
 	}
 
-	/*
-		if e.EventTime, err = e.parseTimeFromGabInterface(
-			syslogTsKey,
-			syslogTsFormat,
-		); err != nil {
-			return e, err
-		}
-	*/
+	if e.EventTime, err = e.parseTimeFromGabInterface(
+		syslogTsKey,
+		syslogTsFormat,
+	); err != nil {
+		return e, err
+	}
 
 	if err = e.setDefaultEventShipperSource(
 		syslogHostKey,
@@ -87,7 +89,10 @@ func NewDynaEventLog(raw []byte) (*DynaEventLog, error) {
 }
 
 func (s *DynaEventLog) JSON() ([]byte, error) {
-	s.Vals.SetP(s.Timestamp, syslogTsKey)
+	if s.GameMeta != nil {
+		s.GameMeta.Host = s.Host
+	}
+	//s.Vals.SetP(s.Timestamp, syslogTsKey)
 	s.Vals.SetP(s.GameMeta, "gamemeta")
 	return s.Vals.Bytes(), nil
 }
@@ -99,6 +104,7 @@ func (s *DynaEventLog) Source() (*Source, error) {
 func (s *DynaEventLog) Rename(pretty string) {
 	s.Vals.Set(pretty, syslogHostKey)
 	s.Vals.Set(pretty, eventLogHostKey)
+	s.Host = pretty
 }
 
 func (s DynaEventLog) Key() string {
@@ -150,16 +156,50 @@ func (s DynaEventLog) getStringField(key string) string {
 	return s.Vals.Path(key).Data().(string)
 }
 
-func (s DynaEventLog) getStringFieldWithErr(key string) (string, error) {
+func (s DynaEventLog) checkAndGetUntypedField(key string) (interface{}, error) {
 	if !s.Vals.ExistsP(key) {
 		return "", fmt.Errorf("key %s does not exist in doc", key)
 	}
-	val := s.Vals.Path(key).Data()
+	return s.Vals.Path(key).Data(), nil
+}
+
+func (s DynaEventLog) getStringFieldWithErr(key string) (string, error) {
+	var (
+		val interface{}
+		err error
+	)
+	if val, err = s.checkAndGetUntypedField(key); err != nil {
+		return "", err
+	}
 	switch val.(type) {
 	case string:
 		return val.(string), nil
 	default:
 		return "", fmt.Errorf("key %s value not string", key)
+	}
+}
+func (s DynaEventLog) parseTimeFromGabInterface(key, format string) (time.Time, error) {
+	var (
+		val       interface{}
+		timestamp time.Time
+		err       error
+	)
+	if val, err = s.checkAndGetUntypedField(key); err != nil {
+		return time.Now(), err
+	}
+	switch v := val.(type) {
+	case time.Time:
+		return v, nil
+	case string:
+		if timestamp, err = time.Parse(format, v); err != nil {
+			return time.Now(), &EventParseErr{key: v, err: err, raw: s.Vals.Bytes()}
+		}
+		return timestamp, nil
+	default:
+		return time.Now(), &EventParseErr{
+			key: key,
+			err: fmt.Errorf("unknown type for key %s, expecting string or time", key),
+		}
 	}
 }
 
@@ -178,19 +218,4 @@ func (s *DynaEventLog) setDefaultEventShipperSource(hostkey, ipkey string) (err 
 		}
 	}
 	return nil
-}
-
-func (s DynaEventLog) parseTimeFromGabInterface(key, format string) (time.Time, error) {
-	var (
-		stringval string
-		timestamp time.Time
-		err       error
-	)
-	if stringval, err = s.getStringFieldWithErr(key); err != nil {
-		return time.Now(), &EventParseErr{key: key, err: err, raw: s.Vals.Bytes()}
-	}
-	if timestamp, err = time.Parse(format, stringval); err != nil {
-		return time.Now(), &EventParseErr{key: stringval, err: err, raw: s.Vals.Bytes()}
-	}
-	return timestamp, nil
 }
