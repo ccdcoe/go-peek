@@ -96,11 +96,17 @@ func (s *Snoopy) setMeta() *Snoopy {
 		IP:   s.IP.String(),
 	}
 	if s.SSH != nil && !s.SSH.Empty() {
-		if s.SSH.SrcIP.String() != "" && s.SSH.SrcIP.String() != s.GameMeta.IP {
-			s.GameMeta.IP = s.SSH.SrcIP.String()
+		if s.SSH.SrcIP.String() != "" {
+			if s.GameMeta.Src == nil {
+				s.GameMeta.Src = &Source{}
+			}
+			s.GameMeta.Src.IP = s.SSH.SrcIP.String()
 		}
 		if s.SSH.DstIP.String() != "" && s.SSH.DstIP.String() != s.GameMeta.IP {
-			s.GameMeta.IP = s.SSH.DstIP.String()
+			if s.GameMeta.Dest == nil {
+				s.GameMeta.Dest = &Source{}
+			}
+			s.GameMeta.Dest.IP = s.SSH.DstIP.String()
 		}
 	}
 	return s

@@ -9,6 +9,9 @@ import (
 	"time"
 )
 
+const errBufSize = 256
+const respBufSize = 256
+
 type ElaIndex string
 
 func (e ElaIndex) Format(timestamp time.Time) string {
@@ -29,8 +32,8 @@ func NewBulk(hosts []string) *ElaBulk {
 	return &ElaBulk{
 		Hosts:  hosts,
 		Data:   make([][]byte, 0),
-		Resps:  make(chan *http.Response, 256),
-		errors: make(chan error, 256),
+		Resps:  make(chan *http.Response, respBufSize),
+		errors: make(chan error, errBufSize),
 	}
 }
 
@@ -61,14 +64,14 @@ func (b *ElaBulk) Flush() *ElaBulk {
 		randProxy := rand.Int() % len(b.Hosts)
 		resp, err := http.Post(b.Hosts[randProxy]+"/_bulk", "application/x-ndjson", buf)
 		if err != nil {
-			if len(b.errors) == 256 {
+			if len(b.errors) == errBufSize {
 				<-b.errors
 			}
 			b.errors <- err
 		}
 		if resp != nil {
 			resp.Body.Close()
-			if len(b.Resps) == 256 {
+			if len(b.Resps) == respBufSize {
 				<-b.Resps
 			}
 			b.Resps <- resp

@@ -43,12 +43,16 @@ loop:
 				Timestamp: msg.Time,
 			}
 
+			// Send to sagan if needed
 			if _, ok := saganChannels[msg.Topic]; ok {
 				saganChannels[msg.Topic] <- msg
 			}
+
+			// Collect ela bulk
 			ela.AddIndex(msg.Val, appConfg.GetDestTimeElaIndex(msg.Time, msg.Topic))
 
 		case <-send.C:
+			// Periodic ela bulk flush
 			ela.Flush()
 		}
 	}

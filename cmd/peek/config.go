@@ -49,10 +49,9 @@ type saganConf struct {
 }
 
 type mapTopics struct {
-	Type         string
-	Topic        string
-	ElasticIndex outputs.ElaIndex
-	Sagan        *saganConf
+	Type  string
+	Topic string
+	Sagan *saganConf
 }
 
 type logConfig struct {
@@ -126,10 +125,6 @@ func (c mainConf) GetDestSaganTopic(src string) string {
 	return c.EventTypes[src].Sagan.Topic
 }
 
-func (c mainConf) GetDestElaIndex(src string) string {
-	return c.EventTypes[src].ElasticIndex.String()
-}
-
 func (c mainConf) GetDestTimeElaIndex(timestamp time.Time, src string) string {
-	return c.EventTypes[src].ElasticIndex.Format(timestamp)
+	return outputs.ElaIndex(c.EventTypes[src].Topic).Format(timestamp)
 }
