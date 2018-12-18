@@ -202,14 +202,14 @@ loop:
 				if val, ok := ip2name[src.String()]; ok {
 					srcPretty = val
 				}
+				shipper.SetSrcName(srcPretty)
 			}
 			if dest, ok := shipper.GetDestIp(); ok {
 				if val, ok := ip2name[dest.String()]; ok {
 					destPretty = val
 				}
+				shipper.SetDestName(destPretty)
 			}
-			shipper.SetSrcDestNames(srcPretty, destPretty)
-			//
 
 			if data, err = ev.JSON(); err != nil {
 				d.sendErr(err)
