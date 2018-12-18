@@ -24,7 +24,7 @@ func NewSyslog(raw []byte) (*Syslog, error) {
 	if err := json.Unmarshal(raw, s); err != nil {
 		return nil, err
 	}
-	return s, nil
+	return s.setMeta(), nil
 }
 
 func (s Syslog) JSON() ([]byte, error) {
@@ -33,7 +33,7 @@ func (s Syslog) JSON() ([]byte, error) {
 
 func (s *Syslog) Source() (*Source, error) {
 	if s.GameMeta == nil {
-		s.GameMeta = &Source{Host: s.Host, IP: s.IP.String()}
+		s.setMeta()
 	}
 	return s.GameMeta, nil
 }
@@ -72,7 +72,9 @@ func (s Syslog) SaganString() (string, error) {
 	), nil
 }
 
-func (s *Syslog) Meta() Event {
+func (s *Syslog) setMeta() *Syslog {
+	s.GameMeta = NewSource()
+	s.GameMeta.SetHost(s.Host).SetIp(s.IP.IP)
 	return s
 }
 

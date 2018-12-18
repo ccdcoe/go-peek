@@ -183,7 +183,7 @@ loop:
 				continue loop
 			}
 
-			if pretty, notseen = d.rename.Check(shipper.IP); notseen {
+			if pretty, notseen = d.rename.Check(shipper.IP.String()); notseen {
 				d.sendNotify(fmt.Sprintf(
 					"New host %s, ip %s observed, name will be %s",
 					shipper.Host,
@@ -199,12 +199,12 @@ loop:
 				destPretty = defaultName
 			)
 			if src, ok := shipper.GetSrcIp(); ok {
-				if val, ok := ip2name[src]; ok {
+				if val, ok := ip2name[src.String()]; ok {
 					srcPretty = val
 				}
 			}
 			if dest, ok := shipper.GetDestIp(); ok {
-				if val, ok := ip2name[dest]; ok {
+				if val, ok := ip2name[dest.String()]; ok {
 					destPretty = val
 				}
 			}

@@ -205,17 +205,20 @@ func (s DynaEventLog) parseTimeFromGabInterface(key, format string) (time.Time, 
 
 func (s *DynaEventLog) setDefaultEventShipperSource(hostkey, ipkey string) (err error) {
 	if s.GameMeta == nil {
-		s.GameMeta = &Source{}
+		s.GameMeta = NewSource()
 	}
-	if s.GameMeta.Host == "" {
-		if s.GameMeta.Host, err = s.getStringFieldWithErr(hostkey); err != nil {
-			return err
-		}
+
+	if host, err := s.getStringFieldWithErr(hostkey); err != nil {
+		return err
+	} else {
+		s.GameMeta.SetHost(host)
 	}
-	if s.GameMeta.IP == "" {
-		if s.GameMeta.IP, err = s.getStringFieldWithErr(ipkey); err != nil {
-			return err
-		}
+
+	if ip, err := s.getStringFieldWithErr(ipkey); err != nil {
+		return err
+	} else {
+		s.GameMeta.SetIpFromString(ip)
 	}
+
 	return nil
 }

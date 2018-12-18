@@ -91,22 +91,15 @@ func (s Snoopy) SaganString() (string, error) {
 }
 
 func (s *Snoopy) setMeta() *Snoopy {
-	s.GameMeta = &Source{
-		Host: s.Host,
-		IP:   s.IP.String(),
-	}
+	s.GameMeta = NewSource()
+	s.GameMeta.SetHost(s.Host).SetIp(s.IP.IP)
+
 	if s.SSH != nil && !s.SSH.Empty() {
-		if s.SSH.SrcIP.String() != "" {
-			if s.GameMeta.Src == nil {
-				s.GameMeta.Src = &Source{}
-			}
-			s.GameMeta.Src.IP = s.SSH.SrcIP.String()
+		if len(s.SSH.SrcIP.IP) > 0 {
+			s.GameMeta.SetSrcIp(s.SSH.SrcIP.IP)
 		}
-		if s.SSH.DstIP.String() != "" && s.SSH.DstIP.String() != s.GameMeta.IP {
-			if s.GameMeta.Dest == nil {
-				s.GameMeta.Dest = &Source{}
-			}
-			s.GameMeta.Dest.IP = s.SSH.DstIP.String()
+		if len(s.SSH.DstIP.IP) > 0 {
+			s.GameMeta.SetDestIp(s.SSH.DstIP.IP)
 		}
 	}
 	return s

@@ -1,10 +1,5 @@
 package events
 
-import (
-	"encoding/json"
-	"time"
-)
-
 type Sysmon struct {
 	Syslog
 	EventTime         string `json:"EventTime"`
@@ -52,31 +47,4 @@ type Sysmon struct {
 	EventReceivedTime string `json:"EventReceivedTime"`
 	SourceModuleName  string `json:"SourceModuleName"`
 	SourceModuleType  string `json:"SourceModuleType"`
-}
-
-func (s Sysmon) JSON() ([]byte, error) {
-	return json.Marshal(s)
-}
-
-func (s Sysmon) Source() Source {
-	return Source{
-		Host: s.Hostname,
-		IP:   s.Host,
-	}
-}
-
-func (s *Sysmon) Rename(pretty string) {
-	s.Host = pretty
-	s.Hostname = pretty
-}
-
-func (s Sysmon) Key() string {
-	return s.Image
-}
-
-func (s Sysmon) GetEventTime() time.Time {
-	return s.Timestamp
-}
-func (s Sysmon) GetSyslogTime() time.Time {
-	return s.Timestamp
 }

@@ -83,48 +83,35 @@ func (s Eve) SaganString() (string, error) {
 }
 
 func (s *Eve) setMeta() *Eve {
-	s.GameMeta = &Source{
-		Host: s.Syslog.Host,
-		IP:   s.IP.String(),
-	}
+	s.GameMeta = NewSource()
+	s.GameMeta.SetHost(s.Syslog.Host).SetIp(s.Syslog.IP.IP)
 	switch v := s.EventType; {
 	case v == "alert":
-		s.checkMetaSrcDest().setMetaAlertSrc().setMetaAlertDest()
+		s.setMetaAlertSrc().setMetaAlertDest()
 	case v == "stats":
 	default:
-		s.checkMetaSrcDest().setMetaDefaultSrcDest()
+		s.setMetaDefaultSrcDest()
 	}
 	return s
 }
 
 func (s *Eve) setMetaDefaultSrcDest() *Eve {
-	s.GameMeta.Src.IP = s.SrcIP.String()
-	s.GameMeta.Dest.IP = s.DestIP.String()
+	s.GameMeta.SetSrcIp(s.SrcIP.IP).SetDestIp(s.DestIP.IP)
 	return s
 }
 func (s *Eve) setMetaAlertSrc() *Eve {
 	if s.Alert.Source != nil {
-		s.GameMeta.Src.IP = s.Alert.Source.IP.String()
+		s.GameMeta.SetSrcIp(s.Alert.Source.IP.IP)
 	} else {
-		s.GameMeta.Src.IP = s.SrcIP.String()
+		s.GameMeta.SetSrcIp(s.SrcIP.IP)
 	}
 	return s
 }
 func (s *Eve) setMetaAlertDest() *Eve {
 	if s.Alert.Target != nil {
-		s.GameMeta.Dest.IP = s.Alert.Target.IP.String()
+		s.GameMeta.SetDestIp(s.Alert.Target.IP.IP)
 	} else {
-		s.GameMeta.Dest.IP = s.DestIP.String()
-	}
-	return s
-}
-
-func (s *Eve) checkMetaSrcDest() *Eve {
-	if s.GameMeta.Src == nil {
-		s.GameMeta.Src = &Source{}
-	}
-	if s.GameMeta.Dest == nil {
-		s.GameMeta.Dest = &Source{}
+		s.GameMeta.SetDestIp(s.DestIP.IP)
 	}
 	return s
 }
