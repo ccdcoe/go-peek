@@ -160,9 +160,11 @@ func DecodeWorker(d Decoder, wg *sync.WaitGroup, id int) {
 
 		pretty, sagan string
 		notseen       bool
+
+		ip2name        = d.getAssetIpMap()
+		updateAssetMap = time.NewTicker(5 * time.Second)
 	)
-	// Local copy of rename mappings, TODO: thread safe periodic update
-	var ip2name = d.rename.IpToStringName.RawValues()
+	defer updateAssetMap.Stop()
 loop:
 	for {
 		select {
@@ -192,24 +194,7 @@ loop:
 				))
 			}
 			ev.Rename(pretty)
-
-			// *TODO* move to functions / methods
-			var (
-				srcPretty  = defaultName
-				destPretty = defaultName
-			)
-			if src, ok := shipper.GetSrcIp(); ok {
-				if val, ok := ip2name[src.String()]; ok {
-					srcPretty = val
-				}
-				shipper.SetSrcName(srcPretty)
-			}
-			if dest, ok := shipper.GetDestIp(); ok {
-				if val, ok := ip2name[dest.String()]; ok {
-					destPretty = val
-				}
-				shipper.SetDestName(destPretty)
-			}
+			ip2name.CheckSetSource(shipper)
 
 			if data, err = ev.JSON(); err != nil {
 				d.sendErr(err)
@@ -233,8 +218,14 @@ loop:
 			d.Input.MarkOffset(msg, "")
 		case <-d.stop[id]:
 			break loop
+		case <-updateAssetMap.C:
+			ip2name = d.getAssetIpMap()
 		}
 	}
+}
+
+func (d Decoder) getAssetIpMap() events.AssetIpMap {
+	return events.AssetIpMap(d.rename.IpToStringName.RawValues())
 }
 
 func (d Decoder) halt() {

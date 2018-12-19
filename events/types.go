@@ -5,6 +5,10 @@ import (
 	"strconv"
 )
 
+const (
+	defaultName = "Kerrigan"
+)
+
 type stringIP struct{ net.IP }
 
 func (t *stringIP) UnmarshalJSON(b []byte) error {
@@ -14,6 +18,25 @@ func (t *stringIP) UnmarshalJSON(b []byte) error {
 	}
 	t.IP = net.ParseIP(raw)
 	return err
+}
+
+type AssetIpMap map[string]string
+
+func (am AssetIpMap) CheckSetSource(obj *Source) error {
+	if ip, ok := obj.GetSrcIp(); ok {
+		obj.SetSrcName(am.GetName(ip))
+	}
+	if ip, ok := obj.GetDestIp(); ok {
+		obj.SetDestName(am.GetName(ip))
+	}
+	return nil
+}
+
+func (am AssetIpMap) GetName(ip net.IP) string {
+	if val, ok := am[ip.String()]; ok {
+		return val
+	}
+	return defaultName
 }
 
 type Source struct {
