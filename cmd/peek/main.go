@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -14,7 +13,6 @@ import (
 	"github.com/Shopify/sarama"
 	cluster "github.com/bsm/sarama-cluster"
 	"github.com/ccdcoe/go-peek/decoder"
-	"github.com/ccdcoe/go-peek/types"
 )
 
 var (
@@ -22,8 +20,6 @@ var (
 	confPath  = mainFlags.String("config", path.Join(
 		os.Getenv("GOPATH"), "etc", "peek.toml"),
 		`Configuration file`)
-	workers = mainFlags.Uint("workers", uint(runtime.NumCPU()),
-		`Worker count. Defaults to CPU thread count.`)
 	exampleConf = mainFlags.Bool("example-config", false,
 		`Print default TOML config and exit`)
 )
@@ -45,10 +41,6 @@ func main() {
 	fmt.Println(appConfg)
 
 	// consumer start
-	config := cluster.NewConfig()
-	config.Consumer.Return.Errors = true
-	config.Group.Return.Notifications = true
-
 	var (
 		consumer *cluster.Consumer
 		dec      *decoder.Decoder
@@ -60,7 +52,7 @@ func main() {
 		appConfg.Kafka.Input,
 		appConfg.Kafka.ConsumerGroup,
 		appConfg.Topics(),
-		config,
+		consumerConfig(),
 	); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		os.Exit(1)
@@ -69,7 +61,7 @@ func main() {
 	fmt.Println("Starting decoder")
 	// decoder / worker start
 	if dec, err = decoder.NewMessageDecoder(
-		int(*workers),
+		int(appConfg.General.Workers),
 		consumer,
 		appConfg.MapEventTypes(),
 		appConfg.General.Spooldir,
@@ -80,28 +72,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	var inventory = types.ElaTargetInventory{}
-	if err := inventory.Get(
-		appConfg.ElasticSearch.Inventory.Host,
-		appConfg.ElasticSearch.Inventory.Index,
-	); err != nil {
-		printErr(err)
-		os.Exit(1)
-	}
-	fmt.Println(inventory.MapKnownIP(dec.Names()))
-
 	// Producer start
-	producerConfig := sarama.NewConfig()
-	producerConfig.Producer.RequiredAcks = sarama.NoResponse
-	producerConfig.Producer.Retry.Max = 5
-	producerConfig.Producer.Compression = sarama.CompressionSnappy
-
-	fmt.Println(len(appConfg.EventTypes))
-
 	var errs = make(chan error)
 
 	fmt.Println("starting main sarama producer")
-	producer, err := sarama.NewAsyncProducer(appConfg.Kafka.Output, producerConfig)
+	producer, err := sarama.NewAsyncProducer(appConfg.Kafka.Output, producerConfig())
 	if err != nil {
 		printErr(err)
 	}
@@ -160,7 +135,7 @@ func main() {
 				saganChannels[k],
 				&wg,
 				appConfg,
-				producerConfig,
+				producerConfig(),
 				errs,
 			)
 		}
@@ -185,7 +160,6 @@ func main() {
 	}
 
 	fmt.Println("All done")
-	fmt.Println(appConfg)
 }
 
 func printErr(err error) {

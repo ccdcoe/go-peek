@@ -4,6 +4,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/Shopify/sarama"
+	cluster "github.com/bsm/sarama-cluster"
+
 	"github.com/BurntSushi/toml"
 	"github.com/ccdcoe/go-peek/outputs"
 )
@@ -17,6 +20,7 @@ type mainConf struct {
 
 type generalConf struct {
 	Spooldir      string
+	Workers       uint
 	Errors        logConfig
 	Notifications logConfig
 }
@@ -63,6 +67,7 @@ func defaultConfg() *mainConf {
 	return &mainConf{
 		General: generalConf{
 			Spooldir: "/var/spool/gopeek",
+			Workers:  4,
 			Errors: logConfig{
 				Log:    true,
 				Sample: -1,
@@ -127,4 +132,19 @@ func (c mainConf) GetDestSaganTopic(src string) string {
 
 func (c mainConf) GetDestTimeElaIndex(timestamp time.Time, src string) string {
 	return outputs.ElaIndex(c.EventTypes[src].Topic).Format(timestamp)
+}
+
+func consumerConfig() *cluster.Config {
+	var config = cluster.NewConfig()
+	config.Consumer.Return.Errors = true
+	config.Group.Return.Notifications = true
+	return config
+}
+
+func producerConfig() *sarama.Config {
+	var config = sarama.NewConfig()
+	config.Producer.RequiredAcks = sarama.NoResponse
+	config.Producer.Retry.Max = 5
+	config.Producer.Compression = sarama.CompressionSnappy
+	return config
 }

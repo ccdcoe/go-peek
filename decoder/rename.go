@@ -57,9 +57,7 @@ func NewRename(dumpPath string) (*Rename, error) {
 	if err = d.CheckDir(); err != nil {
 		return nil, err
 	}
-	r = &Rename{
-		D: d,
-	}
+	r = &Rename{D: d}
 
 	if _, err = os.Stat(r.D.NamePath()); os.IsNotExist(err) {
 		if resp, err = http.Get(names); err != nil {
@@ -77,20 +75,28 @@ func NewRename(dumpPath string) (*Rename, error) {
 		}
 	} else {
 		var decodedMap map[string]bool
-		if err := utils.GobLoadFile(r.D.NamePath(), &decodedMap); err != nil {
+		if err := utils.GobLoadFile(
+			r.D.NamePath(),
+			&decodedMap,
+		); err != nil {
 			return nil, err
 		}
 		r.NameSet = types.NewBoolValues(decodedMap)
 	}
 
-	if _, err = os.Stat(r.D.MappingPath()); os.IsNotExist(err) {
+	if _, err = os.Stat(
+		r.D.MappingPath(),
+	); os.IsNotExist(err) {
 		r.ByName = types.NewEmptyStringValues()
 		if err := r.SaveMappings(); err != nil {
 			return nil, err
 		}
 	} else {
 		var decodedMap map[string]string
-		if err := utils.GobLoadFile(r.D.MappingPath(), &decodedMap); err != nil {
+		if err := utils.GobLoadFile(
+			r.D.MappingPath(),
+			&decodedMap,
+		); err != nil {
 			return nil, err
 		}
 		r.ByName = types.NewStringValues(decodedMap)
@@ -112,11 +118,17 @@ func (r *Rename) Check(name string) (string, bool) {
 }
 
 func (r Rename) SaveNames() error {
-	return utils.GobSaveFile(r.D.NamePath(), r.NameSet.RawValues())
+	return utils.GobSaveFile(
+		r.D.NamePath(),
+		r.NameSet.RawValues(),
+	)
 }
 
 func (r Rename) SaveMappings() error {
-	return utils.GobSaveFile(r.D.MappingPath(), r.ByName.RawValues())
+	return utils.GobSaveFile(
+		r.D.MappingPath(),
+		r.ByName.RawValues(),
+	)
 }
 
 func NameSetFromCSV(src io.Reader) (map[string]bool, error) {

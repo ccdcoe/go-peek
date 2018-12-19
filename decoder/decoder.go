@@ -125,8 +125,8 @@ func NewMessageDecoder(
 		for {
 			select {
 			case <-poll.C:
-				inventory := &types.ElaTargetInventory{}
 				d.sendNotify("refreshing inventory")
+				inventory := &types.ElaTargetInventory{}
 				if err := inventory.Get(inventoryHost, inventoryIndex); err != nil {
 					d.sendErr(err)
 					continue loop
