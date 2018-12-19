@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	defaultName   = "Kerrigan"
 	errBufSize    = 256
 	notifyBufSize = 256
 )
