@@ -158,8 +158,9 @@ func DecodeWorker(d Decoder, wg *sync.WaitGroup, id int) {
 
 		data []byte
 
-		pretty, sagan string
-		notseen       bool
+		pretty string
+		sagan  string
+		seen   bool
 
 		ip2name        = d.getAssetIpMap()
 		updateAssetMap = time.NewTicker(5 * time.Second)
@@ -185,7 +186,7 @@ loop:
 				continue loop
 			}
 
-			if pretty, notseen = d.rename.Check(shipper.IP.String()); notseen {
+			if pretty, seen = d.rename.Check(shipper.IP.String()); !seen {
 				d.sendNotify(fmt.Sprintf(
 					"New host %s, ip %s observed, name will be %s",
 					shipper.Host,

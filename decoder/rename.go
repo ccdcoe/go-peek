@@ -101,14 +101,14 @@ func NewRename(dumpPath string) (*Rename, error) {
 
 func (r *Rename) Check(name string) (string, bool) {
 	if val, ok := r.ByName.Get(name); ok {
-		return val, false
+		return val, true
 	}
 	r.ByName.Lock()
 	val := r.NameSet.GetRandom(true)
 	r.ByName.Unlock()
 
 	r.ByName.Set(name, val)
-	return val, true
+	return val, false
 }
 
 func (r Rename) SaveNames() error {
