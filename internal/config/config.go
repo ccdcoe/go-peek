@@ -1,14 +1,72 @@
 package config
 
+import (
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/BurntSushi/toml"
+	"github.com/ccdcoe/go-peek/internal/outputs"
+)
+
 type Config struct {
 	General *GeneralConfig
 
-	Errors, Notifications *LogConfig
+	Errors        *LogConfig
+	Notifications *LogConfig
 
 	Kafka   *KafkaConfig
 	Elastic *ElaConfig
 
-	EventTypes map[string]*StreamConfig
+	Stream map[string]*StreamConfig
+}
+
+func NewDefaultConfig() *Config {
+	return &Config{
+		General: &GeneralConfig{
+			Spooldir: "/var/log/gopeek",
+			Workers:  4,
+		},
+		Errors: &LogConfig{
+			Enable: true,
+			Sample: -1,
+		},
+		Notifications: &LogConfig{
+			Enable: true,
+			Sample: -1,
+		},
+		Kafka: &KafkaConfig{
+			Input:         []string{"localhost:9092"},
+			Output:        []string{"localhost:9093"},
+			ConsumerGroup: "peek",
+		},
+		Elastic: &ElaConfig{
+			Output: []string{"localhost:9200"},
+			RenameMap: &ElaRenameMapConfig{
+				Hosts:     []string{"localhost:9200"},
+				HostIndex: "ladys",
+				AddrIndex: "ipaddr-map",
+			},
+			Inventory: &ElaInventoryConfig{
+				Hosts:      []string{"localhost:9200"},
+				GrainIndex: "inventory-latest",
+			},
+		},
+		Stream: make(map[string]*StreamConfig),
+	}
+}
+
+func (c Config) Toml() error {
+	encoder := toml.NewEncoder(os.Stdout)
+	return encoder.Encode(c)
+}
+
+func (c Config) EventTypes() map[string]string {
+	var types = map[string]string{}
+	for _, val := range c.Stream {
+		types[val.Name] = val.Type
+	}
+	return types
 }
 
 type GeneralConfig struct {
@@ -73,11 +131,74 @@ type ElaInventoryConfig struct {
 }
 
 type StreamConfig struct {
+	// Name of kafka input topic
+	// Redundant if object is kept in map
+	Name string
+
 	// Type of messages in stream
 	// To separate event.Event objects
 	Type string
 
 	// Output topic, elastic index name, etc
 	// Timestamp should be appended to elastic index programmatically
+	Topic string
+
+	// Sagan is "Suricata but for logs"
+	// Uses Suricata engine to correlate logs
+	// Expects a specific log format
+	// This config feeds messages back into backend/middleware kafka cluster in that format
+	// So, new eventstream could be generated from correlations
+	Sagan *SaganConfig
+}
+
+func (s StreamConfig) ElaIdx(timestamp time.Time) string {
+	return outputs.ElaIndex(s.Topic).Format(timestamp)
+}
+
+type Streams map[string]*StreamConfig
+
+func (s Streams) EventTypes() map[string]string {
+	var types = make(map[string]string)
+	for k, v := range s {
+		types[k] = v.Type
+	}
+	return types
+}
+
+func (s Streams) GetType(key string) (string, bool) {
+	if val, ok := s[key]; ok {
+		return val.Type, true
+	}
+	return "", false
+}
+func (s Streams) GetTopic(key string) (string, bool) {
+	if val, ok := s[key]; ok {
+		return val.Topic, true
+	}
+	return "", false
+}
+func (s Streams) GetSaganTopic(key string) (string, bool) {
+	if val, ok := s[key]; ok {
+		if val.Sagan == nil {
+			return fmt.Sprintf("%s-sagan", val.Topic), false
+		}
+		return val.Sagan.Topic, true
+	}
+	return "", false
+}
+
+func (s Streams) ElaIdx(timestamp time.Time, event string) string {
+	if val, ok := s[event]; ok {
+		return val.ElaIdx(timestamp)
+	}
+	return outputs.ElaIndex("events").Format(timestamp)
+}
+
+type SaganConfig struct {
+	// Kafka brokers list
+	Brokers []string
+
+	// Topic name for sagan, should be separate from original stream
+	// Do not cross the streams
 	Topic string
 }
