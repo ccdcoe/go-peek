@@ -75,7 +75,6 @@ func main() {
 	}
 
 	// Producer start
-
 	fmt.Println("starting main sarama producer")
 	producer, err := sarama.NewAsyncProducer(appConfg.Kafka.Output, producerConfig())
 	if err != nil {
