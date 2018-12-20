@@ -12,7 +12,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/Shopify/sarama"
 	cluster "github.com/bsm/sarama-cluster"
-	"github.com/ccdcoe/go-peek/decoder"
+	"github.com/ccdcoe/go-peek/internal/decoder"
 )
 
 var (

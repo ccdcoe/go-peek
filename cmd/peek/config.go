@@ -8,7 +8,7 @@ import (
 	cluster "github.com/bsm/sarama-cluster"
 
 	"github.com/BurntSushi/toml"
-	"github.com/ccdcoe/go-peek/outputs"
+	"github.com/ccdcoe/go-peek/internal/outputs"
 )
 
 type mainConf struct {

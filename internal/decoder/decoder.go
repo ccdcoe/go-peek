@@ -8,8 +8,8 @@ import (
 	"time"
 
 	cluster "github.com/bsm/sarama-cluster"
-	"github.com/ccdcoe/go-peek/events"
-	"github.com/ccdcoe/go-peek/types"
+	"github.com/ccdcoe/go-peek/internal/types"
+	"github.com/ccdcoe/go-peek/pkg/events"
 )
 
 const (

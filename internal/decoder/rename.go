@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ccdcoe/go-peek/types"
-	"github.com/ccdcoe/go-peek/utils"
+	"github.com/ccdcoe/go-peek/internal/types"
+	"github.com/ccdcoe/go-peek/pkg/utils"
 )
 
 const names = "https://raw.githubusercontent.com/hadley/data-baby-names/master/baby-names.csv"

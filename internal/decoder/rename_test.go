@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ccdcoe/go-peek/events"
+	"github.com/ccdcoe/go-peek/pkg/events"
 )
 
 func TestRename(t *testing.T) {

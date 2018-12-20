@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ccdcoe/go-peek/types"
+	"github.com/ccdcoe/go-peek/internal/types"
 )
 
 type suriTS struct{ time.Time }
