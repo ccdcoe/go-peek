@@ -45,6 +45,8 @@ func main() {
 		consumer *cluster.Consumer
 		dec      *decoder.Decoder
 		err      error
+		errs     = make(chan error)
+		wg       sync.WaitGroup
 	)
 
 	fmt.Println("starting consumer")
@@ -73,7 +75,6 @@ func main() {
 	}
 
 	// Producer start
-	var errs = make(chan error)
 
 	fmt.Println("starting main sarama producer")
 	producer, err := sarama.NewAsyncProducer(appConfg.Kafka.Output, producerConfig())
@@ -99,14 +100,7 @@ func main() {
 	}
 
 	// Multiplexer / Output start
-	var wg sync.WaitGroup
 	wg.Add(1)
-
-	if err != nil {
-		printErr(err)
-		os.Exit(1)
-	}
-
 	go dumpNames(
 		time.NewTicker(5*time.Second),
 		appConfg,
@@ -128,8 +122,8 @@ func main() {
 	// sagan kafka topics send
 	for k, v := range appConfg.EventTypes {
 		if v.Sagan != nil {
-			wg.Add(1)
 			fmt.Fprintf(os.Stdout, "Starting channel consumer for %s\n", k)
+			wg.Add(1)
 			go saganProducer(
 				k,
 				saganChannels[k],
@@ -153,12 +147,11 @@ func main() {
 		saganChannels,
 		producer,
 	)
-	wg.Wait()
 
+	wg.Wait()
 	if len(dec.Notifications) > 0 {
 		fmt.Println(<-dec.Notifications)
 	}
-
 	fmt.Println("All done")
 }
 
