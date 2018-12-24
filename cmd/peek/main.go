@@ -12,6 +12,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/Shopify/sarama"
 	cluster "github.com/bsm/sarama-cluster"
+	"github.com/ccdcoe/go-peek/internal/config"
 	"github.com/ccdcoe/go-peek/internal/decoder"
 )
 
@@ -26,10 +27,10 @@ var (
 
 func main() {
 	mainFlags.Parse(os.Args[1:])
-	appConfg := defaultConfg()
+	appConfg := config.NewDefaultConfig()
 
 	if *exampleConf {
-		appConfg.Print()
+		appConfg.Toml()
 		os.Exit(1)
 	}
 
@@ -43,6 +44,7 @@ func main() {
 	// consumer start
 	var (
 		consumer *cluster.Consumer
+		producer sarama.AsyncProducer
 		dec      *decoder.Decoder
 		err      error
 		errs     = make(chan error)
@@ -53,8 +55,8 @@ func main() {
 	if consumer, err = cluster.NewConsumer(
 		appConfg.Kafka.Input,
 		appConfg.Kafka.ConsumerGroup,
-		appConfg.Topics(),
-		consumerConfig(),
+		appConfg.Stream.Topics(),
+		config.NewConsumerConfig(),
 	); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		os.Exit(1)
@@ -65,10 +67,10 @@ func main() {
 	if dec, err = decoder.NewMessageDecoder(
 		int(appConfg.General.Workers),
 		consumer,
-		appConfg.MapEventTypes(),
+		appConfg.Stream.EventTypes(),
 		appConfg.General.Spooldir,
-		appConfg.ElasticSearch.Inventory.Host,
-		appConfg.ElasticSearch.Inventory.Index,
+		appConfg.Elastic.Inventory.Hosts[0],
+		appConfg.Elastic.Inventory.GrainIndex,
 	); err != nil {
 		printErr(err)
 		os.Exit(1)
@@ -76,23 +78,25 @@ func main() {
 
 	// Producer start
 	fmt.Println("starting main sarama producer")
-	producer, err := sarama.NewAsyncProducer(appConfg.Kafka.Output, producerConfig())
-	if err != nil {
+	if producer, err = sarama.NewAsyncProducer(
+		appConfg.Kafka.Output,
+		config.NewProducerConfig(),
+	); err != nil {
 		printErr(err)
 	}
 
-	if appConfg.General.Errors.Log {
+	if appConfg.Errors.Enable {
 		go logErrs(
-			appConfg.General.Errors.Sample,
+			appConfg.Errors.Sample,
 			consumer.Errors(),
 			producer.Errors(),
 			dec.Errors,
 			errs,
 		)
 	}
-	if appConfg.General.Notifications.Log {
+	if appConfg.Notifications.Enable {
 		go logNotifications(
-			appConfg.General.Notifications.Sample,
+			appConfg.Notifications.Sample,
 			dec.Notifications,
 			consumer.Notifications(),
 		)
@@ -109,17 +113,17 @@ func main() {
 
 	fmt.Println("starting channels for sagan producer messages")
 	var saganChannels = make(map[string]chan decoder.DecodedMessage)
-	for k, v := range appConfg.EventTypes {
+	for k, v := range appConfg.Stream {
 		if v.Sagan != nil {
 			fmt.Fprintf(os.Stdout, "Making channel sagan for %s to %s topic %s\n", k,
-				strings.Join(appConfg.EventTypes[k].Sagan.Brokers, ","),
-				appConfg.EventTypes[k].Sagan.Topic)
+				strings.Join(appConfg.Stream[k].Sagan.Brokers, ","),
+				appConfg.Stream[k].Sagan.Topic)
 			saganChannels[k] = make(chan decoder.DecodedMessage)
 		}
 	}
 
 	// sagan kafka topics send
-	for k, v := range appConfg.EventTypes {
+	for k, v := range appConfg.Stream {
 		if v.Sagan != nil {
 			fmt.Fprintf(os.Stdout, "Starting channel consumer for %s\n", k)
 			wg.Add(1)
@@ -128,7 +132,7 @@ func main() {
 				saganChannels[k],
 				&wg,
 				appConfg,
-				producerConfig(),
+				config.NewProducerConfig(),
 				errs,
 			)
 		}

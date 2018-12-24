@@ -10,6 +10,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	cluster "github.com/bsm/sarama-cluster"
+	"github.com/ccdcoe/go-peek/internal/config"
 	"github.com/ccdcoe/go-peek/internal/decoder"
 	"github.com/ccdcoe/go-peek/internal/outputs"
 )
@@ -17,15 +18,16 @@ import (
 func decodedMessageConsumer(
 	input chan decoder.DecodedMessage,
 	wg *sync.WaitGroup,
-	appConfg *mainConf,
+	appConfg *config.Config,
 	saganChannels map[string]chan decoder.DecodedMessage,
 	producer sarama.AsyncProducer,
 ) {
 	defer wg.Done()
 
 	var (
-		send = time.NewTicker(3 * time.Second)
-		ela  = outputs.NewBulk(appConfg.ElasticSearch.Output)
+		send  = time.NewTicker(3 * time.Second)
+		ela   = outputs.NewBulk(appConfg.Elastic.Output)
+		topic string
 	)
 
 loop:
@@ -36,20 +38,22 @@ loop:
 				break loop
 			}
 			// Main produce
-			producer.Input() <- &sarama.ProducerMessage{
-				Topic:     appConfg.GetDestTopic(msg.Topic),
-				Value:     sarama.ByteEncoder(msg.Val),
-				Key:       sarama.ByteEncoder(msg.Key),
-				Timestamp: msg.Time,
-			}
+			if topic, ok = appConfg.Stream.GetTopic(msg.Topic); ok {
+				producer.Input() <- &sarama.ProducerMessage{
+					Topic:     topic,
+					Value:     sarama.ByteEncoder(msg.Val),
+					Key:       sarama.ByteEncoder(msg.Key),
+					Timestamp: msg.Time,
+				}
 
-			// Send to sagan if needed
-			if _, ok := saganChannels[msg.Topic]; ok {
-				saganChannels[msg.Topic] <- msg
-			}
+				// Send to sagan if needed
+				if _, ok := saganChannels[msg.Topic]; ok {
+					saganChannels[msg.Topic] <- msg
+				}
 
-			// Collect ela bulk
-			ela.AddIndex(msg.Val, appConfg.GetDestTimeElaIndex(msg.Time, msg.Topic))
+				// Collect ela bulk
+				ela.AddIndex(msg.Val, appConfg.Stream.ElaIdx(msg.Time, msg.Topic))
+			}
 
 		case <-send.C:
 			// Periodic ela bulk flush
@@ -66,16 +70,16 @@ func saganProducer(
 	id string,
 	input chan decoder.DecodedMessage,
 	wg *sync.WaitGroup,
-	appConfg *mainConf,
+	appConfg *config.Config,
 	producerConfig *sarama.Config,
 	errs chan error,
 ) {
 	defer wg.Done()
 	defer fmt.Fprintf(os.Stdout, "Sagan consumer %s done\n", id)
 
-	var topic = appConfg.EventTypes[id].Sagan.Topic
+	var topic, _ = appConfg.Stream.GetSaganTopic(id)
 	saganProducer, err := sarama.NewAsyncProducer(
-		appConfg.EventTypes[id].Sagan.Brokers,
+		appConfg.Stream[id].Sagan.Brokers,
 		producerConfig)
 
 	if err != nil {
@@ -107,14 +111,14 @@ loop:
 
 func dumpNames(
 	dumpNames *time.Ticker,
-	appConfg *mainConf,
+	appConfg *config.Config,
 	dec *decoder.Decoder,
 	errs chan error,
 ) {
 	defer dumpNames.Stop()
 	fmt.Println("starting elastic name dumper")
 	elaNameDumper := outputs.NewBulk(
-		appConfg.ElasticSearch.RenameMap.Hosts,
+		appConfg.Elastic.RenameMap.Hosts,
 	)
 loop:
 	for {
@@ -131,7 +135,7 @@ loop:
 					Pretty:   v,
 				})
 				elaNameDumper.AddIndex(data,
-					appConfg.ElasticSearch.RenameMap.Index, k)
+					appConfg.Elastic.RenameMap.HostIndex, k)
 			}
 			for k, v := range dec.IPmaps() {
 				data, _ := json.Marshal(struct {
@@ -141,7 +145,7 @@ loop:
 					Pretty: v,
 				})
 				elaNameDumper.AddIndex(data,
-					appConfg.ElasticSearch.RenameMap.IPaddrIndex, k)
+					appConfg.Elastic.RenameMap.AddrIndex, k)
 			}
 			elaNameDumper.Flush()
 		}

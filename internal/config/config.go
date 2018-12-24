@@ -18,7 +18,7 @@ type Config struct {
 	Kafka   *KafkaConfig
 	Elastic *ElaConfig
 
-	Stream map[string]*StreamConfig
+	Stream Streams
 }
 
 func NewDefaultConfig() *Config {
@@ -185,6 +185,14 @@ func (s Streams) GetSaganTopic(key string) (string, bool) {
 		return val.Sagan.Topic, true
 	}
 	return "", false
+}
+
+func (s Streams) Topics() []string {
+	var topics = make([]string, 0)
+	for k := range s {
+		topics = append(topics, k)
+	}
+	return topics
 }
 
 func (s Streams) ElaIdx(timestamp time.Time, event string) string {
