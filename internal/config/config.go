@@ -2,7 +2,8 @@ package config
 
 import (
 	"fmt"
-	"os"
+	"io"
+	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -52,12 +53,27 @@ func NewDefaultConfig() *Config {
 				GrainIndex: "inventory-latest",
 			},
 		},
-		Stream: make(map[string]*StreamConfig),
+		Stream: make(Streams),
 	}
 }
 
-func (c Config) Toml() error {
-	encoder := toml.NewEncoder(os.Stdout)
+func NewExampleConfig() *Config {
+	var c = NewDefaultConfig()
+	c.DefaultStreams()
+	return c
+}
+
+func (c *Config) DefaultStreams() bool {
+	if c.Stream == nil || len(c.Stream) == 0 {
+		var name = "syslog"
+		c.Stream[name] = NewDefaultStreamConfig(name)
+		return true
+	}
+	return false
+}
+
+func (c Config) Toml(dest io.Writer) error {
+	encoder := toml.NewEncoder(dest)
 	return encoder.Encode(c)
 }
 
@@ -149,6 +165,22 @@ type StreamConfig struct {
 	// This config feeds messages back into backend/middleware kafka cluster in that format
 	// So, new eventstream could be generated from correlations
 	Sagan *SaganConfig
+}
+
+func NewStreamConfig() *StreamConfig {
+	return &StreamConfig{
+		Sagan: &SaganConfig{},
+	}
+}
+
+func NewDefaultStreamConfig(stream string) *StreamConfig {
+	var s = NewStreamConfig()
+	s.Name = stream
+	s.Type = stream
+	s.Topic = stream
+	s.Sagan.Topic = strings.Join([]string{stream, "sagan"}, "-")
+	s.Sagan.Brokers = []string{"localhost:9092"}
+	return s
 }
 
 func (s StreamConfig) ElaIdx(timestamp time.Time) string {

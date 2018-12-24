@@ -27,19 +27,23 @@ var (
 
 func main() {
 	mainFlags.Parse(os.Args[1:])
-	appConfg := config.NewDefaultConfig()
 
 	if *exampleConf {
-		appConfg.Toml()
+		config.NewExampleConfig().Toml(os.Stdout)
 		os.Exit(1)
 	}
 
 	fmt.Println("Loading config")
+	appConfg := config.NewDefaultConfig()
 	if _, err := toml.DecodeFile(*confPath, &appConfg); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		os.Exit(1)
 	}
 	fmt.Println(appConfg)
+
+	if appConfg.DefaultStreams() {
+		fmt.Fprintf(os.Stdout, "No streams defined, using default\n")
+	}
 
 	// consumer start
 	var (
