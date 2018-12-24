@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"io"
-	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -178,8 +177,7 @@ func NewDefaultStreamConfig(stream string) *StreamConfig {
 	s.Name = stream
 	s.Type = stream
 	s.Topic = stream
-	s.Sagan.Topic = strings.Join([]string{stream, "sagan"}, "-")
-	s.Sagan.Brokers = []string{"localhost:9092"}
+	s.Sagan = NewDefaultSaganConfig(stream)
 	return s
 }
 
@@ -241,4 +239,16 @@ type SaganConfig struct {
 	// Topic name for sagan, should be separate from original stream
 	// Do not cross the streams
 	Topic string
+}
+
+func NewSaganConfig() *SaganConfig {
+	return &SaganConfig{
+		Brokers: []string{"localhost:9092"},
+	}
+}
+
+func NewDefaultSaganConfig(stream string) *SaganConfig {
+	var s = NewSaganConfig()
+	s.Topic = stream
+	return s
 }
