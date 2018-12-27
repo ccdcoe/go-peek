@@ -3,6 +3,7 @@
 import argparse
 import json
 import time
+from datetime import datetime
 from kafka import KafkaProducer
 
 if __name__ == "__main__":
@@ -29,6 +30,7 @@ if __name__ == "__main__":
         msg = {
                 "syslog_message": "message {}".format(i),
                 "syslog_host": "sycamore",
+                "@timestamp": str(datetime.utcnow().astimezone().isoformat()),
                 }
         resp = producer.send(args.topic, bytes(json.dumps(msg), encoding='utf-8'))
         i += 1
