@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/ccdcoe/go-peek/internal/ingest/kafka"
 	"github.com/ccdcoe/go-peek/internal/outputs"
 )
 
@@ -82,6 +83,14 @@ func (c Config) EventTypes() map[string]string {
 		types[val.Name] = val.Type
 	}
 	return types
+}
+
+func (c Config) KafkaConfig() *kafka.KafkaConfig {
+	return &kafka.KafkaConfig{
+		Brokers:       c.Kafka.Input,
+		ConsumerGroup: c.Kafka.ConsumerGroup,
+		Topics:        c.Stream.Topics(),
+	}
 }
 
 type GeneralConfig struct {

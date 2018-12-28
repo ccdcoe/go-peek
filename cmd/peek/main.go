@@ -8,6 +8,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/ccdcoe/go-peek/internal/config"
+	"github.com/ccdcoe/go-peek/internal/ingest/kafka"
 )
 
 var (
@@ -27,18 +28,33 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println("Loading config")
-	appConfg := config.NewDefaultConfig()
-	if _, err := toml.DecodeFile(*confPath, &appConfg); err != nil {
+	var (
+		err      error
+		appConfg = config.NewDefaultConfig()
+	)
+
+	fmt.Fprintf(os.Stdout, "Loading main config\n")
+	if _, err = toml.DecodeFile(*confPath, &appConfg); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		os.Exit(1)
 	}
-	fmt.Println(appConfg)
 
 	if appConfg.DefaultStreams() {
-		fmt.Fprintf(os.Stdout, "No streams defined, using default\n")
+		fmt.Fprintf(os.Stdout, "No streams configured, using default\n")
 	}
 
+	/*
+		var (
+			consumer ingest.Ingester
+		)
+	*/
+
+	if _, err = kafka.NewKafkaIngest(
+		appConfg.KafkaConfig(),
+	); err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+		os.Exit(1)
+	}
 	/*
 		// consumer start
 		var (
