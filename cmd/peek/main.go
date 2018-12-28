@@ -8,6 +8,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/ccdcoe/go-peek/internal/config"
+	"github.com/ccdcoe/go-peek/internal/ingest"
 	"github.com/ccdcoe/go-peek/internal/ingest/kafka"
 )
 
@@ -43,17 +44,22 @@ func main() {
 		fmt.Fprintf(os.Stdout, "No streams configured, using default\n")
 	}
 
-	/*
-		var (
-			consumer ingest.Ingester
-		)
-	*/
+	var (
+		consumer ingest.Ingester
+	)
 
-	if _, err = kafka.NewKafkaIngest(
+	fmt.Fprintf(os.Stdout, "Starting consumer\n")
+	if consumer, err = kafka.NewKafkaIngest(
 		appConfg.KafkaConfig(),
 	); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		os.Exit(1)
+	}
+
+	// *TODO* temp code during devel
+	fmt.Fprintf(os.Stdout, "Processing messages\n")
+	for msg := range consumer.Messages() {
+		fmt.Println(string(msg.Data))
 	}
 	/*
 		// consumer start

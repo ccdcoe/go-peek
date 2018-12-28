@@ -2,7 +2,7 @@ package message
 
 type Message struct {
 	Data   []byte
-	Offset int
+	Offset int64
 	Source string
 }
 

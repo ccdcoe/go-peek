@@ -2,6 +2,8 @@ package kafka
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	cluster "github.com/bsm/sarama-cluster"
 	"github.com/ccdcoe/go-peek/internal/ingest/message"
@@ -25,6 +27,7 @@ func NewKafkaIngest(config *KafkaConfig) (*KafkaIngest, error) {
 	if config.SaramaConfig == nil {
 		config.SaramaConfig = NewConsumerConfig()
 	}
+	fmt.Println(config.Topics)
 	if k.Consumer, err = cluster.NewConsumer(
 		config.Brokers,
 		config.ConsumerGroup,
@@ -38,18 +41,25 @@ func NewKafkaIngest(config *KafkaConfig) (*KafkaIngest, error) {
 	loop:
 		for {
 			select {
-			case msg, ok := <-k.Messages():
+			case msg, ok := <-k.Consumer.Messages():
 				if !ok {
 					break loop
 				}
 				k.output <- message.Message{
-					Data:   msg.Data,
+					Data:   msg.Value,
 					Offset: msg.Offset,
-					Source: msg.Source,
+					Source: msg.Topic,
 				}
 			case <-k.ctx.Done():
 				k.Consumer.Close()
 			}
+		}
+	}()
+
+	// *TODO* Move to separate notification handler
+	go func() {
+		for not := range k.Notifications() {
+			fmt.Fprintf(os.Stdout, "%+v\n", not)
 		}
 	}()
 
