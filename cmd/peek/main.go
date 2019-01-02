@@ -65,6 +65,10 @@ func main() {
 		commandF = doOnlineConsume
 	case "replay":
 		commandF = doReplay
+	default:
+		// *TODO* print list of commands
+		fmt.Fprintf(os.Stderr, "Unknown command, exiting\n")
+		os.Exit(2)
 	}
 
 	fmt.Fprintf(os.Stdout, "Running main command\n")
