@@ -12,6 +12,10 @@ import (
 	"github.com/ccdcoe/go-peek/internal/ingest/kafka"
 )
 
+const (
+	onliemode = "online"
+)
+
 var (
 	mainFlags = flag.NewFlagSet("main", flag.ExitOnError)
 	confPath  = mainFlags.String("config", path.Join(
@@ -30,6 +34,9 @@ func main() {
 	}
 
 	var (
+		command  string
+		args     []string
+		commandF func(args []string, conf *config.Config) error
 		err      error
 		appConfg = config.NewDefaultConfig()
 	)
@@ -44,23 +51,29 @@ func main() {
 		fmt.Fprintf(os.Stdout, "No streams configured, using default\n")
 	}
 
-	var (
-		consumer ingest.Ingester
-	)
+	args = mainFlags.Args()
+	if len(args) == 0 {
+		fmt.Fprintf(os.Stdout, "No command set, assiming online\n")
+		command = onliemode
+	} else {
+		command = args[0]
+		args = args[1:]
+	}
 
-	fmt.Fprintf(os.Stdout, "Starting consumer\n")
-	if consumer, err = kafka.NewKafkaIngest(
-		appConfg.KafkaConfig(),
-	); err != nil {
+	switch command {
+	case onliemode:
+		commandF = doOnlineConsume
+	case "replay":
+		commandF = doReplay
+	}
+
+	fmt.Fprintf(os.Stdout, "Running main command\n")
+	if err = commandF(args, appConfg); err != nil {
+		// *TODO* error type switch here
 		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
-		os.Exit(1)
+		os.Exit(2)
 	}
 
-	// *TODO* temp code during devel
-	fmt.Fprintf(os.Stdout, "Processing messages\n")
-	for msg := range consumer.Messages() {
-		fmt.Println(string(msg.Data))
-	}
 	/*
 		// consumer start
 		var (
@@ -177,7 +190,30 @@ func main() {
 			fmt.Println(<-dec.Notifications)
 		}
 	*/
-	fmt.Println("All done")
+}
+
+func doOnlineConsume(args []string, appConfg *config.Config) error {
+	var (
+		consumer ingest.Ingester
+		err      error
+	)
+
+	fmt.Fprintf(os.Stdout, "Starting consumer\n")
+	if consumer, err = kafka.NewKafkaIngest(
+		appConfg.KafkaConfig(),
+	); err != nil {
+		return err
+	}
+
+	// *TODO* temp code during devel, remove
+	fmt.Fprintf(os.Stdout, "Processing messages\n")
+	for msg := range consumer.Messages() {
+		fmt.Println(string(msg.Data))
+	}
+	return nil
+}
+func doReplay(args []string, appConfg *config.Config) error {
+	return nil
 }
 
 func printErr(err error) {
