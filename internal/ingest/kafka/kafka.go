@@ -2,18 +2,18 @@ package kafka
 
 import (
 	"context"
-	"fmt"
-	"os"
 
 	cluster "github.com/bsm/sarama-cluster"
 	"github.com/ccdcoe/go-peek/internal/ingest/message"
+	"github.com/ccdcoe/go-peek/internal/logging"
 )
 
 type KafkaIngest struct {
 	output        chan message.Message
-	consumeCansel context.CancelFunc
+	consumeCancel context.CancelFunc
 
 	*cluster.Consumer
+	logging.LogSender
 }
 
 func NewKafkaIngest(config *KafkaConfig) (*KafkaIngest, error) {
@@ -24,10 +24,12 @@ func NewKafkaIngest(config *KafkaConfig) (*KafkaIngest, error) {
 			output: make(chan message.Message, 0),
 		}
 	)
-	if config.SaramaConfig == nil {
-		config.SaramaConfig = NewConsumerConfig()
+
+	if err = config.Validate(); err != nil {
+		return nil, err
 	}
-	fmt.Println(config.Topics)
+	k.LogSender = config.LogHandler
+
 	if k.Consumer, err = cluster.NewConsumer(
 		config.Brokers,
 		config.ConsumerGroup,
@@ -36,7 +38,8 @@ func NewKafkaIngest(config *KafkaConfig) (*KafkaIngest, error) {
 	); err != nil {
 		return nil, err
 	}
-	ctx, k.consumeCansel = context.WithCancel(context.Background())
+	ctx, k.consumeCancel = context.WithCancel(context.Background())
+
 	go func(ctx context.Context) {
 	loop:
 		for {
@@ -56,10 +59,14 @@ func NewKafkaIngest(config *KafkaConfig) (*KafkaIngest, error) {
 		}
 	}(ctx)
 
-	// *TODO* Move to separate notification handler
 	go func() {
-		for not := range k.Notifications() {
-			fmt.Fprintf(os.Stdout, "%+v\n", not)
+		for not := range k.Consumer.Notifications() {
+			k.LogSender.Notify(not)
+		}
+	}()
+	go func() {
+		for err := range k.Consumer.Errors() {
+			k.LogSender.Error(err)
 		}
 	}()
 
@@ -71,6 +78,6 @@ func (k KafkaIngest) Messages() <-chan message.Message {
 }
 
 func (k KafkaIngest) Halt() error {
-	k.consumeCansel()
+	k.consumeCancel()
 	return nil
 }
