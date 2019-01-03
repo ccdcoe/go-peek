@@ -7,9 +7,11 @@ import (
 	"path"
 
 	"github.com/BurntSushi/toml"
+	cluster "github.com/bsm/sarama-cluster"
 	"github.com/ccdcoe/go-peek/internal/config"
 	"github.com/ccdcoe/go-peek/internal/ingest"
 	"github.com/ccdcoe/go-peek/internal/ingest/kafka"
+	"github.com/ccdcoe/go-peek/internal/logging"
 )
 
 var (
@@ -125,13 +127,40 @@ func doOnlineConsume(args []string, appConfg *config.Config) error {
 }
 func doOnlineProcess(args []string, appConfg *config.Config) error {
 	var (
-		consumer ingest.Ingester
-		err      error
+		consumer    ingest.Ingester
+		err         error
+		logHandle   = logging.NewLogHandler()
+		kafkaConfig = appConfg.KafkaConfig()
 	)
 
+	// *TODO* move to logging package
+	go func() {
+		fmt.Fprintf(os.Stdout, "Starting notification handler\n")
+		for not := range logHandle.Notifications() {
+			switch v := not.(type) {
+			case string:
+				fmt.Fprintf(os.Stdout, "INFO: %s\n", v)
+			case cluster.Notification:
+				fmt.Fprintf(os.Stdout, "INFO: %+v\n", v)
+			default:
+			}
+		}
+		fmt.Fprintf(os.Stdout, "Stopping notification handler\n")
+	}()
+	// *TODO* move to logging package
+	go func() {
+		fmt.Fprintf(os.Stdout, "Starting error handler\n")
+		for err := range logHandle.Errors() {
+			// *TODO* error type switch
+			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err.Error())
+		}
+		fmt.Fprintf(os.Stdout, "Stopping error handler\n")
+	}()
+
+	kafkaConfig.LogHandler = logHandle
 	fmt.Fprintf(os.Stdout, "Starting consumer\n")
 	if consumer, err = kafka.NewKafkaIngest(
-		appConfg.KafkaConfig(),
+		kafkaConfig,
 	); err != nil {
 		return err
 	}

@@ -61,7 +61,8 @@ func NewKafkaIngest(config *KafkaConfig) (*KafkaIngest, error) {
 
 	go func() {
 		for not := range k.Consumer.Notifications() {
-			k.LogSender.Notify(not)
+			// Not everything needs to be pointer
+			k.LogSender.Notify(*not)
 		}
 	}()
 	go func() {
