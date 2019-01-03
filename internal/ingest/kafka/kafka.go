@@ -4,12 +4,12 @@ import (
 	"context"
 
 	cluster "github.com/bsm/sarama-cluster"
-	"github.com/ccdcoe/go-peek/internal/ingest/message"
 	"github.com/ccdcoe/go-peek/internal/logging"
+	"github.com/ccdcoe/go-peek/internal/types"
 )
 
 type KafkaIngest struct {
-	output        chan message.Message
+	output        chan types.Message
 	consumeCancel context.CancelFunc
 
 	*cluster.Consumer
@@ -21,7 +21,7 @@ func NewKafkaIngest(config *KafkaConfig) (*KafkaIngest, error) {
 		err error
 		ctx context.Context
 		k   = &KafkaIngest{
-			output: make(chan message.Message, 0),
+			output: make(chan types.Message, 0),
 		}
 	)
 
@@ -48,7 +48,7 @@ func NewKafkaIngest(config *KafkaConfig) (*KafkaIngest, error) {
 				if !ok {
 					break loop
 				}
-				k.output <- message.Message{
+				k.output <- types.Message{
 					Data:   msg.Value,
 					Offset: msg.Offset,
 					Source: msg.Topic,
@@ -74,7 +74,7 @@ func NewKafkaIngest(config *KafkaConfig) (*KafkaIngest, error) {
 	return k, nil
 }
 
-func (k KafkaIngest) Messages() <-chan message.Message {
+func (k KafkaIngest) Messages() <-chan types.Message {
 	return k.output
 }
 
