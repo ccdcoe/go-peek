@@ -49,7 +49,7 @@ func (t *ElaTargetInventory) Get(host, index string) error {
 	}
 	defer resp.Body.Close()
 	var decoder = json.NewDecoder(resp.Body)
-	if err := decoder.Decode(t); err != nil {
+	if err = decoder.Decode(t); err != nil {
 		return err
 	}
 

@@ -9,9 +9,9 @@ import (
 	"github.com/BurntSushi/toml"
 	cluster "github.com/bsm/sarama-cluster"
 	"github.com/ccdcoe/go-peek/internal/config"
-	"github.com/ccdcoe/go-peek/internal/ingest"
 	"github.com/ccdcoe/go-peek/internal/ingest/kafka"
 	"github.com/ccdcoe/go-peek/internal/logging"
+	"github.com/ccdcoe/go-peek/internal/types"
 )
 
 var (
@@ -108,7 +108,7 @@ func doHelp(args []string, appConfg *config.Config) error {
 
 func doOnlineConsume(args []string, appConfg *config.Config) error {
 	var (
-		consumer ingest.Ingester
+		consumer types.Messager
 		err      error
 	)
 
@@ -128,7 +128,7 @@ func doOnlineConsume(args []string, appConfg *config.Config) error {
 
 func doOnlineProcess(args []string, appConfg *config.Config) error {
 	var (
-		consumer ingest.Ingester
+		consumer types.Messager
 		err      error
 	)
 	var (
