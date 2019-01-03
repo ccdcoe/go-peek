@@ -105,6 +105,7 @@ func doHelp(args []string, appConfg *config.Config) error {
 	usage()
 	return nil
 }
+
 func doOnlineConsume(args []string, appConfg *config.Config) error {
 	var (
 		consumer ingest.Ingester
@@ -118,17 +119,19 @@ func doOnlineConsume(args []string, appConfg *config.Config) error {
 		return err
 	}
 
-	// *TODO* temp code during devel, remove
 	fmt.Fprintf(os.Stdout, "Processing messages\n")
 	for msg := range consumer.Messages() {
 		fmt.Println(string(msg.Data))
 	}
 	return nil
 }
+
 func doOnlineProcess(args []string, appConfg *config.Config) error {
 	var (
-		consumer    ingest.Ingester
-		err         error
+		consumer ingest.Ingester
+		err      error
+	)
+	var (
 		logHandle   = logging.NewLogHandler()
 		kafkaConfig = appConfg.KafkaConfig()
 	)
@@ -172,6 +175,7 @@ func doOnlineProcess(args []string, appConfg *config.Config) error {
 	}
 	return nil
 }
+
 func doReplay(args []string, appConfg *config.Config) error {
 	return nil
 }
