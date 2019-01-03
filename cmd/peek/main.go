@@ -17,8 +17,6 @@ var (
 	confPath  = mainFlags.String("config", path.Join(
 		os.Getenv("GOPATH"), "etc", "peek.toml"),
 		`Configuration file`)
-	exampleConf = mainFlags.Bool("example-config", false,
-		`Print default TOML config and exit`)
 )
 
 var usageStr = `
@@ -29,6 +27,7 @@ Commands:
 	online					Process online kafka streams, default option
 	consume					Read messages from configured kafka topics and print messages to stdout
 	replay					Replay log files to simulate kafka stream
+	example-config				Print example toml config and exit
 	help					Print commands and exit
 
 Options:
@@ -40,13 +39,13 @@ func usage() {
 	os.Exit(1)
 }
 
+func exampleConfig() {
+	config.NewExampleConfig().Toml(os.Stdout)
+	os.Exit(1)
+}
+
 func main() {
 	mainFlags.Parse(os.Args[1:])
-
-	if *exampleConf {
-		config.NewExampleConfig().Toml(os.Stdout)
-		os.Exit(1)
-	}
 
 	var (
 		command  string
@@ -72,6 +71,8 @@ func main() {
 		commandF = doOnlineConsume
 	case "replay":
 		commandF = doReplay
+	case "example-config":
+		exampleConfig()
 	case "help":
 		usage()
 	default:
