@@ -86,6 +86,7 @@ func NewMessageDecoder(
 		return nil, err
 	}
 
+	d.workerStoppers = make([]context.CancelFunc, config.Workers)
 	go func() {
 		var ctx context.Context
 		defer close(d.output)
@@ -240,6 +241,7 @@ loop:
 			d.output <- types.Message{
 				Data:    data,
 				Source:  msg.Source,
+				Offset:  msg.Offset,
 				Key:     ev.Key(),
 				Time:    ev.GetEventTime(),
 				Formats: formats,
