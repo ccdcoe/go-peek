@@ -1,0 +1,974 @@
+{
+    "es-proxy-0": {
+        "biosversion": "VirtualBox", 
+        "kernel": "Linux", 
+        "domain": "", 
+        "uid": 0, 
+        "zmqversion": "4.1.4", 
+        "kernelrelease": "4.4.0-139-generic", 
+        "pythonpath": [
+            "/usr/bin", 
+            "/usr/lib/python2.7", 
+            "/usr/lib/python2.7/plat-x86_64-linux-gnu", 
+            "/usr/lib/python2.7/lib-tk", 
+            "/usr/lib/python2.7/lib-old", 
+            "/usr/lib/python2.7/lib-dynload", 
+            "/usr/local/lib/python2.7/dist-packages", 
+            "/usr/lib/python2.7/dist-packages"
+        ], 
+        "serialnumber": "0", 
+        "pid": 10874, 
+        "ip_interfaces": {
+            "lo": [
+                "127.0.0.1", 
+                "::1"
+            ], 
+            "enp0s3": [
+                "10.0.2.15", 
+                "fe80::48:37ff:feb8:a568"
+            ], 
+            "enp0s8": [
+                "192.168.56.173", 
+                "fe80::a00:27ff:fe92:3099"
+            ]
+        }, 
+        "groupname": "root", 
+        "fqdn_ip6": [], 
+        "mem_total": 2000, 
+        "saltversioninfo": [
+            2018, 
+            3, 
+            3, 
+            0
+        ], 
+        "zfs_support": false, 
+        "SSDs": [], 
+        "mdadm": [], 
+        "id": "es-proxy-0", 
+        "manufacturer": "innotek GmbH", 
+        "osrelease": "16.04", 
+        "ps": "ps -efHww", 
+        "systemd": {
+            "version": "229", 
+            "features": "+PAM +AUDIT +SELINUX +IMA +APPARMOR +SMACK +SYSVINIT +UTMP +LIBCRYPTSETUP +GCRYPT +GNUTLS +ACL +XZ -LZ4 +SECCOMP +BLKID +ELFUTILS +KMOD -IDN"
+        }, 
+        "fqdn": "es-proxy-0", 
+        "ip_gw": true, 
+        "ip6_interfaces": {
+            "lo": [
+                "::1"
+            ], 
+            "enp0s3": [
+                "fe80::48:37ff:feb8:a568"
+            ], 
+            "enp0s8": [
+                "fe80::a00:27ff:fe92:3099"
+            ]
+        }, 
+        "num_cpus": 2, 
+        "hwaddr_interfaces": {
+            "lo": "00:00:00:00:00:00", 
+            "enp0s3": "02:48:37:b8:a5:68", 
+            "enp0s8": "08:00:27:92:30:99"
+        }, 
+        "osfullname": "Ubuntu", 
+        "ip4_interfaces": {
+            "lo": [
+                "127.0.0.1"
+            ], 
+            "enp0s3": [
+                "10.0.2.15"
+            ], 
+            "enp0s8": [
+                "192.168.56.173"
+            ]
+        }, 
+        "init": "systemd", 
+        "gid": 0, 
+        "master": "salt", 
+        "ipv4": [
+            "10.0.2.15", 
+            "127.0.0.1", 
+            "192.168.56.173"
+        ], 
+        "dns": {
+            "domain": "", 
+            "sortlist": [], 
+            "nameservers": [
+                "10.0.2.3"
+            ], 
+            "ip4_nameservers": [
+                "10.0.2.3"
+            ], 
+            "search": [
+                "ex"
+            ], 
+            "ip6_nameservers": [], 
+            "options": []
+        }, 
+        "ipv6": [
+            "::1", 
+            "fe80::48:37ff:feb8:a568", 
+            "fe80::a00:27ff:fe92:3099"
+        ], 
+        "cpu_flags": [
+            "fpu", 
+            "vme", 
+            "de", 
+            "pse", 
+            "tsc", 
+            "msr", 
+            "pae", 
+            "mce", 
+            "cx8", 
+            "apic", 
+            "sep", 
+            "mtrr", 
+            "pge", 
+            "mca", 
+            "cmov", 
+            "pat", 
+            "pse36", 
+            "clflush", 
+            "mmx", 
+            "fxsr", 
+            "sse", 
+            "sse2", 
+            "ht", 
+            "syscall", 
+            "nx", 
+            "rdtscp", 
+            "lm", 
+            "constant_tsc", 
+            "rep_good", 
+            "nopl", 
+            "xtopology", 
+            "nonstop_tsc", 
+            "pni", 
+            "pclmulqdq", 
+            "ssse3", 
+            "cx16", 
+            "pcid", 
+            "sse4_1", 
+            "sse4_2", 
+            "x2apic", 
+            "movbe", 
+            "popcnt", 
+            "aes", 
+            "xsave", 
+            "avx", 
+            "rdrand", 
+            "hypervisor", 
+            "lahf_lm", 
+            "abm", 
+            "invpcid_single", 
+            "kaiser", 
+            "fsgsbase", 
+            "avx2", 
+            "invpcid"
+        ], 
+        "localhost": "es-proxy-0", 
+        "lsb_distrib_id": "Ubuntu", 
+        "username": "root", 
+        "fqdn_ip4": [
+            "127.0.1.1"
+        ], 
+        "shell": "/bin/sh", 
+        "nodename": "es-proxy-0", 
+        "saltversion": "2018.3.3", 
+        "lsb_distrib_release": "16.04", 
+        "ip6_gw": false, 
+        "server_id": 1185189586, 
+        "saltpath": "/usr/lib/python2.7/dist-packages/salt", 
+        "zfs_feature_flags": false, 
+        "osmajorrelease": 16, 
+        "swap_total": 0, 
+        "os_family": "Debian", 
+        "oscodename": "xenial", 
+        "osfinger": "Ubuntu-16.04", 
+        "pythonversion": [
+            2, 
+            7, 
+            12, 
+            "final", 
+            0
+        ], 
+        "lsb_distrib_description": "Ubuntu 16.04.5 LTS", 
+        "kernelversion": "#165-Ubuntu SMP Wed Oct 24 10:58:50 UTC 2018", 
+        "ip4_gw": "10.0.2.2", 
+        "num_gpus": 1, 
+        "roles": [
+            "elasticsearch", 
+            "proxy"
+        ], 
+        "virtual": "VirtualBox", 
+        "host": "es-proxy-0", 
+        "disks": [
+            "sda", 
+            "sdb", 
+            "loop0", 
+            "loop1", 
+            "loop2", 
+            "loop3", 
+            "loop4", 
+            "loop5", 
+            "loop6", 
+            "loop7"
+        ], 
+        "cpu_model": "Intel(R) Core(TM) i7-4710MQ CPU @ 2.50GHz", 
+        "uuid": "868afe93-51e6-47b4-a5b0-13cf92110b6c", 
+        "biosreleasedate": "12/01/2006", 
+        "productname": "VirtualBox", 
+        "osarch": "amd64", 
+        "cpuarch": "x86_64", 
+        "lsb_distrib_codename": "xenial", 
+        "osrelease_info": [
+            16, 
+            4
+        ], 
+        "locale_info": {
+            "detectedencoding": "ascii", 
+            "defaultlanguage": null, 
+            "defaultencoding": null
+        }, 
+        "gpus": [
+            {
+                "model": "VirtualBox Graphics Adapter", 
+                "vendor": "unknown"
+            }
+        ], 
+        "path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", 
+        "machine_id": "f649d01b73024e50b7643318f10116f0", 
+        "os": "Ubuntu", 
+        "pythonexecutable": "/usr/bin/python"
+    }
+},
+{
+    "es-gw-0": {
+        "biosversion": "VirtualBox", 
+        "kernel": "Linux", 
+        "domain": "", 
+        "uid": 0, 
+        "zmqversion": "4.0.5", 
+        "kernelrelease": "3.13.0-161-generic", 
+        "pythonpath": [
+            "/usr/bin", 
+            "/usr/lib/python2.7", 
+            "/usr/lib/python2.7/plat-x86_64-linux-gnu", 
+            "/usr/lib/python2.7/lib-tk", 
+            "/usr/lib/python2.7/lib-old", 
+            "/usr/lib/python2.7/lib-dynload", 
+            "/usr/local/lib/python2.7/dist-packages", 
+            "/usr/lib/python2.7/dist-packages"
+        ], 
+        "serialnumber": "0", 
+        "pid": 7671, 
+        "ip_interfaces": {
+            "lo": [
+                "127.0.0.1", 
+                "::1"
+            ], 
+            "eth1": [
+                "192.168.56.172", 
+                "fe80::a00:27ff:fe55:1507"
+            ], 
+            "eth0": [
+                "10.0.2.15", 
+                "fe80::a00:27ff:fe74:61f3"
+            ]
+        }, 
+        "groupname": "root", 
+        "fqdn_ip6": [
+            "::1"
+        ], 
+        "mem_total": 3953, 
+        "saltversioninfo": [
+            2018, 
+            3, 
+            3, 
+            0
+        ], 
+        "zfs_support": false, 
+        "SSDs": [], 
+        "mdadm": [], 
+        "id": "es-gw-0", 
+        "manufacturer": "innotek GmbH", 
+        "osrelease": "14.04", 
+        "ps": "ps -efHww", 
+        "server_id": 182911947, 
+        "fqdn": "es-gw-0", 
+        "ip_gw": true, 
+        "ip6_interfaces": {
+            "lo": [
+                "::1"
+            ], 
+            "eth1": [
+                "fe80::a00:27ff:fe55:1507"
+            ], 
+            "eth0": [
+                "fe80::a00:27ff:fe74:61f3"
+            ]
+        }, 
+        "num_cpus": 2, 
+        "hwaddr_interfaces": {
+            "lo": "00:00:00:00:00:00", 
+            "eth1": "08:00:27:55:15:07", 
+            "eth0": "08:00:27:74:61:f3"
+        }, 
+        "osfullname": "Ubuntu", 
+        "ip4_interfaces": {
+            "lo": [
+                "127.0.0.1"
+            ], 
+            "eth1": [
+                "192.168.56.172"
+            ], 
+            "eth0": [
+                "10.0.2.15"
+            ]
+        }, 
+        "init": "upstart", 
+        "gid": 0, 
+        "master": "salt", 
+        "ipv4": [
+            "10.0.2.15", 
+            "127.0.0.1", 
+            "192.168.56.172"
+        ], 
+        "dns": {
+            "domain": "", 
+            "sortlist": [], 
+            "nameservers": [
+                "10.0.2.3"
+            ], 
+            "ip4_nameservers": [
+                "10.0.2.3"
+            ], 
+            "search": [
+                "ex"
+            ], 
+            "ip6_nameservers": [], 
+            "options": []
+        }, 
+        "ipv6": [
+            "::1", 
+            "fe80::a00:27ff:fe55:1507", 
+            "fe80::a00:27ff:fe74:61f3"
+        ], 
+        "cpu_flags": [
+            "fpu", 
+            "vme", 
+            "de", 
+            "pse", 
+            "tsc", 
+            "msr", 
+            "pae", 
+            "mce", 
+            "cx8", 
+            "apic", 
+            "sep", 
+            "mtrr", 
+            "pge", 
+            "mca", 
+            "cmov", 
+            "pat", 
+            "pse36", 
+            "clflush", 
+            "mmx", 
+            "fxsr", 
+            "sse", 
+            "sse2", 
+            "ht", 
+            "syscall", 
+            "nx", 
+            "rdtscp", 
+            "lm", 
+            "constant_tsc", 
+            "rep_good", 
+            "nopl", 
+            "xtopology", 
+            "nonstop_tsc", 
+            "eagerfpu", 
+            "pni", 
+            "pclmulqdq", 
+            "ssse3", 
+            "cx16", 
+            "pcid", 
+            "sse4_1", 
+            "sse4_2", 
+            "movbe", 
+            "popcnt", 
+            "aes", 
+            "xsave", 
+            "avx", 
+            "rdrand", 
+            "lahf_lm", 
+            "abm", 
+            "invpcid_single", 
+            "rsb_ctxsw", 
+            "retpoline", 
+            "fsgsbase", 
+            "avx2", 
+            "invpcid"
+        ], 
+        "localhost": "es-gw-0", 
+        "lsb_distrib_id": "Ubuntu", 
+        "username": "root", 
+        "fqdn_ip4": [
+            "127.0.1.1"
+        ], 
+        "shell": "/bin/sh", 
+        "nodename": "es-gw-0", 
+        "saltversion": "2018.3.3", 
+        "lsb_distrib_release": "14.04", 
+        "ip6_gw": false, 
+        "saltpath": "/usr/lib/python2.7/dist-packages/salt", 
+        "pythonversion": [
+            2, 
+            7, 
+            6, 
+            "final", 
+            0
+        ], 
+        "zfs_feature_flags": false, 
+        "osmajorrelease": 14, 
+        "swap_total": 0, 
+        "os_family": "Debian", 
+        "oscodename": "trusty", 
+        "osfinger": "Ubuntu-14.04", 
+        "biosreleasedate": "12/01/2006", 
+        "lsb_distrib_description": "Ubuntu 14.04.5 LTS", 
+        "kernelversion": "#211-Ubuntu SMP Wed Oct 3 14:52:35 UTC 2018", 
+        "ip4_gw": "10.0.2.2", 
+        "num_gpus": 1, 
+        "roles": [
+            "elasticsearch", 
+            "gateway"
+        ], 
+        "virtual": "VirtualBox", 
+        "host": "es-gw-0", 
+        "disks": [
+            "sda", 
+            "ram0", 
+            "ram1", 
+            "ram2", 
+            "ram3", 
+            "ram4", 
+            "ram5", 
+            "ram6", 
+            "ram7", 
+            "ram8", 
+            "ram9", 
+            "loop0", 
+            "loop1", 
+            "loop2", 
+            "loop3", 
+            "loop4", 
+            "loop5", 
+            "loop6", 
+            "loop7", 
+            "ram10", 
+            "ram11", 
+            "ram12", 
+            "ram13", 
+            "ram14", 
+            "ram15"
+        ], 
+        "cpu_model": "Intel(R) Core(TM) i7-4710MQ CPU @ 2.50GHz", 
+        "uuid": "f5bb7fcc-636d-4563-8a4c-235af4ffe9c3", 
+        "pythonexecutable": "/usr/bin/python", 
+        "productname": "VirtualBox", 
+        "osarch": "amd64", 
+        "cpuarch": "x86_64", 
+        "lsb_distrib_codename": "trusty", 
+        "osrelease_info": [
+            14, 
+            4
+        ], 
+        "locale_info": {
+            "detectedencoding": "ascii", 
+            "defaultlanguage": null, 
+            "defaultencoding": null
+        }, 
+        "gpus": [
+            {
+                "model": "VirtualBox Graphics Adapter", 
+                "vendor": "unknown"
+            }
+        ], 
+        "path": "/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin", 
+        "machine_id": "71ed74b98330d0d6f1b6911c5c2f655f", 
+        "os": "Ubuntu"
+    }
+},
+{
+    "es-master-0": {
+        "biosversion": "VirtualBox", 
+        "kernel": "Linux", 
+        "domain": "", 
+        "uid": 0, 
+        "zmqversion": "4.2.1", 
+        "kernelrelease": "4.9.0-8-amd64", 
+        "pythonpath": [
+            "/usr/bin", 
+            "/usr/lib/python2.7", 
+            "/usr/lib/python2.7/plat-x86_64-linux-gnu", 
+            "/usr/lib/python2.7/lib-tk", 
+            "/usr/lib/python2.7/lib-old", 
+            "/usr/lib/python2.7/lib-dynload", 
+            "/usr/local/lib/python2.7/dist-packages", 
+            "/usr/lib/python2.7/dist-packages"
+        ], 
+        "serialnumber": "0", 
+        "pid": 5193, 
+        "ip_interfaces": {
+            "lo": [
+                "127.0.0.1", 
+                "::1"
+            ], 
+            "eth1": [
+                "192.168.56.170", 
+                "fe80::a00:27ff:fef7:bd45"
+            ], 
+            "eth0": [
+                "10.0.2.15", 
+                "fe80::a00:27ff:fe8d:c04d"
+            ]
+        }, 
+        "groupname": "root", 
+        "fqdn_ip6": [], 
+        "mem_total": 996, 
+        "saltversioninfo": [
+            2018, 
+            3, 
+            3, 
+            0
+        ], 
+        "zfs_support": false, 
+        "SSDs": [], 
+        "id": "es-master-0", 
+        "manufacturer": "innotek GmbH", 
+        "osrelease": "9.6", 
+        "ps": "ps -efHww", 
+        "systemd": {
+            "version": "232", 
+            "features": "+PAM +AUDIT +SELINUX +IMA +APPARMOR +SMACK +SYSVINIT +UTMP +LIBCRYPTSETUP +GCRYPT +GNUTLS +ACL +XZ +LZ4 +SECCOMP +BLKID +ELFUTILS +KMOD +IDN"
+        }, 
+        "fqdn": "es-master-0", 
+        "lsb_distrib_os": "GNU/Linux", 
+        "ip_gw": true, 
+        "ip6_interfaces": {
+            "lo": [
+                "::1"
+            ], 
+            "eth1": [
+                "fe80::a00:27ff:fef7:bd45"
+            ], 
+            "eth0": [
+                "fe80::a00:27ff:fe8d:c04d"
+            ]
+        }, 
+        "num_cpus": 2, 
+        "hwaddr_interfaces": {
+            "lo": "00:00:00:00:00:00", 
+            "eth1": "08:00:27:f7:bd:45", 
+            "eth0": "08:00:27:8d:c0:4d"
+        }, 
+        "osfullname": "Debian", 
+        "ip4_interfaces": {
+            "lo": [
+                "127.0.0.1"
+            ], 
+            "eth1": [
+                "192.168.56.170"
+            ], 
+            "eth0": [
+                "10.0.2.15"
+            ]
+        }, 
+        "init": "systemd", 
+        "gid": 0, 
+        "master": "salt", 
+        "ipv4": [
+            "10.0.2.15", 
+            "127.0.0.1", 
+            "192.168.56.170"
+        ], 
+        "dns": {
+            "domain": "ex", 
+            "sortlist": [], 
+            "nameservers": [
+                "10.0.2.3"
+            ], 
+            "ip4_nameservers": [
+                "10.0.2.3"
+            ], 
+            "search": [
+                "ex"
+            ], 
+            "ip6_nameservers": [], 
+            "options": []
+        }, 
+        "ipv6": [
+            "::1", 
+            "fe80::a00:27ff:fe8d:c04d", 
+            "fe80::a00:27ff:fef7:bd45"
+        ], 
+        "cpu_flags": [
+            "fpu", 
+            "vme", 
+            "de", 
+            "pse", 
+            "tsc", 
+            "msr", 
+            "pae", 
+            "mce", 
+            "cx8", 
+            "apic", 
+            "sep", 
+            "mtrr", 
+            "pge", 
+            "mca", 
+            "cmov", 
+            "pat", 
+            "pse36", 
+            "clflush", 
+            "mmx", 
+            "fxsr", 
+            "sse", 
+            "sse2", 
+            "ht", 
+            "syscall", 
+            "nx", 
+            "rdtscp", 
+            "lm", 
+            "constant_tsc", 
+            "rep_good", 
+            "nopl", 
+            "xtopology", 
+            "nonstop_tsc", 
+            "pni", 
+            "pclmulqdq", 
+            "ssse3", 
+            "cx16", 
+            "pcid", 
+            "sse4_1", 
+            "sse4_2", 
+            "movbe", 
+            "popcnt", 
+            "aes", 
+            "xsave", 
+            "avx", 
+            "rdrand", 
+            "hypervisor", 
+            "lahf_lm", 
+            "abm", 
+            "invpcid_single", 
+            "kaiser", 
+            "fsgsbase", 
+            "avx2", 
+            "invpcid"
+        ], 
+        "localhost": "es-master-0", 
+        "lsb_distrib_id": "Debian", 
+        "username": "root", 
+        "fqdn_ip4": [
+            "127.0.1.1"
+        ], 
+        "shell": "/bin/sh", 
+        "nodename": "es-master-0", 
+        "saltversion": "2018.3.3", 
+        "lsb_distrib_release": "9.6", 
+        "ip6_gw": false, 
+        "server_id": 1235831255, 
+        "saltpath": "/usr/lib/python2.7/dist-packages/salt", 
+        "zfs_feature_flags": false, 
+        "osmajorrelease": 9, 
+        "swap_total": 1021, 
+        "os_family": "Debian", 
+        "oscodename": "stretch", 
+        "osfinger": "Debian-9", 
+        "pythonversion": [
+            2, 
+            7, 
+            13, 
+            "final", 
+            0
+        ], 
+        "lsb_distrib_description": "Debian GNU/Linux 9.6 (stretch)", 
+        "kernelversion": "#1 SMP Debian 4.9.130-2 (2018-10-27)", 
+        "ip4_gw": "10.0.2.2", 
+        "num_gpus": 1, 
+        "roles": [
+            "elasticsearch", 
+            "master"
+        ], 
+        "virtual": "VirtualBox", 
+        "host": "es-master-0", 
+        "disks": [
+            "sda"
+        ], 
+        "cpu_model": "Intel(R) Core(TM) i7-4710MQ CPU @ 2.50GHz", 
+        "uuid": "938d95f8-7361-4698-a50b-fb5cb7d0c8be", 
+        "biosreleasedate": "12/01/2006", 
+        "productname": "VirtualBox", 
+        "osarch": "amd64", 
+        "cpuarch": "x86_64", 
+        "lsb_distrib_codename": "stretch", 
+        "osrelease_info": [
+            9, 
+            6
+        ], 
+        "locale_info": {
+            "detectedencoding": "UTF-8", 
+            "defaultlanguage": "en_US", 
+            "defaultencoding": "UTF-8"
+        }, 
+        "gpus": [
+            {
+                "model": "VirtualBox Graphics Adapter", 
+                "vendor": "unknown"
+            }
+        ], 
+        "path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", 
+        "machine_id": "6e5bce96e83d4b6ca66a4d37499fa36f", 
+        "os": "Debian", 
+        "pythonexecutable": "/usr/bin/python"
+    }
+},
+{
+    "es-data-0": {
+        "biosversion": "VirtualBox", 
+        "kernel": "Linux", 
+        "domain": "", 
+        "uid": 0, 
+        "zmqversion": "4.2.1", 
+        "kernelrelease": "4.9.0-8-amd64", 
+        "pythonpath": [
+            "/usr/bin", 
+            "/usr/lib/python2.7", 
+            "/usr/lib/python2.7/plat-x86_64-linux-gnu", 
+            "/usr/lib/python2.7/lib-tk", 
+            "/usr/lib/python2.7/lib-old", 
+            "/usr/lib/python2.7/lib-dynload", 
+            "/usr/local/lib/python2.7/dist-packages", 
+            "/usr/lib/python2.7/dist-packages"
+        ], 
+        "serialnumber": "0", 
+        "pid": 5194, 
+        "ip_interfaces": {
+            "lo": [
+                "127.0.0.1", 
+                "::1"
+            ], 
+            "eth1": [
+                "192.168.56.171", 
+                "fe80::a00:27ff:fe8f:9814"
+            ], 
+            "eth0": [
+                "10.0.2.15", 
+                "fe80::a00:27ff:fe8d:c04d"
+            ]
+        }, 
+        "groupname": "root", 
+        "fqdn_ip6": [], 
+        "mem_total": 2004, 
+        "saltversioninfo": [
+            2018, 
+            3, 
+            3, 
+            0
+        ], 
+        "zfs_support": false, 
+        "SSDs": [], 
+        "id": "es-data-0", 
+        "manufacturer": "innotek GmbH", 
+        "osrelease": "9.6", 
+        "ps": "ps -efHww", 
+        "systemd": {
+            "version": "232", 
+            "features": "+PAM +AUDIT +SELINUX +IMA +APPARMOR +SMACK +SYSVINIT +UTMP +LIBCRYPTSETUP +GCRYPT +GNUTLS +ACL +XZ +LZ4 +SECCOMP +BLKID +ELFUTILS +KMOD +IDN"
+        }, 
+        "fqdn": "es-data-0", 
+        "lsb_distrib_os": "GNU/Linux", 
+        "ip_gw": true, 
+        "ip6_interfaces": {
+            "lo": [
+                "::1"
+            ], 
+            "eth1": [
+                "fe80::a00:27ff:fe8f:9814"
+            ], 
+            "eth0": [
+                "fe80::a00:27ff:fe8d:c04d"
+            ]
+        }, 
+        "num_cpus": 2, 
+        "hwaddr_interfaces": {
+            "lo": "00:00:00:00:00:00", 
+            "eth1": "08:00:27:8f:98:14", 
+            "eth0": "08:00:27:8d:c0:4d"
+        }, 
+        "osfullname": "Debian", 
+        "ip4_interfaces": {
+            "lo": [
+                "127.0.0.1"
+            ], 
+            "eth1": [
+                "192.168.56.171"
+            ], 
+            "eth0": [
+                "10.0.2.15"
+            ]
+        }, 
+        "init": "systemd", 
+        "gid": 0, 
+        "master": "salt", 
+        "ipv4": [
+            "10.0.2.15", 
+            "127.0.0.1", 
+            "192.168.56.171"
+        ], 
+        "dns": {
+            "domain": "ex", 
+            "sortlist": [], 
+            "nameservers": [
+                "10.0.2.3"
+            ], 
+            "ip4_nameservers": [
+                "10.0.2.3"
+            ], 
+            "search": [
+                "ex"
+            ], 
+            "ip6_nameservers": [], 
+            "options": []
+        }, 
+        "ipv6": [
+            "::1", 
+            "fe80::a00:27ff:fe8d:c04d", 
+            "fe80::a00:27ff:fe8f:9814"
+        ], 
+        "cpu_flags": [
+            "fpu", 
+            "vme", 
+            "de", 
+            "pse", 
+            "tsc", 
+            "msr", 
+            "pae", 
+            "mce", 
+            "cx8", 
+            "apic", 
+            "sep", 
+            "mtrr", 
+            "pge", 
+            "mca", 
+            "cmov", 
+            "pat", 
+            "pse36", 
+            "clflush", 
+            "mmx", 
+            "fxsr", 
+            "sse", 
+            "sse2", 
+            "ht", 
+            "syscall", 
+            "nx", 
+            "rdtscp", 
+            "lm", 
+            "constant_tsc", 
+            "rep_good", 
+            "nopl", 
+            "xtopology", 
+            "nonstop_tsc", 
+            "pni", 
+            "pclmulqdq", 
+            "ssse3", 
+            "cx16", 
+            "pcid", 
+            "sse4_1", 
+            "sse4_2", 
+            "movbe", 
+            "popcnt", 
+            "aes", 
+            "xsave", 
+            "avx", 
+            "rdrand", 
+            "hypervisor", 
+            "lahf_lm", 
+            "abm", 
+            "invpcid_single", 
+            "kaiser", 
+            "fsgsbase", 
+            "avx2", 
+            "invpcid"
+        ], 
+        "localhost": "es-data-0", 
+        "lsb_distrib_id": "Debian", 
+        "username": "root", 
+        "fqdn_ip4": [
+            "127.0.1.1"
+        ], 
+        "shell": "/bin/sh", 
+        "nodename": "es-data-0", 
+        "saltversion": "2018.3.3", 
+        "lsb_distrib_release": "9.6", 
+        "ip6_gw": false, 
+        "server_id": 1004942563, 
+        "saltpath": "/usr/lib/python2.7/dist-packages/salt", 
+        "zfs_feature_flags": false, 
+        "osmajorrelease": 9, 
+        "swap_total": 1021, 
+        "os_family": "Debian", 
+        "oscodename": "stretch", 
+        "osfinger": "Debian-9", 
+        "pythonversion": [
+            2, 
+            7, 
+            13, 
+            "final", 
+            0
+        ], 
+        "lsb_distrib_description": "Debian GNU/Linux 9.6 (stretch)", 
+        "kernelversion": "#1 SMP Debian 4.9.130-2 (2018-10-27)", 
+        "ip4_gw": "10.0.2.2", 
+        "num_gpus": 1, 
+        "roles": [
+            "elasticsearch", 
+            "data", 
+            "ingest"
+        ], 
+        "virtual": "VirtualBox", 
+        "host": "es-data-0", 
+        "disks": [
+            "sda"
+        ], 
+        "cpu_model": "Intel(R) Core(TM) i7-4710MQ CPU @ 2.50GHz", 
+        "uuid": "a9b6cc75-25ba-4c1b-8b88-8db01ea24bc6", 
+        "biosreleasedate": "12/01/2006", 
+        "productname": "VirtualBox", 
+        "osarch": "amd64", 
+        "cpuarch": "x86_64", 
+        "lsb_distrib_codename": "stretch", 
+        "osrelease_info": [
+            9, 
+            6
+        ], 
+        "locale_info": {
+            "detectedencoding": "UTF-8", 
+            "defaultlanguage": "en_US", 
+            "defaultencoding": "UTF-8"
+        }, 
+        "gpus": [
+            {
+                "model": "VirtualBox Graphics Adapter", 
+                "vendor": "unknown"
+            }
+        ], 
+        "path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", 
+        "machine_id": "608612e5905b462a87b808ef9a248f56", 
+        "os": "Debian", 
+        "pythonexecutable": "/usr/bin/python"
+    }
+}
