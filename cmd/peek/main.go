@@ -60,7 +60,7 @@ func main() {
 
 	args = mainFlags.Args()
 	if len(args) == 0 {
-		fmt.Fprintf(os.Stdout, "No command set, assiming online\n")
+		fmt.Fprintf(os.Stdout, "No command set, assuming online\n")
 		command = "online"
 	} else {
 		command = args[0]

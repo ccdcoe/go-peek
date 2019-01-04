@@ -97,7 +97,7 @@ func (c Config) KafkaConfig() *kafka.KafkaConfig {
 }
 
 func (c Config) DecoderConfig(input types.Messager, logs logging.LogHandler) *decoder.DecoderConfig {
-	return &decoder.DecoderConfig{
+	var conf = &decoder.DecoderConfig{
 		Input:        input,
 		Spooldir:     c.General.Spooldir,
 		EventMap:     c.EventTypes(),
@@ -105,6 +105,13 @@ func (c Config) DecoderConfig(input types.Messager, logs logging.LogHandler) *de
 		IgnoreSigInt: false,
 		LogHandler:   logs,
 	}
+	if c.Elastic != nil && c.Elastic.Inventory != nil {
+		conf.InventoryConfig = &types.ElaTargetInventoryConfig{
+			c.Elastic.Inventory.Hosts,
+			c.Elastic.Inventory.GrainIndex,
+		}
+	}
+	return conf
 }
 
 type GeneralConfig struct {

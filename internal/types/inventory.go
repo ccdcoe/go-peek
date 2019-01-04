@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"path"
@@ -16,7 +17,7 @@ type ElaGrainSource struct {
 }
 
 type ElaTargetInventoryConfig struct {
-	Host  string
+	Hosts []string
 	Index string
 }
 
@@ -42,12 +43,14 @@ func NewElaTargetInventory() *ElaTargetInventory {
 
 func (t *ElaTargetInventory) Get(config ElaTargetInventoryConfig) error {
 	var (
-		err  error
-		resp *http.Response
-		u    *url.URL
+		err       error
+		resp      *http.Response
+		u         *url.URL
+		randProxy int
 	)
 
-	if u, err = url.Parse(config.Host); err != nil {
+	randProxy = rand.Int() % len(config.Hosts)
+	if u, err = url.Parse(config.Hosts[randProxy]); err != nil {
 		return err
 	}
 	u.Path = path.Join(u.Path, config.Index)

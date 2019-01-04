@@ -41,6 +41,7 @@ func NewMessageDecoder(
 		wg  sync.WaitGroup
 		err error
 	)
+	fmt.Println(config.InventoryConfig)
 
 	if config.EventMap == nil || len(config.EventMap) == 0 {
 		return nil, fmt.Errorf("Event Type map undefined")
@@ -138,18 +139,21 @@ func (d Decoder) Messages() <-chan types.Message {
 }
 
 func (d *Decoder) UpdateInventoryAndMaps() error {
-	if d.inventoryConfig != nil {
-		d.inventory = types.NewElaTargetInventory()
-		if err := d.inventory.Get(*d.inventoryConfig); err != nil {
-			return err
-		}
-		// *TODO* I'm sure something can fail here
-		d.rename.IpToStringName = types.NewStringValues(
-			d.inventory.MapKnownIP(
-				d.rename.ByName.RawValues(),
-			),
-		)
+	if d.inventoryConfig == nil {
+		d.logsender.Notify("Inventory config missing, not loading grains")
+		return nil
 	}
+	d.inventory = types.NewElaTargetInventory()
+	if err := d.inventory.Get(*d.inventoryConfig); err != nil {
+		return err
+	}
+	fmt.Println(d.inventory)
+	// *TODO* I'm sure something can fail here
+	d.rename.IpToStringName = types.NewStringValues(
+		d.inventory.MapKnownIP(
+			d.rename.ByName.RawValues(),
+		),
+	)
 	return nil
 }
 

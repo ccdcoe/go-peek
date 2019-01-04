@@ -28,10 +28,11 @@ if __name__ == "__main__":
     i = 0
     while True:
         msg = {
-                "syslog_message": "message {}".format(i),
-                "syslog_host": "sycamore",
-                "syslog_program": "mytestprog",
-                "@timestamp": str(datetime.utcnow().astimezone().isoformat()),
+                "syslog_message":   "message {}".format(i),
+                "syslog_host":      "sycamore",
+                "syslog_program":   "mytestprog",
+                "syslog_ip":        "192.168.56.174",
+                "@timestamp":       str(datetime.utcnow().astimezone().isoformat()),
                 }
         resp = producer.send(args.topic, bytes(json.dumps(msg), encoding='utf-8'))
         i += 1
