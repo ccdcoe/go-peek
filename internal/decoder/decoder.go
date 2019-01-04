@@ -41,7 +41,6 @@ func NewMessageDecoder(
 		wg  sync.WaitGroup
 		err error
 	)
-	fmt.Println(config.InventoryConfig)
 
 	if config.EventMap == nil || len(config.EventMap) == 0 {
 		return nil, fmt.Errorf("Event Type map undefined")
