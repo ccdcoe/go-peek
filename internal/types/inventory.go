@@ -15,6 +15,11 @@ type ElaGrainSource struct {
 	Source *SaltGrain `json:"_source"`
 }
 
+type ElaTargetInventoryConfig struct {
+	Host  string
+	Index string
+}
+
 type ElaTargetInventory struct {
 	Took     int  `json:"took"`
 	TimedOut bool `json:"timed_out"`
@@ -31,17 +36,21 @@ type ElaTargetInventory struct {
 	} `json:"hits"`
 }
 
-func (t *ElaTargetInventory) Get(host, index string) error {
+func NewElaTargetInventory() *ElaTargetInventory {
+	return &ElaTargetInventory{}
+}
+
+func (t *ElaTargetInventory) Get(config ElaTargetInventoryConfig) error {
 	var (
 		err  error
 		resp *http.Response
 		u    *url.URL
 	)
 
-	if u, err = url.Parse(host); err != nil {
+	if u, err = url.Parse(config.Host); err != nil {
 		return err
 	}
-	u.Path = path.Join(u.Path, index)
+	u.Path = path.Join(u.Path, config.Index)
 	s := u.String()
 
 	if resp, err = http.Get(s + "/_search?size=400"); err != nil {

@@ -34,6 +34,10 @@ func (d Dump) MappingPath() string {
 	return filepath.Join(d.Dir, d.Mappings)
 }
 
+type RenameConfig struct {
+	SpoolDir string
+}
+
 type Rename struct {
 	NameSet        *types.BoolValues
 	ByName         *types.StringValues
@@ -41,7 +45,7 @@ type Rename struct {
 	D              Dump
 }
 
-func NewRename(dumpPath string) (*Rename, error) {
+func NewRename(config RenameConfig) (*Rename, error) {
 	var (
 		r       *Rename
 		d       Dump
@@ -50,7 +54,7 @@ func NewRename(dumpPath string) (*Rename, error) {
 		nameset = map[string]bool{}
 	)
 	d = Dump{
-		Dir:      dumpPath,
+		Dir:      config.SpoolDir,
 		Names:    "names.gob",
 		Mappings: "mappings.gob",
 	}
