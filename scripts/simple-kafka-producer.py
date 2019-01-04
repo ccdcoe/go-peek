@@ -30,6 +30,7 @@ if __name__ == "__main__":
         msg = {
                 "syslog_message": "message {}".format(i),
                 "syslog_host": "sycamore",
+                "syslog_program": "mytestprog",
                 "@timestamp": str(datetime.utcnow().astimezone().isoformat()),
                 }
         resp = producer.send(args.topic, bytes(json.dumps(msg), encoding='utf-8'))

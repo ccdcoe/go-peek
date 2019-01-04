@@ -36,15 +36,16 @@ type Decoder struct {
 func NewMessageDecoder(
 	config DecoderConfig,
 ) (*Decoder, error) {
-	if config.EventMap == nil || len(config.EventMap) == 0 {
-		return nil, fmt.Errorf("Event Type map undefined")
-	}
-
 	var (
 		d   = &Decoder{}
 		wg  sync.WaitGroup
 		err error
 	)
+
+	if config.EventMap == nil || len(config.EventMap) == 0 {
+		return nil, fmt.Errorf("Event Type map undefined")
+	}
+	d.EventTypes = config.EventMap
 
 	if config.Input == nil {
 		return nil, fmt.Errorf("Decoder input missing")
@@ -153,7 +154,10 @@ func (d *Decoder) UpdateInventoryAndMaps() error {
 }
 
 func (d Decoder) getAssetIpMap() events.AssetIpMap {
-	return events.AssetIpMap(d.rename.IpToStringName.RawValues())
+	if d.rename != nil && d.rename.IpToStringName != nil {
+		return events.AssetIpMap(d.rename.IpToStringName.RawValues())
+	}
+	return events.AssetIpMap(map[string]string{})
 }
 
 func (d Decoder) halt() {
@@ -199,6 +203,7 @@ loop:
 			if !ok {
 				break loop
 			}
+			fmt.Println(d.EventTypes)
 			if ev, err = events.NewEvent(
 				d.EventTypes[msg.Source],
 				msg.Data,

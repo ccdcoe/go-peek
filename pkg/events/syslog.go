@@ -59,7 +59,7 @@ func (s Syslog) GetSyslogTime() time.Time {
 func (s Syslog) SaganString() (string, error) {
 	return strings.Join(
 		[]string{
-			s.IP.String(),
+			s.GetSrcString(),
 			s.Facility,
 			s.Severity,
 			s.Severity,
@@ -72,9 +72,19 @@ func (s Syslog) SaganString() (string, error) {
 	), nil
 }
 
+func (s Syslog) GetSrcString() string {
+	if s.IP != nil {
+		return s.IP.String()
+	}
+	return ""
+}
+
 func (s *Syslog) setMeta() *Syslog {
 	s.GameMeta = NewSource()
-	s.GameMeta.SetHost(s.Host).SetIp(s.IP.IP)
+	s.GameMeta.SetHost(s.Host)
+	if s.IP != nil {
+		s.GameMeta.SetIp(s.IP.IP)
+	}
 	return s
 }
 

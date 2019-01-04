@@ -9,6 +9,7 @@ import (
 	"github.com/BurntSushi/toml"
 	cluster "github.com/bsm/sarama-cluster"
 	"github.com/ccdcoe/go-peek/internal/config"
+	"github.com/ccdcoe/go-peek/internal/decoder"
 	"github.com/ccdcoe/go-peek/internal/ingest/kafka"
 	"github.com/ccdcoe/go-peek/internal/logging"
 	"github.com/ccdcoe/go-peek/internal/types"
@@ -129,6 +130,7 @@ func doOnlineConsume(args []string, appConfg *config.Config) error {
 func doOnlineProcess(args []string, appConfg *config.Config) error {
 	var (
 		consumer types.Messager
+		dec      *decoder.Decoder
 		err      error
 	)
 	var (
@@ -168,9 +170,16 @@ func doOnlineProcess(args []string, appConfg *config.Config) error {
 		return err
 	}
 
+	decoderConfig := appConfg.DecoderConfig(consumer, logHandle)
+	if dec, err = decoder.NewMessageDecoder(
+		*decoderConfig,
+	); err != nil {
+		return err
+	}
+
 	// *TODO* temp code during devel, remove
 	fmt.Fprintf(os.Stdout, "Processing messages\n")
-	for msg := range consumer.Messages() {
+	for msg := range dec.Messages() {
 		fmt.Println(string(msg.Data))
 	}
 	return nil

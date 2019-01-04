@@ -6,8 +6,11 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/ccdcoe/go-peek/internal/decoder"
 	"github.com/ccdcoe/go-peek/internal/ingest/kafka"
+	"github.com/ccdcoe/go-peek/internal/logging"
 	"github.com/ccdcoe/go-peek/internal/outputs"
+	"github.com/ccdcoe/go-peek/internal/types"
 )
 
 type Config struct {
@@ -90,6 +93,17 @@ func (c Config) KafkaConfig() *kafka.KafkaConfig {
 		Brokers:       c.Kafka.Input,
 		ConsumerGroup: c.Kafka.ConsumerGroup,
 		Topics:        c.Stream.Topics(),
+	}
+}
+
+func (c Config) DecoderConfig(input types.Messager, logs logging.LogHandler) *decoder.DecoderConfig {
+	return &decoder.DecoderConfig{
+		Input:        input,
+		Spooldir:     c.General.Spooldir,
+		EventMap:     c.EventTypes(),
+		Workers:      int(c.General.Workers),
+		IgnoreSigInt: false,
+		LogHandler:   logs,
 	}
 }
 
