@@ -31,7 +31,7 @@ func (s Streams) GetTopic(key string) (string, bool) {
 }
 func (s Streams) GetSaganTopic(key string) (string, bool) {
 	if val, ok := s[key]; ok {
-		if val.Sagan == nil {
+		if val.Sagan.Topic == "" {
 			return fmt.Sprintf("%s-sagan", val.Topic), false
 		}
 		return val.Sagan.Topic, true

@@ -1,6 +1,9 @@
 package config
 
 type SaganConfig struct {
+	// Enable sagan output for stream
+	Enabled bool
+
 	// Kafka brokers list
 	Brokers []string
 

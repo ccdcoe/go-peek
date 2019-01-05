@@ -3,10 +3,13 @@ package outputs
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/ccdcoe/go-peek/internal/logging"
 )
 
 const errBufSize = 256
@@ -24,21 +27,24 @@ func (e ElaIndex) String() string { return string(e) }
 type ElaBulk struct {
 	Data   [][]byte
 	Hosts  []string
-	Resps  chan *http.Response
-	errors chan error
+	Logger logging.LogHandler
 }
 
-func NewBulk(hosts []string) *ElaBulk {
-	return &ElaBulk{
-		Hosts:  hosts,
-		Data:   make([][]byte, 0),
-		Resps:  make(chan *http.Response, respBufSize),
-		errors: make(chan error, errBufSize),
+func NewBulk(hosts []string, logs logging.LogHandler) *ElaBulk {
+	var b = &ElaBulk{
+		Hosts: hosts,
+		Data:  make([][]byte, 0),
 	}
+	if logs == nil {
+		b.Logger = logging.NewLogHandler()
+	} else {
+		b.Logger = logs
+	}
+	return b
 }
 
-func (b ElaBulk) Errors() <-chan error {
-	return b.errors
+func (b ElaBulk) Logs() logging.LogSender {
+	return b.Logger
 }
 
 func (b *ElaBulk) AddIndex(item []byte, index string, id ...string) *ElaBulk {
@@ -62,21 +68,26 @@ func (b *ElaBulk) Flush() *ElaBulk {
 		buf := bytes.NewBuffer(data)
 		buf.WriteRune('\n')
 		randProxy := rand.Int() % len(b.Hosts)
-		resp, err := http.Post(b.Hosts[randProxy]+"/_bulk", "application/x-ndjson", buf)
+		resp, err := http.Post(
+			b.Hosts[randProxy]+"/_bulk",
+			"application/x-ndjson",
+			buf,
+		)
 		if err != nil {
-			if len(b.errors) == errBufSize {
-				<-b.errors
-			}
-			b.errors <- err
+			b.Logger.Error(err)
 		}
-		if resp != nil {
-			resp.Body.Close()
-			if len(b.Resps) == respBufSize {
-				<-b.Resps
-			}
-			b.Resps <- resp
+		if resp == nil {
+			b.Logger.Error(
+				fmt.Errorf("Missing response from bulk"),
+			)
+			return
 		}
-	}(append(bytes.Join(b.Data, []byte("\n"))))
+		b.Logger.Notify(resp.Body)
+		resp.Body.Close()
+	}(append(bytes.Join(
+		b.Data,
+		[]byte("\n"),
+	)))
 	b.Data = make([][]byte, 0)
 	return b
 }

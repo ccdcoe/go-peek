@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"time"
 
 	"github.com/ccdcoe/go-peek/internal/outputs"
@@ -24,12 +25,12 @@ type StreamConfig struct {
 	// Expects a specific log format
 	// This config feeds messages back into backend/middleware kafka cluster in that format
 	// So, new eventstream could be generated from correlations
-	Sagan *SaganConfig
+	Sagan SaganConfig
 }
 
 func NewStreamConfig() *StreamConfig {
 	return &StreamConfig{
-		Sagan: &SaganConfig{},
+		Sagan: SaganConfig{},
 	}
 }
 
@@ -38,7 +39,10 @@ func NewDefaultStreamConfig(stream string) *StreamConfig {
 	s.Name = stream
 	s.Type = stream
 	s.Topic = stream
-	s.Sagan = NewDefaultSaganConfig(stream)
+	s.Sagan = *NewDefaultSaganConfig(strings.Join(
+		[]string{stream, "sagan"},
+		"-",
+	))
 	return s
 }
 
