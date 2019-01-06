@@ -12,9 +12,6 @@ import (
 	"github.com/ccdcoe/go-peek/internal/logging"
 )
 
-const errBufSize = 256
-const respBufSize = 256
-
 type ElaIndex string
 
 func (e ElaIndex) Format(timestamp time.Time) string {
