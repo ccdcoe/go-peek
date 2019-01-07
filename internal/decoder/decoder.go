@@ -252,7 +252,6 @@ loop:
 				Time:    ev.GetEventTime(),
 				Formats: formats,
 			}
-			//d.Input.MarkOffset(msg, "")
 		case <-ctx.Done():
 			break loop
 		case <-updateAssetMap.C:
