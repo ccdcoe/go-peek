@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/Shopify/sarama"
@@ -41,7 +40,7 @@ func (o Output) Produce(
 		return nil, fmt.Errorf("Kafka producer brokers missing")
 	}
 
-	if (config.MainTopicMap == nil || len(config.MainTopicMap) == 0) && !config.KeepKafkaTopic {
+	if (config.TopicMap == nil || len(config.TopicMap) == 0) && !config.KeepKafkaTopic {
 		return nil, fmt.Errorf("Kafka topic map missing or empty. Please provide or enable KeepKafkaTopic")
 	}
 
@@ -78,6 +77,10 @@ func (o Output) Produce(
 		logger.Notify("Feedback brokers not configured, defaulting to main")
 		brokers = config.MainKafkaBrokers
 	} else {
+		logger.Notify(fmt.Sprintf(
+			"Feedback brokers configured, using %s",
+			strings.Join(config.FeedbackKafkaBrokers, ","),
+		))
 		brokers = config.FeedbackKafkaBrokers
 	}
 
@@ -92,18 +95,14 @@ func (o Output) Produce(
 	if config.Wait != nil {
 		config.Wait.Add(1)
 	}
-	go func(
-		wg *sync.WaitGroup,
-		mainmap,
-		fbmap map[string]string,
-		keepKafkaTopic bool,
-	) {
+	go func(config OutputConfig) {
 		defer producer.Close()
 		defer feedback.Close()
-		defer wg.Done()
+		defer config.Wait.Done()
 		defer ela.Flush()
 
 		var topic string
+		var saganset = config.SaganSet()
 	loop:
 		for {
 			select {
@@ -112,11 +111,12 @@ func (o Output) Produce(
 					break loop
 				}
 
-				if keepKafkaTopic {
-					topic = msg.Source
-				} else if val, ok := mainmap[msg.Source]; ok {
-					topic = val
+				if config.KeepKafkaTopic {
+					topic = strings.Replace(msg.Source, "/", "-", -1)
+				} else if val, ok := config.TopicMap[msg.Source]; ok {
+					topic = val.Topic
 				} else {
+					//logger.Error(fmt.Errorf())
 					topic = defaultTopic
 				}
 
@@ -128,23 +128,35 @@ func (o Output) Produce(
 				}
 				ela.AddIndex(msg.Data, defaultTopic)
 
-				// Output for sagan
-				if fbmap != nil {
-					var format string
+				// *TODO* Move to function
+				// *TODO* Support multiple distinct formats
+				if saganset[msg.Source] {
+					var (
+						format    string
+						formatKey = "sagan"
+					)
+
+					topic = topic + "-" + formatKey
 					if msg.Formats == nil {
 						// *TODO* return custom error type with full event.Event for debug
-						logger.Error(fmt.Errorf("Custom format requested but string missing"))
+						logger.Error(fmt.Errorf(
+							"%s format requested for source %s output %s but format map missing",
+							formatKey,
+							msg.Source,
+							topic,
+						))
 						continue loop
 					}
-					if val, ok := msg.Formats["sagan"]; !ok {
-						logger.Error(fmt.Errorf("Sagan format requested but string missing"))
+					if val, ok := msg.Formats[formatKey]; !ok {
+						logger.Error(fmt.Errorf(
+							"%s format requested for source %s output %s but value missing",
+							formatKey,
+							msg.Source,
+							topic,
+						))
+						continue loop
 					} else {
 						format = val
-					}
-					if val, ok := fbmap[msg.Source]; ok {
-						topic = val
-					} else {
-						topic = strings.Join([]string{topic, "sagan"}, "-")
 					}
 					feedback.Input() <- &sarama.ProducerMessage{
 						Timestamp: msg.Time,
@@ -159,11 +171,6 @@ func (o Output) Produce(
 				ela.Flush()
 			}
 		}
-	}(
-		config.Wait,
-		config.MainTopicMap,
-		config.FeedbackTopicMap,
-		config.KeepKafkaTopic,
-	)
+	}(config)
 	return logger, nil
 }

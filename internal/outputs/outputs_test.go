@@ -29,12 +29,16 @@ func Generate() (<-chan types.Message, map[string]string) {
 		defer close(output)
 		for i := 0; i < 100; i++ {
 			syslog := events.NewSyslogTestMessage("")
+			sagan, _ := syslog.SaganString()
 			if json, err := syslog.JSON(); err == nil {
 				output <- types.Message{
 					Offset: int64(i),
 					Data:   json,
 					Time:   syslog.GetSyslogTime(),
 					Source: sources[rand.Int()%len(sources)],
+					Formats: map[string]string{
+						"sagan": sagan,
+					},
 				}
 			}
 		}
@@ -49,23 +53,27 @@ func TestOutput(t *testing.T) {
 	fmt.Println("creating context")
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
+
+	topicmap := map[string]OutputTopicConfig{}
+	for k, v := range maps {
+		topicmap[k] = OutputTopicConfig{
+			Topic:       v,
+			SaganFormat: true,
+		}
+	}
+
 	config := OutputConfig{
 		MainKafkaBrokers: []string{"localhost:9092"},
 		ElaProxies:       []string{"http://localhost:9200"},
 		ElaFlush:         5,
 		Logger:           logging.NewLogHandler(),
 		Wait:             &sync.WaitGroup{},
-		MainTopicMap:     maps,
+		TopicMap:         topicmap,
 		KeepKafkaTopic:   false,
 	}
 	go func() {
 		for msg := range config.Logger.Notifications() {
 			fmt.Println(msg)
-		}
-	}()
-	go func() {
-		for err := range config.Logger.Errors() {
-			t.Fatalf(err.Error())
 		}
 	}()
 	fmt.Println("producing")
@@ -75,4 +83,8 @@ func TestOutput(t *testing.T) {
 	fmt.Println("waiting")
 
 	config.Wait.Wait()
+	if len(config.Logger.Errors()) > 0 {
+		err := <-config.Logger.Errors()
+		t.Fatalf(err.Error())
+	}
 }
