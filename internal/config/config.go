@@ -45,14 +45,14 @@ func NewDefaultConfig() *Config {
 			ConsumerGroup: "peek",
 		},
 		Elastic: &ElaConfig{
-			Output: []string{"localhost:9200"},
+			Output: []string{"http://localhost:9200"},
 			RenameMap: &ElaRenameMapConfig{
-				Hosts:     []string{"localhost:9200"},
+				Hosts:     []string{"http://localhost:9200"},
 				HostIndex: "ladys",
 				AddrIndex: "ipaddr-map",
 			},
 			Inventory: &ElaInventoryConfig{
-				Hosts:      []string{"localhost:9200"},
+				Hosts:      []string{"http://localhost:9200"},
 				GrainIndex: "inventory-latest",
 			},
 		},

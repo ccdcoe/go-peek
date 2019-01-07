@@ -180,7 +180,6 @@ func doOnlineProcess(args []string, appConfg *config.Config) error {
 	}
 
 	fmt.Fprintf(os.Stdout, "Processing messages\n")
-
 	outConfig := appConfg.OutputConfig(logHandle)
 	out := outputs.Output(dec.Messages())
 	out.Produce(*outConfig, context.Background())

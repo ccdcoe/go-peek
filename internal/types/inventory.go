@@ -84,6 +84,5 @@ func (t ElaTargetInventory) MapKnownIP(ip2pretty map[string]string) map[string]s
 			}
 		}
 	}
-
 	return mapped
 }

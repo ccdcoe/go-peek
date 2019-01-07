@@ -146,7 +146,6 @@ func (d *Decoder) UpdateInventoryAndMaps() error {
 	if err := d.inventory.Get(*d.inventoryConfig); err != nil {
 		return err
 	}
-	fmt.Println(d.inventory)
 	// *TODO* I'm sure something can fail here
 	d.rename.IpToStringName = types.NewStringValues(
 		d.inventory.MapKnownIP(
@@ -206,7 +205,6 @@ loop:
 			if !ok {
 				break loop
 			}
-			fmt.Println(d.EventTypes)
 			if ev, err = events.NewEvent(
 				d.EventTypes[msg.Source],
 				msg.Data,
