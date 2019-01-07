@@ -2,11 +2,14 @@ package config
 
 import (
 	"io"
+	"sync"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/ccdcoe/go-peek/internal/decoder"
 	"github.com/ccdcoe/go-peek/internal/ingest/kafka"
 	"github.com/ccdcoe/go-peek/internal/logging"
+	"github.com/ccdcoe/go-peek/internal/outputs"
 	"github.com/ccdcoe/go-peek/internal/types"
 )
 
@@ -66,7 +69,7 @@ func NewExampleConfig() *Config {
 func (c *Config) DefaultStreams() bool {
 	if c.Stream == nil || len(c.Stream) == 0 {
 		var name = "syslog"
-		c.Stream[name] = NewDefaultStreamConfig(name)
+		c.Stream[name] = *NewDefaultStreamConfig(name)
 		return true
 	}
 	return false
@@ -104,38 +107,51 @@ func (c Config) DecoderConfig(input types.Messager, logs logging.LogHandler) *de
 	}
 	if c.Elastic != nil && c.Elastic.Inventory != nil {
 		conf.InventoryConfig = &types.ElaTargetInventoryConfig{
-			c.Elastic.Inventory.Hosts,
-			c.Elastic.Inventory.GrainIndex,
+			Hosts: c.Elastic.Inventory.Hosts,
+			Index: c.Elastic.Inventory.GrainIndex,
 		}
 	}
 	return conf
 }
 
-type GeneralConfig struct {
-	// Working directory where persistence files are being kept
-	Spooldir string
+func (c Config) OutputConfig(logs logging.LogHandler) *outputs.OutputConfig {
+	var (
+		brokers    = []string{"localhost:9092"}
+		feedback   = []string{"localhost:9092"}
+		elaproxies = []string{"http://localhost:9200"}
+		topicmap   = map[string]outputs.OutputTopicConfig{}
+	)
 
-	// Number of async goroutines for decoding messages
-	// All workers shall consume from and output to the same channel
-	// Uint, so we don't need to check for negative numbers
-	Workers uint
-}
+	if c.Kafka != nil {
+		if c.Kafka.Output != nil && len(c.Kafka.Output) > 0 {
+			brokers = c.Kafka.Output
+		} else if c.Kafka.Input != nil && len(c.Kafka.Input) > 0 {
+			brokers = c.Kafka.Input
+		}
+		if c.Kafka.Input != nil && len(c.Kafka.Input) > 0 {
+			feedback = c.Kafka.Input
+		}
+	}
 
-type LogConfig struct {
-	// Enable or disable logging
-	Enable bool
+	if c.Stream != nil && len(c.Stream) > 0 {
+		topicmap = c.Stream.GetOutputConfigMap()
+	}
 
-	// Log every n-th messages
-	// Useful for things such as parse errors in high-throughput message queues
-	Sample int
-}
+	if c.Elastic != nil {
+		if c.Elastic.Output != nil && len(c.Elastic.Output) > 0 {
+			elaproxies = c.Elastic.Output
+		}
+	}
 
-type KafkaConfig struct {
-	// Allows messages to be consumed from one cluster and produced to another
-	// Due to our setup where we have separate clustes for middleware and exposing to frontend
-	Input  []string
-	Output []string
-
-	// ConsumerGroup used for committing offsets
-	ConsumerGroup string
+	return &outputs.OutputConfig{
+		MainKafkaBrokers:     brokers,
+		FeedbackKafkaBrokers: feedback,
+		TopicMap:             topicmap,
+		KeepKafkaTopic:       false,
+		ElaProxies:           elaproxies,
+		// *TODO* add to config
+		ElaFlush: 3 * time.Second,
+		Wait:     &sync.WaitGroup{},
+		Logger:   logs,
+	}
 }

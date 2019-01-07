@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"github.com/ccdcoe/go-peek/internal/decoder"
 	"github.com/ccdcoe/go-peek/internal/ingest/kafka"
 	"github.com/ccdcoe/go-peek/internal/logging"
+	"github.com/ccdcoe/go-peek/internal/outputs"
 	"github.com/ccdcoe/go-peek/internal/types"
 )
 
@@ -177,11 +179,13 @@ func doOnlineProcess(args []string, appConfg *config.Config) error {
 		return err
 	}
 
-	// *TODO* temp code during devel, remove
 	fmt.Fprintf(os.Stdout, "Processing messages\n")
-	for msg := range dec.Messages() {
-		fmt.Println(string(msg.Data))
-	}
+
+	outConfig := appConfg.OutputConfig(logHandle)
+	out := outputs.Output(dec.Messages())
+	out.Produce(*outConfig, context.Background())
+	outConfig.Wait.Wait()
+
 	return nil
 }
 

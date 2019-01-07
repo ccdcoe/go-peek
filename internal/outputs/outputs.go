@@ -44,14 +44,6 @@ func (o Output) Produce(
 		return nil, fmt.Errorf("Kafka topic map missing or empty. Please provide or enable KeepKafkaTopic")
 	}
 
-	brokers = config.MainKafkaBrokers
-	if producer, err = sarama.NewAsyncProducer(
-		brokers,
-		NewProducerConfig(),
-	); err != nil {
-		return nil, err
-	}
-
 	if config.ElaProxies == nil {
 		return nil, fmt.Errorf("Elastic proxy config missing")
 	}
@@ -84,6 +76,14 @@ func (o Output) Produce(
 		brokers = config.FeedbackKafkaBrokers
 	}
 
+	brokers = config.MainKafkaBrokers
+	if producer, err = sarama.NewAsyncProducer(
+		brokers,
+		NewProducerConfig(),
+	); err != nil {
+		return nil, err
+	}
+
 	// *TODO* map[string]AsyncProducer if more formats or clusters are needed
 	if feedback, err = sarama.NewAsyncProducer(
 		brokers,
@@ -91,6 +91,17 @@ func (o Output) Produce(
 	); err != nil {
 		return nil, err
 	}
+
+	go func() {
+		for err := range producer.Errors() {
+			config.Logger.Error(err)
+		}
+	}()
+	go func() {
+		for err := range feedback.Errors() {
+			config.Logger.Error(err)
+		}
+	}()
 
 	if config.Wait != nil {
 		config.Wait.Add(1)
@@ -116,7 +127,6 @@ func (o Output) Produce(
 				} else if val, ok := config.TopicMap[msg.Source]; ok {
 					topic = val.Topic
 				} else {
-					//logger.Error(fmt.Errorf())
 					topic = defaultTopic
 				}
 
@@ -126,7 +136,7 @@ func (o Output) Produce(
 					Value:     sarama.ByteEncoder(msg.Data),
 					Topic:     topic,
 				}
-				ela.AddIndex(msg.Data, defaultTopic)
+				ela.AddIndex(msg.Data, ElaIndex(topic).Format(msg.Time))
 
 				// *TODO* Move to function
 				// *TODO* Support multiple distinct formats
@@ -135,7 +145,6 @@ func (o Output) Produce(
 						format    string
 						formatKey = "sagan"
 					)
-
 					topic = topic + "-" + formatKey
 					if msg.Formats == nil {
 						// *TODO* return custom error type with full event.Event for debug

@@ -1,7 +1,6 @@
 package config
 
 import (
-	"strings"
 	"time"
 
 	"github.com/ccdcoe/go-peek/internal/outputs"
@@ -39,10 +38,7 @@ func NewDefaultStreamConfig(stream string) *StreamConfig {
 	s.Name = stream
 	s.Type = stream
 	s.Topic = stream
-	s.Sagan = *NewDefaultSaganConfig(strings.Join(
-		[]string{stream, "sagan"},
-		"-",
-	))
+	s.Sagan = *NewDefaultSaganConfig()
 	return s
 }
 

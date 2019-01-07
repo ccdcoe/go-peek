@@ -39,3 +39,8 @@ type OutputTopicConfig struct {
 	Topic       string
 	SaganFormat bool
 }
+
+type OutputElaBulkConfig struct {
+	Proxies []string
+	Flush   time.Duration
+}
