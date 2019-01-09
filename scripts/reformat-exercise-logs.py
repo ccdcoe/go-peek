@@ -71,9 +71,6 @@ def syslogMessageFix(orig):
         new["syslog_message"] = orig["message"]
     return new
 
-def dropKeys(keys, data):
-    return (lambda x: data.pop(x, None), keys)
-
 def simpleSnoopy(mgrp):
     return {
             "uid":      mgrp[0],
