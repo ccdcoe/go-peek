@@ -9,7 +9,6 @@ Only stdlib and minimal object-orientation! Meant to be compact, not performant!
 Some exception handling, but don't expect anything special
 Reads from and writes to gzipped log files with 1:1 filename mapping
 So, not suitable for larger datasets.
-Not suitable for large datasets
 """
 
 import gzip
