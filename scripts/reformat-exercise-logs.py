@@ -45,6 +45,9 @@ def isSuriStat(evtype):
 def isSuriFlow(evtype):
     return True if "flow" in evtype.lower() else False
 
+def outFormat(data):
+    return json.dumps(data).encode(encoding="utf-8") + "\n".encode(encoding="utf8")
+
 def onlyFiles(mypath):
     return [f for f in listdir(mypath) if isfile(join(mypath, f))]
 
@@ -170,7 +173,7 @@ def readSyslogLineAndWriteOutput(line, **kwargs):
                             e)
             else:
                 print("broken regex:", orig["message"])
-        out.write(json.dumps(new).encode(encoding="utf-8"))
+        out.write(outFormat(new))
     except UnicodeDecodeError as e:
         print(e, line)
     except Exception as e:
@@ -191,7 +194,7 @@ def readEventLogLineAndWriteOutput(line, **kwargs):
 
         new = {key: value for (key, value) in orig.items() if key not in list(syslogReMap().values())}
         new = JoinMaps(new, syslogMessageFix(orig), ["@timestamp"])
-        out.write(json.dumps(new).encode(encoding="utf-8"))
+        out.write(outFormat(new))
     except UnicodeDecodeError as e:
         print(e, line)
     except Exception as e:
@@ -221,7 +224,7 @@ def readSuricataLogLineAndWriteOutput(line, **kwargs):
 
         new = {key: value for (key, value) in orig.items() if key not in list(syslogReMap().values())}
         new = JoinMaps(new, syslogMessageFix(orig), ["@timestamp"])
-        out.write(json.dumps(new).encode(encoding="utf-8"))
+        out.write(outFormat(new))
 
     except UnicodeDecodeError as e:
         print(e, line)
