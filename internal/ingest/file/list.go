@@ -64,8 +64,8 @@ func (l FileInfoListing) CountLines(workers int, timeout time.Duration) <-chan e
 	if workers < 1 {
 		workers = 1
 	}
-	files := make(chan *FileInfo, 0)
 	errs := make(chan error, len(l)*2)
+	files := make(chan *FileInfo, 0)
 	counter := CountLinesBlock
 
 	go func() {
@@ -126,3 +126,5 @@ type FileInfo struct {
 	Lines int
 	Path  string
 }
+
+type FileInfoModifyFunc func(*FileInfo) error
