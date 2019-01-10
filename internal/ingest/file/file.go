@@ -1,10 +1,5 @@
 package file
 
-type FileInfo struct {
-	Lines int
-	Path  string
-}
-
 /*
 type FileReaderConfig struct {
 	RootPath   string

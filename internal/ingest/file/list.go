@@ -2,7 +2,6 @@ package file
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -85,16 +84,9 @@ func (l FileInfoListing) CountLines(workers int, timeout time.Duration) <-chan e
 						if !ok {
 							break loop
 						}
-						fmt.Println(f.Path)
-						reader, err := OpenFile(f.Path)
+						lines, err := CountFromPath(f.Path, countfn)
 						if err != nil {
 							errs <- err
-							continue loop
-						}
-						lines, err := countfn(reader)
-						if err != nil {
-							errs <- err
-							continue loop
 						}
 						f.Lines = lines
 					case <-ctx.Done():
@@ -115,4 +107,22 @@ func (l FileInfoListing) CountLines(workers int, timeout time.Duration) <-chan e
 	}()
 
 	return errs
+}
+
+func CountFromPath(path string, countfn LineCountFunc) (int, error) {
+	reader, err := OpenFile(path)
+	if err != nil {
+		return 0, err
+	}
+	defer reader.Close()
+	lines, err := countfn(reader)
+	if err != nil {
+		return lines, err
+	}
+	return lines, nil
+}
+
+type FileInfo struct {
+	Lines int
+	Path  string
 }

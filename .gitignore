@@ -118,3 +118,13 @@ venv.bak/
 
 # Dependencies managed by dep
 vendor/
+
+# testing files
+*.gz
+*.log
+*.txt
+
+test/log*/
+
+# testing throwaway code
+cmd/peek-test-*/
