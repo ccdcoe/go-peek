@@ -28,7 +28,7 @@ var (
 		`Timeout for consumer`)
 	consume = mainFlags.Bool("consume", false,
 		`Consume messages and print to stdout, as opposed to simply statting files.`)
-	timeFrom = mainFlags.String("time-from", "2018-12-01 00:00:00",
+	timeFrom = mainFlags.String("time-from", "2018-12-30 00:00:00",
 		`Process messages with timestamps > value. Format is YYYY-MM-DD HH:mm:ss`)
 	timeTo = mainFlags.String("time-to", "2018-12-07 00:00:00",
 		`Process messages with timestamps < value. Format is YYYY-MM-DD HH:mm:ss`)
@@ -65,7 +65,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		if from.Nanosecond() > to.Nanosecond() {
+		if from.UnixNano() > to.UnixNano() {
 			panic("from > to")
 		}
 
@@ -81,8 +81,11 @@ func main() {
 					defer wg.Done()
 					times := list.New()
 					for msg := range ch {
-						times.PushBack(msg.Time)
+						if msg.Time.UnixNano() > from.UnixNano() {
+							times.PushBack(msg.Time.UnixNano())
+						}
 					}
+					fmt.Fprintf(os.Stdout, "Worker done %d timestamps collected\n", times.Len())
 				}(v)
 			}
 			wg.Wait()
@@ -143,18 +146,18 @@ func main() {
 			fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 			os.Exit(1)
 		}
+		for _, v := range files {
+			fmt.Fprintf(
+				os.Stdout,
+				"%s - %d lines - %.2f KBytes - %s perms\n",
+				v.Path,
+				v.Lines,
+				float64(v.Size())/1024,
+				v.Mode().Perm(),
+			)
+		}
 	}
 	took := time.Since(start)
 
-	for _, v := range files {
-		fmt.Fprintf(
-			os.Stdout,
-			"%s - %d lines - %.2f KBytes - %s perms\n",
-			v.Path,
-			v.Lines,
-			float64(v.Size())/1024,
-			v.Mode().Perm(),
-		)
-	}
 	fmt.Fprintf(os.Stdout, "Done reading %d files, took %.3f seconds\n", len(files), took.Seconds())
 }
