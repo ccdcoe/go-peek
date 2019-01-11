@@ -7,7 +7,7 @@ import (
 	"io"
 )
 
-type LineCountFunc func(io.Reader) (int, error)
+type LineCountFunc func(io.Reader) (int64, error)
 
 func CountLinesScan(file io.Reader) (int, error) {
 	fileScanner := bufio.NewScanner(file)
@@ -21,16 +21,16 @@ func CountLinesScan(file io.Reader) (int, error) {
 	return count, nil
 }
 
-func CountLinesBlock(r io.Reader) (int, error) {
+func CountLinesBlock(r io.Reader) (int64, error) {
 	var (
-		count   int
+		count   int64
 		buf     = make([]byte, 32*1024)
 		lineSep = []byte{'\n'}
 	)
 
 	for {
 		c, err := r.Read(buf)
-		count += bytes.Count(buf[:c], lineSep)
+		count += int64(bytes.Count(buf[:c], lineSep))
 
 		switch {
 		case err == io.EOF:

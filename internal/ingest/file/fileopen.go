@@ -38,7 +38,7 @@ func FileMagic(path string) (string, error) {
 
 func OpenFile(path string) (io.ReadCloser, error) {
 	var (
-		file  io.ReadCloser
+		file  *os.File
 		magic string
 		err   error
 	)
@@ -50,12 +50,8 @@ func OpenFile(path string) (io.ReadCloser, error) {
 	}
 	switch magic {
 	case "gzip":
-		if file, err = gzip.NewReader(file); err != nil {
-			return nil, err
-		}
+		return gzip.NewReader(file)
 	default:
-		// TODO! Return nil, err upon unknown file type
+		return file, nil
 	}
-
-	return file, nil
 }
