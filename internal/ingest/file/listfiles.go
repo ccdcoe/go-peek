@@ -1,6 +1,7 @@
 package file
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -9,25 +10,28 @@ import (
 
 type FileListGenFunc func(dir string, pattern *regexp.Regexp) (out chan string)
 
-func ListFilesGenerator(dir string, pattern *regexp.Regexp) GenChannel {
-	if info, err := os.Stat(dir); err != nil || !info.IsDir() {
-		return nil
+func ListFilesGenerator(dir string, pattern *regexp.Regexp) (LogFileChan, error) {
+	if info, err := os.Stat(dir); err != nil {
+		if !info.IsDir() {
+			return nil, fmt.Errorf("%s not dir", dir)
+		}
+		return nil, err
 	}
-	generator := make(chan string)
+	generator := make(LogFileChan, 0)
 	go func() {
 		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 			if !info.IsDir() {
 				if pattern != nil && pattern.MatchString(path) {
-					generator <- path
+					generator <- &LogFile{Path: path}
 				} else if pattern == nil {
-					generator <- path
+					generator <- &LogFile{Path: path}
 				}
 			}
 			return nil
 		})
 		close(generator)
 	}()
-	return generator
+	return generator, nil
 }
 
 type GenChannel chan string

@@ -25,9 +25,9 @@ func main() {
 	mainFlags.Parse(os.Args[1:])
 
 	input := *logdir
-	files := file.ListFilesGenerator(input, nil)
-	if files == nil {
-		panic("nil file channel")
+	files, err := file.ListFilesGenerator(input, nil)
+	if err != nil {
+		panic(err)
 	}
 
 	countfuncs := []file.LineCountFunc{
@@ -36,29 +36,29 @@ func main() {
 		LineCountAndAnalyzeLast,
 	}
 
-	counts := map[string][]int{}
+	counts := map[string][]int64{}
 	for f := range files {
-		fmt.Fprintf(os.Stdout, "%s\n", f)
-		if _, ok := counts[f]; !ok {
-			counts[f] = make([]int, len(countfuncs))
+		fmt.Fprintf(os.Stdout, "%s\n", f.Path)
+		if _, ok := counts[f.Path]; !ok {
+			counts[f.Path] = make([]int64, len(countfuncs))
 		}
 		for i, fn := range countfuncs {
-			counts[f][i] = CountLines(f, fn)
+			counts[f.Path][i] = CountLines(f.Path, fn)
 		}
 	}
 
 	for k, v := range counts {
 		str := make([]string, len(v))
 		for i, j := range v {
-			str[i] = strconv.Itoa(j)
+			str[i] = strconv.Itoa(int(j))
 		}
 		fmt.Fprintf(os.Stdout, "%s : %s\n", k, strings.Join(str, "|"))
 	}
 }
 
-func LineCountAndAnalyzeLast(reader io.Reader) (int, error) {
+func LineCountAndAnalyzeLast(reader io.Reader) (int64, error) {
 	lines := LineR(reader)
-	count := 0
+	var count int64
 	broken := 0
 	for msg := range lines {
 		last := string(msg[len(msg)-1])
@@ -71,7 +71,7 @@ func LineCountAndAnalyzeLast(reader io.Reader) (int, error) {
 	return count, nil
 }
 
-func CountLines(f string, fn file.LineCountFunc) int {
+func CountLines(f string, fn file.LineCountFunc) int64 {
 	var (
 		reader io.ReadCloser
 		err    error

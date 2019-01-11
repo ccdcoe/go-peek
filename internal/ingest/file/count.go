@@ -9,9 +9,9 @@ import (
 
 type LineCountFunc func(io.Reader) (int64, error)
 
-func CountLinesScan(file io.Reader) (int, error) {
+func CountLinesScan(file io.Reader) (int64, error) {
 	fileScanner := bufio.NewScanner(file)
-	count := 0
+	var count int64
 	for fileScanner.Scan() {
 		count++
 	}

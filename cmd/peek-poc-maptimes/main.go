@@ -43,7 +43,11 @@ func main() {
 
 	workers := runtime.NumCPU()
 
-	files := file.ListFilesGenerator(*logdir, nil).Slice().Sort().FileListing()
+	fileGen, err := file.ListFilesGenerator(*logdir, nil)
+	if err != nil {
+		panic(err)
+	}
+	files := fileGen.Slice()
 	if *consume {
 		out := files.ReadFiles(int(*readers), *timeout)
 

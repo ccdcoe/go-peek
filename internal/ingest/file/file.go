@@ -49,6 +49,16 @@ func (f *LogFile) Read(messages chan<- types.Message) error {
 	return scanner.Err()
 }
 
+type LogFileChan chan *LogFile
+
+func (g LogFileChan) Slice() FileInfoListing {
+	files := make([]*LogFile, 0)
+	for v := range g {
+		files = append(files, v)
+	}
+	return files
+}
+
 type FileInfoModifyFunc func(*LogFile) error
 type FileReadFunc func(LogFile) chan types.Message
 
