@@ -32,17 +32,20 @@ var (
 		`Process messages with timestamps > value. Format is YYYY-MM-DD HH:mm:ss`)
 	timeTo = mainFlags.String("time-to", "2018-12-07 00:00:00",
 		`Process messages with timestamps < value. Format is YYYY-MM-DD HH:mm:ss`)
+	readers = mainFlags.Uint("readers", 4,
+		`No concurrent file readers for IO operations`)
 )
 
 func main() {
 	mainFlags.Parse(os.Args[1:])
 
 	start := time.Now()
+
 	workers := runtime.NumCPU()
 
 	files := file.ListFilesGenerator(*logdir, nil).Slice().Sort().FileListing()
 	if *consume {
-		out := files.ReadFiles(workers, *timeout)
+		out := files.ReadFiles(int(*readers), *timeout)
 
 		go func() {
 			for err := range out.Logs.Errors() {
@@ -73,6 +76,7 @@ func main() {
 		go func() {
 			var wg sync.WaitGroup
 			for _, v := range splitter {
+				wg.Add(1)
 				go func(ch chan types.Message) {
 					defer wg.Done()
 					times := list.New()
@@ -87,6 +91,7 @@ func main() {
 		safety := make(chan types.Message, 0)
 		go func() {
 			var wg sync.WaitGroup
+			defer close(safety)
 			for i := 0; i < workers; i++ {
 				wg.Add(1)
 				go func() {
@@ -101,7 +106,7 @@ func main() {
 								Data:   msg.Data,
 								Source: msg.Source,
 								Offset: msg.Offset,
-								Time:   TimeEvent.GetEventTime(),
+								Time:   TimeEvent.GetSyslogTime(),
 							}
 						}
 					}

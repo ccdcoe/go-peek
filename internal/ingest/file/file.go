@@ -84,10 +84,12 @@ func (l FileInfoListing) ReadFiles(workers int, timeout time.Duration) LineReadO
 	}
 	errs := l.work(workers, timeout, nil, output)
 	go func() {
+		defer close(output.out)
 		for err := range errs {
 			output.Logs.Error(err)
 		}
 	}()
+
 	return *output
 }
 
