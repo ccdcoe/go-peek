@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ccdcoe/go-peek/internal/ingest/file"
+	"github.com/ccdcoe/go-peek/pkg/events"
 )
 
 var (
@@ -35,11 +37,19 @@ func main() {
 		fmt.Fprintf(os.Stdout, "Printing messages\n")
 		go func() {
 			for err := range out.Logs.Errors() {
-				panic(err)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+					os.Exit(1)
+				}
 			}
 		}()
 		for msg := range out.Messages() {
-			fmt.Fprintf(os.Stdout, "%s\n", msg.Data)
+			var TimeEvent events.SimpleTime
+			if err := json.Unmarshal(msg.Data, &TimeEvent); err != nil {
+				fmt.Fprintf(os.Stderr, "Parse error from file %s offset %d\n", msg.Source, msg.Offset)
+				fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+			}
+			fmt.Fprintf(os.Stdout, "%s\n", TimeEvent.GetEventTime())
 		}
 	} else {
 		err := <-files.StatFiles(workers, *timeout)
