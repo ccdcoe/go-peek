@@ -12,10 +12,15 @@ import (
 	"github.com/ccdcoe/go-peek/internal/types"
 )
 
+type LogFileTimeRange struct {
+	From, To time.Time
+}
+
 type LogFile struct {
 	Lines int64
 	Path  string
 	os.FileInfo
+	LogFileTimeRange
 }
 
 func (f *LogFile) Stat() error {
