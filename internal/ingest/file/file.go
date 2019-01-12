@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"os"
+	"sort"
 	"sync"
 	"time"
 
@@ -12,13 +14,28 @@ import (
 	"github.com/ccdcoe/go-peek/internal/types"
 )
 
+type ErrTimeParse struct {
+	err  error
+	buf  []byte
+	file string
+}
+
+func (e ErrTimeParse) Error() string {
+	return fmt.Sprintf("%s %s %s", e.file, string(e.buf), e.err.Error())
+}
+
 type LogFileTimeRange struct {
 	From, To time.Time
 }
+type LogFileTimeParseFunc func([]byte, *LogFile) (time.Time, error)
 
 type LogFile struct {
 	Lines int64
 	Path  string
+
+	Empty bool
+	Ctx   context.Context
+
 	os.FileInfo
 	LogFileTimeRange
 }
@@ -27,6 +44,31 @@ func (f *LogFile) Stat() error {
 	stat, err := os.Stat(f.Path)
 	f.FileInfo = stat
 	return err
+}
+
+func (f *LogFile) StartTime(parser LogFileTimeParseFunc) error {
+	stream, err := OpenFile(f.Path)
+	if err != nil {
+		return err
+	}
+	defer stream.Close()
+	first, err := FileReadFirstLine(stream)
+	if err != nil {
+		return err
+	}
+	ts, err := parser(first, f)
+	if err != nil {
+		return &ErrTimeParse{
+			err:  err,
+			buf:  first,
+			file: f.Path,
+		}
+	}
+	if ts.UnixNano() == 0 {
+		return fmt.Errorf("Invalid first timestamp from logstream %s", ts.String())
+	}
+	f.From = ts
+	return nil
 }
 
 func (f *LogFile) Read(messages chan<- types.Message) error {
@@ -85,14 +127,14 @@ func (l *LineReadOut) Messages() <-chan types.Message {
 type FileInfoListing []*LogFile
 
 func (l FileInfoListing) StatFiles(workers int, timeout time.Duration) <-chan error {
-	return l.work(workers, timeout, CountLinesBlock, nil)
+	return l.work(workers, timeout, CountLinesBlock, nil, nil)
 }
 func (l FileInfoListing) ReadFiles(workers int, timeout time.Duration) LineReadOut {
 	output := &LineReadOut{
 		out:  make(chan types.Message, 0),
 		Logs: logging.NewLogHandler(),
 	}
-	errs := l.work(workers, timeout, nil, output)
+	errs := l.work(workers, timeout, nil, output, nil)
 	go func() {
 		defer close(output.out)
 		for err := range errs {
@@ -102,12 +144,26 @@ func (l FileInfoListing) ReadFiles(workers int, timeout time.Duration) LineReadO
 
 	return *output
 }
+func (l FileInfoListing) StartTimes(
+	workers int,
+	timeout time.Duration,
+	fn LogFileTimeParseFunc,
+) <-chan error {
+	return l.work(workers, timeout, nil, nil, fn)
+}
+func (l FileInfoListing) SortByTime() FileInfoListing {
+	sort.Slice(l, func(i, j int) bool {
+		return l[i].From.UnixNano() < l[j].From.UnixNano()
+	})
+	return l
+}
 
 func (l FileInfoListing) work(
 	workers int,
 	timeout time.Duration,
 	lnCntFn LineCountFunc,
 	lnRdCnf *LineReadOut,
+	frstTimeFn LogFileTimeParseFunc,
 ) <-chan error {
 	if workers < 1 {
 		workers = 1
@@ -145,6 +201,10 @@ func (l FileInfoListing) work(
 						if !ok {
 							break loop
 						}
+						if f.Empty {
+							// *TODO* notify instead of silent skip
+							continue loop
+						}
 						if err := f.Stat(); err != nil {
 							errs <- err
 							continue loop
@@ -155,7 +215,20 @@ func (l FileInfoListing) work(
 							if err != nil {
 								errs <- err
 							}
+							if lines == 0 {
+								f.Empty = true
+							}
 							f.Lines = lines
+						}
+
+						if frstTimeFn != nil {
+							if err := f.StartTime(frstTimeFn); err != nil {
+								if err == io.EOF {
+									f.Empty = true
+								} else {
+									errs <- err
+								}
+							}
 						}
 
 						if lnRdCnf != nil {

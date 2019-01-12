@@ -7,6 +7,8 @@ import (
 	"io"
 )
 
+var newLine = []byte(`\n`)
+
 type LineCountFunc func(io.Reader) (int64, error)
 
 func CountLinesScan(file io.Reader) (int64, error) {
@@ -44,34 +46,12 @@ func CountLinesBlock(r io.Reader) (int64, error) {
 
 type LineGetterFunc func(io.Reader) ([]byte, error)
 
-func FileReadLastLine(r io.Reader) ([]byte, error) {
-	var (
-		buf     = make([]byte, 32*1024)
-		lineSep = []byte{'\n'}
-	)
-
-	for {
-		_, err := r.Read(buf)
-		switch {
-		case err == io.EOF:
-			lines := bytes.Split(buf, lineSep)
-			return lines[len(lines)-2], nil
-
-		case err != nil:
-			return []byte{}, err
-		}
-	}
-}
-
 func FileReadFirstLine(file io.Reader) ([]byte, error) {
 	var (
 		buf = make([]byte, 32*1024)
 		err error
 	)
 	if _, err = file.Read(buf); err != nil {
-		if err == io.EOF {
-			return []byte{}, io.EOF
-		}
 		return nil, err
 	}
 	chunks := bytes.Split(buf, []byte("\n"))

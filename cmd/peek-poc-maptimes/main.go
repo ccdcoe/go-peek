@@ -47,7 +47,24 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Fprintf(os.Stdout, "Slicing files\n")
 	files := fileGen.Slice()
+	errs := files.StartTimes(workers, *timeout, func(
+		line []byte,
+		logfile *file.LogFile,
+	) (time.Time, error) {
+		var TimeEvent events.SimpleTime
+		if err := json.Unmarshal(line, &TimeEvent); err != nil {
+			return time.Now(), err
+		}
+		tme := TimeEvent.GetSyslogTime()
+		return tme, nil
+	})
+	if err = <-errs; err != nil {
+		panic(err)
+	}
+	files.SortByTime()
+
 	if *consume {
 		out := files.ReadFiles(int(*readers), *timeout)
 
@@ -153,11 +170,12 @@ func main() {
 		for _, v := range files {
 			fmt.Fprintf(
 				os.Stdout,
-				"%s - %d lines - %.2f KBytes - %s perms\n",
+				"%s - %d lines - %.2f KBytes - %s perms. Start: %s\n",
 				v.Path,
 				v.Lines,
 				float64(v.Size())/1024,
 				v.Mode().Perm(),
+				v.From.Format(argTsFormat),
 			)
 		}
 	}
