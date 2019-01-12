@@ -101,9 +101,6 @@ func (g LogFileChan) Slice() FileInfoListing {
 	return files
 }
 
-type FileInfoModifyFunc func(*LogFile) error
-type FileReadFunc func(LogFile) chan types.Message
-
 type LineReadOut struct {
 	out  chan types.Message
 	Logs logging.LogHandler
@@ -156,6 +153,22 @@ func (l FileInfoListing) SortByTime() FileInfoListing {
 		return l[i].From.UnixNano() < l[j].From.UnixNano()
 	})
 	return l
+}
+func (l FileInfoListing) Prune(from, to time.Time, purgeEmpty bool) FileInfoListing {
+	newlist := make(FileInfoListing, 0)
+	for _, v := range l {
+		if v.From.UnixNano() < from.UnixNano() {
+			continue
+		}
+		if v.To.UnixNano() > to.UnixNano() {
+			continue
+		}
+		if purgeEmpty && v.Empty {
+			continue
+		}
+		newlist = append(newlist, v)
+	}
+	return newlist
 }
 
 func (l FileInfoListing) work(

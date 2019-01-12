@@ -42,6 +42,17 @@ func main() {
 	start := time.Now()
 
 	workers := runtime.NumCPU()
+	from, err := time.Parse(argTsFormat, *timeFrom)
+	if err != nil {
+		panic(err)
+	}
+	to, err := time.Parse(argTsFormat, *timeTo)
+	if err != nil {
+		panic(err)
+	}
+	if from.UnixNano() > to.UnixNano() {
+		panic("from > to")
+	}
 
 	fileGen, err := file.ListFilesGenerator(*logdir, nil)
 	if err != nil {
@@ -63,7 +74,7 @@ func main() {
 	if err = <-errs; err != nil {
 		panic(err)
 	}
-	files.SortByTime()
+	files = files.SortByTime().Prune(from, to, true)
 
 	if *consume {
 		out := files.ReadFiles(int(*readers), *timeout)
@@ -78,17 +89,6 @@ func main() {
 		}()
 
 		fmt.Fprintf(os.Stdout, "Working\n")
-		from, err := time.Parse(argTsFormat, *timeFrom)
-		if err != nil {
-			panic(err)
-		}
-		to, err := time.Parse(argTsFormat, *timeTo)
-		if err != nil {
-			panic(err)
-		}
-		if from.UnixNano() > to.UnixNano() {
-			panic("from > to")
-		}
 
 		splitter := make(map[string]chan types.Message)
 		for _, v := range files {
