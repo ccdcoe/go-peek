@@ -90,6 +90,14 @@ func (f *LogFile) Read(messages chan<- types.Message) error {
 	f.Lines = offset
 	return scanner.Err()
 }
+func (f LogFile) AsyncRead(messages chan<- types.Message) <-chan error {
+	out := make(chan error)
+	go func() {
+		defer close(out)
+		out <- f.Read(messages)
+	}()
+	return out
+}
 
 type LogFileChan chan *LogFile
 

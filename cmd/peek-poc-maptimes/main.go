@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"sort"
 	"sync"
 	"time"
 
@@ -34,6 +35,8 @@ var (
 		`Process messages with timestamps < value. Format is YYYY-MM-DD HH:mm:ss`)
 	readers = mainFlags.Uint("readers", 4,
 		`No concurrent file readers for IO operations`)
+	speedup = mainFlags.Int64("ff", 1,
+		`Fast forward x times`)
 )
 
 func main() {
@@ -112,7 +115,9 @@ func main() {
 				wg.Add(1)
 				go func(ch chan types.Message, name string) {
 					defer wg.Done()
-					var first, last int64
+					var first, last, count int64
+					var prev time.Time
+
 					first = -1
 					last = -1
 
@@ -122,7 +127,12 @@ func main() {
 							if first < 0 {
 								first = msg.Offset
 							}
-							times.PushBack(msg.Time.UnixNano())
+							if count > 0 {
+								diff := msg.Time.Sub(prev)
+								times.PushBack(diff)
+							}
+							count++
+							prev = msg.Time
 							last = msg.Offset
 						}
 					}
@@ -186,13 +196,69 @@ func main() {
 		for _, v := range splitter {
 			close(v)
 		}
-		replayMap := map[string]*TimeList{}
+
+		// *TODO* Parallele topic consumption here
+		fn := func(output chan types.Message, replaySlice []*TimeList, speedup int64) {
+			defer close(output)
+
+			fmt.Fprintf(os.Stdout, "Sorting files\n")
+			sort.Slice(replaySlice, func(i, j int) bool {
+				return replaySlice[i].File.From.UnixNano() < replaySlice[j].File.From.UnixNano()
+			})
+
+			fmt.Fprintf(os.Stdout, "Looping files\n")
+		sourceLoop:
+			for _, replay := range replaySlice {
+				fmt.Fprintf(os.Stdout, "%s, first offset: %d last offset: %d\n",
+					replay.Source, replay.Start, replay.End)
+				if replay.Start < 0 || replay.End < 0 {
+					fmt.Fprintf(os.Stderr, "%s has no known messages, skipping\n", replay.Source)
+					continue sourceLoop
+				}
+				messages := make(chan types.Message)
+				go func() {
+					if replay.Start > 0 {
+						fmt.Fprintf(os.Stdout, "%s does not start from beginning, consuming until %d\n",
+							replay.Source, replay.Start)
+					msgLoop:
+						for msg := range messages {
+							if msg.Offset == replay.Start {
+								break msgLoop
+							}
+						}
+					}
+					fmt.Fprintf(os.Stderr, "Consuming\n")
+					for sleep := replay.Times.Front(); sleep != nil; sleep = sleep.Next() {
+						msg := <-messages
+						output <- msg
+						time.Sleep(sleep.Value.(time.Duration) / time.Duration(speedup))
+					}
+				}()
+
+				fmt.Fprintf(os.Stdout, "Reading\n")
+				if err := <-replay.File.AsyncRead(messages); err != nil {
+					fmt.Fprintf(os.Stderr, "Unable to read %s. %s\n", replay.Source, err.Error())
+					continue sourceLoop
+				}
+				close(messages)
+			}
+		}
+		replaySlice := []*TimeList{}
 		for item := range linkedListOutput {
 			if logfile := files.Get(item.Source); logfile != nil {
 				item.File = logfile
-				replayMap[item.Source] = item
+				replaySlice = append(replaySlice, item)
 			}
 		}
+		if len(replaySlice) > 0 {
+			fmt.Fprintf(os.Stdout, "Consuming replay")
+			output := make(chan types.Message)
+			go fn(output, replaySlice, *speedup)
+			for msg := range output {
+				fmt.Fprintf(os.Stdout, "%s\n", msg.String())
+			}
+		}
+
 	}
 
 	took := time.Since(start)
