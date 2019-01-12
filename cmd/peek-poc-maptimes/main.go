@@ -60,7 +60,7 @@ func main() {
 	}
 	fmt.Fprintf(os.Stdout, "Slicing files\n")
 	files := fileGen.Slice()
-	errs := files.StartTimes(workers, *timeout, func(
+	if err := <-files.StartTimes(workers, *timeout, func(
 		line []byte,
 		logfile *file.LogFile,
 	) (time.Time, error) {
@@ -70,11 +70,14 @@ func main() {
 		}
 		tme := TimeEvent.GetSyslogTime()
 		return tme, nil
-	})
-	if err = <-errs; err != nil {
+	}); err != nil {
 		panic(err)
 	}
 	files = files.SortByTime().Prune(from, to, true)
+	if err := <-files.StatFiles(workers, *timeout); err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+		os.Exit(1)
+	}
 
 	if *consume {
 		out := files.ReadFiles(int(*readers), *timeout)
@@ -90,24 +93,47 @@ func main() {
 
 		fmt.Fprintf(os.Stdout, "Working\n")
 
+		type TimeList struct {
+			Source     string
+			Times      *list.List
+			Start, End int64
+			File       *file.LogFile
+		}
+
 		splitter := make(map[string]chan types.Message)
+		linkedListOutput := make(chan *TimeList)
 		for _, v := range files {
 			splitter[v.Path] = make(chan types.Message)
 		}
 		go func() {
+			defer close(linkedListOutput)
 			var wg sync.WaitGroup
-			for _, v := range splitter {
+			for k, v := range splitter {
 				wg.Add(1)
-				go func(ch chan types.Message) {
+				go func(ch chan types.Message, name string) {
 					defer wg.Done()
+					var first, last int64
+					first = -1
+					last = -1
+
 					times := list.New()
 					for msg := range ch {
-						if msg.Time.UnixNano() > from.UnixNano() {
+						if msg.Time.UnixNano() > from.UnixNano() && msg.Time.UnixNano() < to.UnixNano() {
+							if first < 0 {
+								first = msg.Offset
+							}
 							times.PushBack(msg.Time.UnixNano())
+							last = msg.Offset
 						}
 					}
+					linkedListOutput <- &TimeList{
+						Times:  times,
+						Source: name,
+						Start:  first,
+						End:    last,
+					}
 					fmt.Fprintf(os.Stdout, "Worker done %d timestamps collected\n", times.Len())
-				}(v)
+				}(v, k)
 			}
 			wg.Wait()
 		}()
@@ -160,26 +186,27 @@ func main() {
 		for _, v := range splitter {
 			close(v)
 		}
-
-	} else {
-		err := <-files.StatFiles(workers, *timeout)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s\n", err.Error())
-			os.Exit(1)
-		}
-		for _, v := range files {
-			fmt.Fprintf(
-				os.Stdout,
-				"%s - %d lines - %.2f KBytes - %s perms. Start: %s\n",
-				v.Path,
-				v.Lines,
-				float64(v.Size())/1024,
-				v.Mode().Perm(),
-				v.From.Format(argTsFormat),
-			)
+		replayMap := map[string]*TimeList{}
+		for item := range linkedListOutput {
+			if logfile := files.Get(item.Source); logfile != nil {
+				item.File = logfile
+				replayMap[item.Source] = item
+			}
 		}
 	}
+
 	took := time.Since(start)
+	for _, v := range files {
+		fmt.Fprintf(
+			os.Stdout,
+			"%s - %d lines - %.2f KBytes - %s perms. Start: %s\n",
+			v.Path,
+			v.Lines,
+			float64(v.Size())/1024,
+			v.Mode().Perm(),
+			v.From.Format(argTsFormat),
+		)
+	}
 
 	fmt.Fprintf(os.Stdout, "Done reading %d files, took %.3f seconds\n", len(files), took.Seconds())
 }

@@ -170,6 +170,24 @@ func (l FileInfoListing) Prune(from, to time.Time, purgeEmpty bool) FileInfoList
 	}
 	return newlist
 }
+func (l FileInfoListing) Raw() []*LogFile {
+	return []*LogFile(l)
+}
+func (l FileInfoListing) Map() map[string]*LogFile {
+	out := make(map[string]*LogFile)
+	for _, v := range l {
+		out[v.Path] = v
+	}
+	return out
+}
+func (l FileInfoListing) Get(name string) *LogFile {
+	for _, v := range l {
+		if v.Path == name {
+			return v
+		}
+	}
+	return nil
+}
 
 func (l FileInfoListing) work(
 	workers int,
