@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"sync"
 	"time"
@@ -19,6 +20,7 @@ type LogReplayWorkerConfig struct {
 	Workers  int
 	Logger   logging.LogHandler
 	Timeout  time.Duration
+	Speedup  int64
 }
 
 type SourceStatConfig struct {
@@ -34,10 +36,86 @@ type TimeList struct {
 	File       *file.LogFile
 }
 
+type TimeListSequenceMap map[string][]*TimeList
+
+func (lm TimeListSequenceMap) Replay(config LogReplayWorkerConfig) (types.MessageChannel, error) {
+	fn := func(
+		src string,
+		output chan types.Message,
+		replaySlice []*TimeList,
+		speedup int64,
+		wg *sync.WaitGroup,
+		logger logging.LogSender,
+		srt bool,
+	) {
+		defer wg.Done()
+
+		if srt {
+			logger.Notify(fmt.Sprintf("Sorting files for %s", src))
+			sort.Slice(replaySlice, func(i, j int) bool {
+				return replaySlice[i].File.From.UnixNano() < replaySlice[j].File.From.UnixNano()
+			})
+		}
+
+		fmt.Fprintf(os.Stdout, "Looping files\n")
+	sourceLoop:
+		for _, replay := range replaySlice {
+			logger.Notify(fmt.Sprintf("%s, first offset: %d last offset: %d",
+				replay.Source, replay.Start, replay.End))
+			if replay.Start < 0 || replay.End < 0 {
+				logger.Notify(fmt.Sprintf("%s has no known messages, skipping\n", replay.Source))
+				continue sourceLoop
+			}
+			messages := make(chan types.Message)
+			go func() {
+				if replay.Start > 0 {
+					logger.Notify(fmt.Sprintf("%s does not start from beginning, consuming until %d",
+						replay.Source, replay.Start))
+				msgLoop:
+					for msg := range messages {
+						if msg.Offset == replay.Start {
+							break msgLoop
+						}
+					}
+				}
+				logger.Notify(fmt.Sprintf("%s consuming", replay.Source))
+				for sleep := replay.Times.Front(); sleep != nil; sleep = sleep.Next() {
+					msg := <-messages
+					output <- msg
+					time.Sleep(sleep.Value.(time.Duration) / time.Duration(speedup))
+				}
+			}()
+
+			fmt.Fprintf(os.Stdout, "Reading\n")
+			if err := <-replay.File.AsyncRead(messages); err != nil {
+				fmt.Fprintf(os.Stderr, "Unable to read %s. %s\n", replay.Source, err.Error())
+				continue sourceLoop
+			}
+			close(messages)
+		}
+	}
+	output := make(types.MessageChannel)
+	logger := config.Logger
+	if config.Logger == nil {
+		logger = logging.NewLogHandler()
+	}
+	go func() {
+		var wg sync.WaitGroup
+		for k, v := range lm {
+			wg.Add(1)
+			go fn(k, output, v, config.Speedup, &wg, logger, false)
+		}
+		wg.Wait()
+		close(output)
+	}()
+
+	return output, nil
+}
+
 // *TODO* This may belong in ingest/file
 type MultiFileInfoListing map[string]file.FileInfoListing
 
-func (fl MultiFileInfoListing) CollectTimeStamps(config LogReplayWorkerConfig) (map[string][]*TimeList, error) {
+func (fl MultiFileInfoListing) CollectTimeStamps(config LogReplayWorkerConfig) (TimeListSequenceMap, error) {
 	timelistmap := make(map[string][]*TimeList)
 	for k, v := range fl {
 		if config.Logger != nil {

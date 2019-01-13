@@ -200,8 +200,8 @@ var (
 		`Process messages with timestamps < value. Format is YYYY-MM-DD HH:mm:ss`)
 	speedup = replayFlags.Int64("ff", 1,
 		`Fast forward x times`)
-	statTimeout = replayFlags.Duration("stat-timeout", 30*time.Minute,
-		`Timeout for statting logfile stats.`)
+	statTimeout = replayFlags.Duration("stat-timeout", 60*time.Minute,
+		`Timeout for statting logfile stats. NOT FULLY IMPLEMENTED AND BUGGY!!! USE A HIGH VALUE!!!`)
 )
 
 func doReplay(args []string, appConfg *config.Config) error {
@@ -252,15 +252,24 @@ func doReplay(args []string, appConfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	_, err = logMap.CollectTimeStamps(decoder.LogReplayWorkerConfig{
+	replayConfig := decoder.LogReplayWorkerConfig{
 		From:    from,
 		To:      to,
 		Logger:  logHandle,
 		Workers: int(appConfg.General.Workers),
 		Timeout: *statTimeout,
-	})
+		Speedup: int64(*speedup),
+	}
+	timelistmap, err := logMap.CollectTimeStamps(replayConfig)
 	if err != nil {
 		return err
+	}
+	messages, err := timelistmap.Replay(replayConfig)
+	if err != nil {
+		return err
+	}
+	for msg := range messages.Messages() {
+		fmt.Println(msg.String())
 	}
 
 	return nil

@@ -41,3 +41,12 @@ type Message struct {
 func (m Message) String() string {
 	return string(m.Data)
 }
+
+// MessageChannel implements Messager
+type MessageChannel chan Message
+
+// Messages method provides read-only version of chan Message
+// Provides minimal interface for building a coherent message queue
+func (m MessageChannel) Messages() <-chan Message {
+	return m
+}
