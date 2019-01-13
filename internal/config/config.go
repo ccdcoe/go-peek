@@ -155,3 +155,29 @@ func (c Config) OutputConfig(logs logging.LogHandler) *outputs.OutputConfig {
 		Logger:   logs,
 	}
 }
+
+func (c Config) GetReplayStatConfig(
+	logger logging.LogHandler,
+	from, to time.Time,
+	timeout time.Duration,
+) []decoder.SourceStatConfig {
+	configs := []decoder.SourceStatConfig{}
+	if logger == nil {
+		logger = logging.NewLogHandler()
+	}
+	for k, v := range c.Stream {
+		conf := &decoder.SourceStatConfig{
+			Name:   k,
+			Source: v.Dir,
+			LogReplayWorkerConfig: decoder.LogReplayWorkerConfig{
+				Workers: int(c.General.Workers),
+				Logger:  logger,
+				From:    from,
+				To:      to,
+				Timeout: timeout,
+			},
+		}
+		configs = append(configs, *conf)
+	}
+	return configs
+}

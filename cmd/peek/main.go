@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	cluster "github.com/bsm/sarama-cluster"
@@ -16,6 +17,8 @@ import (
 	"github.com/ccdcoe/go-peek/internal/outputs"
 	"github.com/ccdcoe/go-peek/internal/types"
 )
+
+const argTsFormat = "2006-01-02 15:04:05"
 
 var (
 	mainFlags = flag.NewFlagSet("main", flag.ExitOnError)
@@ -188,7 +191,78 @@ func doOnlineProcess(args []string, appConfg *config.Config) error {
 	return nil
 }
 
+var (
+	replayFlags = flag.NewFlagSet("replay", flag.ExitOnError)
+
+	timeFrom = replayFlags.String("time-from", "2018-11-30 00:00:00",
+		`Process messages with timestamps > value. Format is YYYY-MM-DD HH:mm:ss`)
+	timeTo = replayFlags.String("time-to", "2018-12-07 00:00:00",
+		`Process messages with timestamps < value. Format is YYYY-MM-DD HH:mm:ss`)
+	speedup = replayFlags.Int64("ff", 1,
+		`Fast forward x times`)
+	statTimeout = replayFlags.Duration("stat-timeout", 30*time.Minute,
+		`Timeout for statting logfile stats.`)
+)
+
 func doReplay(args []string, appConfg *config.Config) error {
+	if err := replayFlags.Parse(args); err != nil {
+		return err
+	}
+	args = replayFlags.Args()
+	logHandle := logging.NewLogHandler()
+	// *TODO* move to logging package
+	go func() {
+		fmt.Fprintf(os.Stdout, "Starting notification handler\n")
+		for not := range logHandle.Notifications() {
+			switch v := not.(type) {
+			case string:
+				fmt.Fprintf(os.Stdout, "INFO: %s\n", v)
+			case cluster.Notification:
+				fmt.Fprintf(os.Stdout, "INFO: %+v\n", v)
+			default:
+			}
+		}
+		fmt.Fprintf(os.Stdout, "Stopping notification handler\n")
+	}()
+	// *TODO* move to logging package
+	go func() {
+		fmt.Fprintf(os.Stdout, "Starting error handler\n")
+		for err := range logHandle.Errors() {
+			// *TODO* error type switch
+			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err.Error())
+		}
+		fmt.Fprintf(os.Stdout, "Stopping error handler\n")
+	}()
+
+	from, err := time.Parse(argTsFormat, *timeFrom)
+	if err != nil {
+		return err
+	}
+	to, err := time.Parse(argTsFormat, *timeTo)
+	if err != nil {
+		return err
+	}
+	if from.UnixNano() > to.UnixNano() {
+		return fmt.Errorf("from > to")
+	}
+	logStatConfig := appConfg.GetReplayStatConfig(logHandle, from, to, *statTimeout)
+	logMap, err := decoder.MultiListLogFilesAndStatEventStart(
+		logStatConfig,
+	)
+	if err != nil {
+		return err
+	}
+	_, err = logMap.CollectTimeStamps(decoder.LogReplayWorkerConfig{
+		From:    from,
+		To:      to,
+		Logger:  logHandle,
+		Workers: int(appConfg.General.Workers),
+		Timeout: *statTimeout,
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

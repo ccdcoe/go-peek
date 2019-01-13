@@ -11,6 +11,10 @@ type StreamConfig struct {
 	// Redundant if object is kept in map
 	Name string
 
+	// Directory for replaying logs
+	// Should contain JSON formatted events with sequential timestamp ordering
+	Dir string
+
 	// Type of messages in stream
 	// To separate event.Event objects
 	Type string
