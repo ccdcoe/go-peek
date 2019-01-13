@@ -44,10 +44,10 @@ func (s Streams) ElaIdx(timestamp time.Time, event string) string {
 	return outputs.ElaIndex("events").Format(timestamp)
 }
 
-func (s Streams) GetOutputConfigMap() map[string]outputs.OutputTopicConfig {
-	var confmap = map[string]outputs.OutputTopicConfig{}
+func (s Streams) GetOutputConfigMap() outputs.OutputTopicConfigMap {
+	confmap := map[string]outputs.OutputTopicConfig{}
 	for k, v := range s {
-		conf := &outputs.OutputTopicConfig{Topic: v.Topic}
+		conf := &outputs.OutputTopicConfig{Topic: v.Topic, Name: k}
 		if v.Sagan.Enabled {
 			conf.SaganFormat = true
 		}

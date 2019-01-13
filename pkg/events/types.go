@@ -138,7 +138,7 @@ func (m *Meta) SetHost(host string) *Meta {
 }
 
 func (m *Meta) SetIpFromString(ip string) *Meta {
-	if ip != "" && len(m.IP) > 0 {
+	if ip != "" {
 		m.IP = net.ParseIP(ip)
 	}
 	return m

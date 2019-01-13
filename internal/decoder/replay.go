@@ -26,6 +26,7 @@ type LogReplayWorkerConfig struct {
 type SourceStatConfig struct {
 	Name   string
 	Source string
+	Type   string
 	LogReplayWorkerConfig
 }
 
@@ -113,11 +114,11 @@ func (lm TimeListSequenceMap) Replay(config LogReplayWorkerConfig) (types.Messag
 }
 
 type EventFileInfoListing struct {
+	Name string
 	Type string
 	Data file.FileInfoListing
 }
 
-// *TODO* This may belong in ingest/file
 type MultiFileInfoListing map[string]*EventFileInfoListing
 
 func (fl MultiFileInfoListing) CollectTimeStamps(config LogReplayWorkerConfig) (TimeListSequenceMap, error) {
@@ -133,6 +134,15 @@ func (fl MultiFileInfoListing) CollectTimeStamps(config LogReplayWorkerConfig) (
 		timelistmap[k] = listsequence
 	}
 	return timelistmap, nil
+}
+func (fl MultiFileInfoListing) EventMap() map[string]string {
+	eventmap := make(map[string]string)
+	for _, v := range fl {
+		for _, logfile := range v.Data {
+			eventmap[logfile.Path] = v.Name
+		}
+	}
+	return eventmap
 }
 func (fl MultiFileInfoListing) EventTypeMap() map[string]string {
 	eventmap := make(map[string]string)
@@ -295,7 +305,8 @@ func MultiListLogFilesAndStatEventStart(config []SourceStatConfig) (MultiFileInf
 		}
 		out[conf.Source] = &EventFileInfoListing{
 			Data: loglist,
-			Type: conf.Name,
+			Name: conf.Name,
+			Type: conf.Type,
 		}
 	}
 	return out, nil

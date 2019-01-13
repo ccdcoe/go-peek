@@ -9,7 +9,7 @@ import (
 
 type OutputConfig struct {
 	MainKafkaBrokers []string
-	TopicMap         map[string]OutputTopicConfig
+	TopicMap         OutputTopicConfigMap
 
 	KeepKafkaTopic bool
 
@@ -36,8 +36,23 @@ func (c OutputConfig) SaganSet() map[string]bool {
 }
 
 type OutputTopicConfig struct {
+	Name        string
 	Topic       string
 	SaganFormat bool
+}
+
+type OutputTopicConfigMap map[string]OutputTopicConfig
+
+func (tm OutputTopicConfigMap) MapSources(sourcemap map[string]string) OutputTopicConfigMap {
+	confmap := map[string]OutputTopicConfig{}
+	for k, v := range sourcemap {
+		confmap[k] = OutputTopicConfig{
+			Name:        tm[v].Name,
+			Topic:       tm[v].Topic,
+			SaganFormat: tm[v].SaganFormat,
+		}
+	}
+	return confmap
 }
 
 type OutputElaBulkConfig struct {

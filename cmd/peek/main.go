@@ -288,6 +288,7 @@ func doReplay(args []string, appConfg *config.Config) error {
 
 		decoderConfig := appConfg.DecoderConfig(messages, logHandle)
 		decoderConfig.EventMap = logMap.EventTypeMap()
+		fmt.Println("INPUT: ", decoderConfig.EventMap)
 		dec, err := decoder.NewMessageDecoder(*decoderConfig)
 		if err != nil {
 			return err
@@ -295,8 +296,11 @@ func doReplay(args []string, appConfg *config.Config) error {
 
 		fmt.Fprintf(os.Stdout, "Processing messages\n")
 		outConfig := appConfg.OutputConfig(logHandle)
+		outConfig.TopicMap = outConfig.TopicMap.MapSources(logMap.EventMap())
+
 		out := outputs.Output(dec.Messages())
 		out.Produce(*outConfig, context.Background())
+
 		outConfig.Wait.Wait()
 	}
 

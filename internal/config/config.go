@@ -119,7 +119,7 @@ func (c Config) OutputConfig(logs logging.LogHandler) *outputs.OutputConfig {
 		brokers    = []string{"localhost:9092"}
 		feedback   = []string{"localhost:9092"}
 		elaproxies = []string{"http://localhost:9200"}
-		topicmap   = map[string]outputs.OutputTopicConfig{}
+		topicmap   = make(outputs.OutputTopicConfigMap)
 	)
 
 	if c.Kafka != nil {
@@ -167,8 +167,9 @@ func (c Config) GetReplayStatConfig(
 	}
 	for _, v := range c.Stream {
 		conf := &decoder.SourceStatConfig{
-			Name:   v.Type,
+			Name:   v.Name,
 			Source: v.Dir,
+			Type:   v.Type,
 			LogReplayWorkerConfig: decoder.LogReplayWorkerConfig{
 				Workers: int(c.General.Workers),
 				Logger:  logger,
