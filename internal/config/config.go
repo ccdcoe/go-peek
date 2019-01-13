@@ -165,9 +165,9 @@ func (c Config) GetReplayStatConfig(
 	if logger == nil {
 		logger = logging.NewLogHandler()
 	}
-	for k, v := range c.Stream {
+	for _, v := range c.Stream {
 		conf := &decoder.SourceStatConfig{
-			Name:   k,
+			Name:   v.Type,
 			Source: v.Dir,
 			LogReplayWorkerConfig: decoder.LogReplayWorkerConfig{
 				Workers: int(c.General.Workers),

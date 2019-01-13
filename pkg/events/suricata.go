@@ -84,7 +84,9 @@ func (s Eve) SaganString() (string, error) {
 
 func (s *Eve) setMeta() *Eve {
 	s.GameMeta = NewSource()
-	s.GameMeta.SetHost(s.Syslog.Host).SetIp(s.Syslog.IP.IP)
+	if s.Syslog.IP != nil {
+		s.GameMeta.SetHost(s.Syslog.Host).SetIp(s.Syslog.IP.IP)
+	}
 	switch v := s.EventType; {
 	case v == "alert":
 		s.setMetaAlertSrc().setMetaAlertDest()

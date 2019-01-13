@@ -15,6 +15,18 @@ import (
 
 const defaultWorkerCount = 4
 
+type ErrParseWrong struct {
+	offset int64
+	source string
+	msg    []byte
+	parsed []byte
+}
+
+func (e ErrParseWrong) Error() string {
+	return fmt.Sprintf("Shipper IP missing for msg %d from %s.\n Original is [%s]\n Parsed is [%s]\n===",
+		e.offset, e.source, string(e.msg), string(e.parsed))
+}
+
 type Decoder struct {
 	input  types.Messager
 	output chan types.Message
@@ -219,6 +231,16 @@ loop:
 
 			if shipper, err = ev.Source(); err != nil {
 				d.logsender.Error(err)
+				continue loop
+			}
+			if shipper.IP == nil {
+				parsed, _ := ev.JSON()
+				d.logsender.Error(&ErrParseWrong{
+					offset: msg.Offset,
+					source: msg.Source,
+					msg:    msg.Data,
+					parsed: parsed,
+				})
 				continue loop
 			}
 

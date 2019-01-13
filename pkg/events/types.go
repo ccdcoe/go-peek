@@ -17,7 +17,7 @@ func (t *stringIP) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	t.IP = net.ParseIP(raw)
-	return err
+	return nil
 }
 
 type AssetIpMap map[string]string

@@ -58,7 +58,7 @@ def syslogReMap():
             "syslog_program":   "program",
             "syslog_severity":  "severity",
             "syslog_facility":  "facility",
-            "syslog_ip:":       "ip",
+            "syslog_ip":       "ip",
             }
 
 def syslogMessageFix(orig):
@@ -68,7 +68,7 @@ def syslogMessageFix(orig):
             "syslog_program":   orig["program"],
             "syslog_severity":  orig["severity"],
             "syslog_facility":  orig["facility"],
-            "syslog_ip:":       orig["ip"],
+            "syslog_ip":       orig["ip"],
             }
     if "message" in orig: 
         new["syslog_message"] = orig["message"]
@@ -81,6 +81,7 @@ def simpleSnoopy(mgrp):
             "tty":      mgrp[2],
             "cwd":      mgrp[3],
             "filename": mgrp[4],
+            "cmd":      mgrp[5],
             }
 
 def expandedSnoopy(mgrp):

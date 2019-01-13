@@ -249,6 +249,7 @@ func doReplay(args []string, appConfg *config.Config) error {
 	if from.UnixNano() > to.UnixNano() {
 		return fmt.Errorf("from > to")
 	}
+
 	logStatConfig := appConfg.GetReplayStatConfig(logHandle, from, to, *statTimeout)
 	logMap, err := decoder.MultiListLogFilesAndStatEventStart(
 		logStatConfig,
@@ -286,6 +287,7 @@ func doReplay(args []string, appConfg *config.Config) error {
 		kafkaConfig.LogHandler = logHandle
 
 		decoderConfig := appConfg.DecoderConfig(messages, logHandle)
+		decoderConfig.EventMap = logMap.EventTypeMap()
 		dec, err := decoder.NewMessageDecoder(*decoderConfig)
 		if err != nil {
 			return err

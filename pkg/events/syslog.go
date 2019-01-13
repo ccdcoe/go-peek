@@ -5,16 +5,18 @@ import (
 	"net"
 	"strings"
 	"time"
+
+	"github.com/ccdcoe/go-peek/internal/types"
 )
 
 type Syslog struct {
-	Timestamp time.Time `json:"@timestamp"`
-	Host      string    `json:"syslog_host"`
-	Program   string    `json:"syslog_program"`
-	Severity  string    `json:"syslog_severity"`
-	Facility  string    `json:"syslog_facility"`
-	IP        *stringIP `json:"syslog_ip"`
-	Message   string    `json:"syslog_message"`
+	Timestamp time.Time       `json:"@timestamp"`
+	Host      string          `json:"syslog_host"`
+	Program   string          `json:"syslog_program"`
+	Severity  string          `json:"syslog_severity"`
+	Facility  string          `json:"syslog_facility"`
+	IP        *types.StringIP `json:"syslog_ip,omitempty"`
+	Message   string          `json:"syslog_message"`
 
 	GameMeta *Source `json:"gamemeta"`
 }
@@ -99,7 +101,7 @@ func NewSyslogTestMessage(host string) *Syslog {
 		Program:   "some/dumb-app",
 		Severity:  "info",
 		Facility:  "daemon",
-		IP:        &stringIP{IP: net.ParseIP("12.3.4.5")},
+		IP:        &types.StringIP{IP: net.ParseIP("12.3.4.5")},
 		Message:   "[this dev has no idea how syslog works] this app is really messed up",
 	}
 }

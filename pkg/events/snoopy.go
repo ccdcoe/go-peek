@@ -77,7 +77,7 @@ func (s Snoopy) GetSyslogTime() time.Time {
 func (s Snoopy) SaganString() (string, error) {
 	return strings.Join(
 		[]string{
-			s.IP.String(),
+			s.GetSrcString(),
 			s.Facility,
 			s.Severity,
 			s.Severity,
@@ -90,9 +90,15 @@ func (s Snoopy) SaganString() (string, error) {
 	), nil
 }
 
+func (s Snoopy) GetSrcString() string {
+	return s.Syslog.GetSrcString()
+}
+
 func (s *Snoopy) setMeta() *Snoopy {
 	s.GameMeta = NewSource()
-	s.GameMeta.SetHost(s.Host).SetIp(s.IP.IP)
+	if s.IP != nil {
+		s.GameMeta.SetHost(s.Host).SetIp(s.IP.IP)
+	}
 
 	if s.SSH != nil && !s.SSH.Empty() {
 		if len(s.SSH.SrcIP.IP) > 0 {

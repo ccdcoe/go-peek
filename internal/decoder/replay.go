@@ -112,8 +112,13 @@ func (lm TimeListSequenceMap) Replay(config LogReplayWorkerConfig) (types.Messag
 	return output, nil
 }
 
+type EventFileInfoListing struct {
+	Type string
+	Data file.FileInfoListing
+}
+
 // *TODO* This may belong in ingest/file
-type MultiFileInfoListing map[string]file.FileInfoListing
+type MultiFileInfoListing map[string]*EventFileInfoListing
 
 func (fl MultiFileInfoListing) CollectTimeStamps(config LogReplayWorkerConfig) (TimeListSequenceMap, error) {
 	timelistmap := make(map[string][]*TimeList)
@@ -121,13 +126,22 @@ func (fl MultiFileInfoListing) CollectTimeStamps(config LogReplayWorkerConfig) (
 		if config.Logger != nil {
 			config.Logger.Notify(fmt.Sprintf("Parsing timestamps from %s", k))
 		}
-		listsequence, err := CollectTimeStamps(v, config)
+		listsequence, err := CollectTimeStamps(v.Data, config)
 		if err != nil {
 			return nil, err
 		}
 		timelistmap[k] = listsequence
 	}
 	return timelistmap, nil
+}
+func (fl MultiFileInfoListing) EventTypeMap() map[string]string {
+	eventmap := make(map[string]string)
+	for _, v := range fl {
+		for _, logfile := range v.Data {
+			eventmap[logfile.Path] = v.Type
+		}
+	}
+	return eventmap
 }
 
 // *TODO* refactor
@@ -267,8 +281,11 @@ loop:
 }
 
 func MultiListLogFilesAndStatEventStart(config []SourceStatConfig) (MultiFileInfoListing, error) {
-	out := make(map[string]file.FileInfoListing)
-	for _, conf := range config {
+	out := make(map[string]*EventFileInfoListing)
+	for i, conf := range config {
+		if conf.Name == "" {
+			return out, fmt.Errorf("Log event type name missing for replay element %d", i)
+		}
 		if conf.Source == "" {
 			return out, fmt.Errorf("Log replay source missing for %s", conf.Name)
 		}
@@ -276,7 +293,10 @@ func MultiListLogFilesAndStatEventStart(config []SourceStatConfig) (MultiFileInf
 		if err != nil {
 			return out, nil
 		}
-		out[conf.Source] = loglist
+		out[conf.Source] = &EventFileInfoListing{
+			Data: loglist,
+			Type: conf.Name,
+		}
 	}
 	return out, nil
 }
