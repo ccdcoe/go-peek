@@ -205,8 +205,12 @@ loop:
 			if !ok {
 				break loop
 			}
+			eventType := msg.Source
+			if val, ok := d.EventTypes[msg.Source]; ok {
+				eventType = val
+			}
 			if ev, err = events.NewEvent(
-				d.EventTypes[msg.Source],
+				eventType,
 				msg.Data,
 			); err != nil {
 				d.logsender.Error(err)

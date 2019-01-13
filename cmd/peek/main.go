@@ -202,6 +202,10 @@ var (
 		`Fast forward x times`)
 	statTimeout = replayFlags.Duration("stat-timeout", 60*time.Minute,
 		`Timeout for statting logfile stats. NOT FULLY IMPLEMENTED AND BUGGY!!! USE A HIGH VALUE!!!`)
+	stdout = replayFlags.Bool("stdout", false,
+		`Print messages to standard output, as opposed to producing to kafka.`)
+	stdoutRaw = replayFlags.Bool("stdout-raw", false,
+		`Used in conjunction to -stdout. Print additional message info, as opposed to textual payload.`)
 )
 
 func doReplay(args []string, appConfg *config.Config) error {
@@ -268,8 +272,30 @@ func doReplay(args []string, appConfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	for msg := range messages.Messages() {
-		fmt.Println(msg.String())
+
+	if *stdout {
+		for msg := range messages.Messages() {
+			if *stdoutRaw {
+				fmt.Fprintf(os.Stdout, "%s %d %s\n", msg.Source, msg.Offset, msg.String())
+			} else {
+				fmt.Fprintf(os.Stdout, "%s\n", msg.String())
+			}
+		}
+	} else {
+		kafkaConfig := appConfg.KafkaConfig()
+		kafkaConfig.LogHandler = logHandle
+
+		decoderConfig := appConfg.DecoderConfig(messages, logHandle)
+		dec, err := decoder.NewMessageDecoder(*decoderConfig)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintf(os.Stdout, "Processing messages\n")
+		outConfig := appConfg.OutputConfig(logHandle)
+		out := outputs.Output(dec.Messages())
+		out.Produce(*outConfig, context.Background())
+		outConfig.Wait.Wait()
 	}
 
 	return nil
