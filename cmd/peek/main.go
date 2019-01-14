@@ -127,7 +127,7 @@ func doOnlineConsume(args []string, appConfg *config.Config) error {
 
 	fmt.Fprintf(os.Stdout, "Processing messages\n")
 	for msg := range consumer.Messages() {
-		fmt.Println(string(msg.Data))
+		fmt.Fprintf(os.Stdout, "%s\n", msg.String())
 	}
 	return nil
 }
@@ -138,34 +138,10 @@ func doOnlineProcess(args []string, appConfg *config.Config) error {
 		dec      *decoder.Decoder
 		err      error
 	)
-	var (
-		logHandle   = logging.NewLogHandler()
-		kafkaConfig = appConfg.KafkaConfig()
-	)
 
-	// *TODO* move to logging package
-	go func() {
-		fmt.Fprintf(os.Stdout, "Starting notification handler\n")
-		for not := range logHandle.Notifications() {
-			switch v := not.(type) {
-			case string:
-				fmt.Fprintf(os.Stdout, "INFO: %s\n", v)
-			case cluster.Notification:
-				fmt.Fprintf(os.Stdout, "INFO: %+v\n", v)
-			default:
-			}
-		}
-		fmt.Fprintf(os.Stdout, "Stopping notification handler\n")
-	}()
-	// *TODO* move to logging package
-	go func() {
-		fmt.Fprintf(os.Stdout, "Starting error handler\n")
-		for err := range logHandle.Errors() {
-			// *TODO* error type switch
-			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err.Error())
-		}
-		fmt.Fprintf(os.Stdout, "Stopping error handler\n")
-	}()
+	logHandle := logging.NewLogHandler()
+	kafkaConfig := appConfg.KafkaConfig()
+	logs(logHandle)
 
 	kafkaConfig.LogHandler = logHandle
 	fmt.Fprintf(os.Stdout, "Starting consumer\n")
@@ -214,62 +190,54 @@ func doReplay(args []string, appConfg *config.Config) error {
 	}
 	args = replayFlags.Args()
 	logHandle := logging.NewLogHandler()
-	// *TODO* move to logging package
-	go func() {
-		fmt.Fprintf(os.Stdout, "Starting notification handler\n")
-		for not := range logHandle.Notifications() {
-			switch v := not.(type) {
-			case string:
-				fmt.Fprintf(os.Stdout, "INFO: %s\n", v)
-			case cluster.Notification:
-				fmt.Fprintf(os.Stdout, "INFO: %+v\n", v)
-			default:
-			}
-		}
-		fmt.Fprintf(os.Stdout, "Stopping notification handler\n")
-	}()
-	// *TODO* move to logging package
-	go func() {
-		fmt.Fprintf(os.Stdout, "Starting error handler\n")
-		for err := range logHandle.Errors() {
-			// *TODO* error type switch
-			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err.Error())
-		}
-		fmt.Fprintf(os.Stdout, "Stopping error handler\n")
-	}()
+	logs(logHandle)
 
-	from, err := time.Parse(argTsFormat, *timeFrom)
+	interval := func(start, stop string) (time.Time, time.Time, error) {
+		from, err := time.Parse(argTsFormat, *timeFrom)
+		if err != nil {
+			return time.Now(), time.Now(), err
+		}
+		to, err := time.Parse(argTsFormat, *timeTo)
+		if err != nil {
+			return time.Now(), time.Now(), err
+		}
+		if from.UnixNano() > to.UnixNano() {
+			return time.Now(), time.Now(), fmt.Errorf("from > to")
+		}
+		return from, to, nil
+	}
+	from, to, err := interval(*timeFrom, *timeTo)
 	if err != nil {
 		return err
-	}
-	to, err := time.Parse(argTsFormat, *timeTo)
-	if err != nil {
-		return err
-	}
-	if from.UnixNano() > to.UnixNano() {
-		return fmt.Errorf("from > to")
 	}
 
-	logStatConfig := appConfg.GetReplayStatConfig(logHandle, from, to, *statTimeout)
-	logMap, err := decoder.MultiListLogFilesAndStatEventStart(
-		logStatConfig,
-	)
-	if err != nil {
-		return err
+	buildTimeListAndReplay := func() (types.Messager, decoder.MultiFileInfoListing, error) {
+		logStatConfig := appConfg.GetReplayStatConfig(logHandle, from, to, *statTimeout)
+		sources, err := decoder.MultiListLogFilesAndStatEventStart(
+			logStatConfig,
+		)
+		if err != nil {
+			return nil, nil, err
+		}
+		replayConfig := decoder.LogReplayWorkerConfig{
+			From:    from,
+			To:      to,
+			Logger:  logHandle,
+			Workers: int(appConfg.General.Workers),
+			Timeout: *statTimeout,
+			Speedup: int64(*speedup),
+		}
+		timelistmap, err := sources.CollectTimeStamps(replayConfig)
+		if err != nil {
+			return nil, nil, err
+		}
+		messages, err := timelistmap.Replay(replayConfig)
+		if err != nil {
+			return nil, nil, err
+		}
+		return messages, sources, nil
 	}
-	replayConfig := decoder.LogReplayWorkerConfig{
-		From:    from,
-		To:      to,
-		Logger:  logHandle,
-		Workers: int(appConfg.General.Workers),
-		Timeout: *statTimeout,
-		Speedup: int64(*speedup),
-	}
-	timelistmap, err := logMap.CollectTimeStamps(replayConfig)
-	if err != nil {
-		return err
-	}
-	messages, err := timelistmap.Replay(replayConfig)
+	messages, logMap, err := buildTimeListAndReplay()
 	if err != nil {
 		return err
 	}
@@ -307,6 +275,30 @@ func doReplay(args []string, appConfg *config.Config) error {
 	return nil
 }
 
-func printErr(err error) {
-	fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+func logs(logHandle logging.LogListener) error {
+	errs := func() {
+		fmt.Fprintf(os.Stdout, "Starting notification handler\n")
+		for not := range logHandle.Notifications() {
+			switch v := not.(type) {
+			case string:
+				fmt.Fprintf(os.Stdout, "INFO: %s\n", v)
+			case cluster.Notification:
+				fmt.Fprintf(os.Stdout, "INFO: %+v\n", v)
+			default:
+			}
+		}
+		fmt.Fprintf(os.Stdout, "Stopping notification handler\n")
+	}
+	msgs := func() {
+		fmt.Fprintf(os.Stdout, "Starting error handler\n")
+		for err := range logHandle.Errors() {
+			// *TODO* error type switch
+			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err.Error())
+		}
+		fmt.Fprintf(os.Stdout, "Stopping error handler\n")
+	}
+	go errs()
+	go msgs()
+
+	return nil
 }
