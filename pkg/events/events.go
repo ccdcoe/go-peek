@@ -10,6 +10,16 @@ const (
 	saganTimeFormat = "15:04:05"
 )
 
+type ErrKeyMissing struct {
+	key    string
+	parser string
+	data   []byte
+}
+
+func (e ErrKeyMissing) Error() string {
+	return fmt.Sprintf("%s: key %s not in %s", e.parser, e.key, string(e.data))
+}
+
 type ErrTopicNotSupported struct {
 	topic   string
 	message []byte

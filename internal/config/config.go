@@ -82,8 +82,8 @@ func (c Config) Toml(dest io.Writer) error {
 
 func (c Config) EventTypes() map[string]string {
 	var types = map[string]string{}
-	for _, val := range c.Stream {
-		types[val.Name] = val.Type
+	for k, val := range c.Stream {
+		types[k] = val.Type
 	}
 	return types
 }

@@ -144,12 +144,9 @@ func (v StringValues) Get(key string) (string, bool) {
 	return "", false
 }
 
-func (v StringValues) RawValues() map[string]string {
+func (v *StringValues) RawValues() map[string]string {
 	v.Lock()
 	defer v.Unlock()
-	vals := map[string]string{}
-	for k, val := range v.m {
-		vals[k] = val
-	}
+	vals := v.m
 	return vals
 }

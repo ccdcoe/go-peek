@@ -24,7 +24,8 @@ type AssetIpMap map[string]string
 
 func (am AssetIpMap) CheckSetSource(obj *Source) error {
 	if ip, ok := obj.GetSrcIp(); ok {
-		obj.SetSrcName(am.GetName(ip))
+		newname := am.GetName(ip)
+		obj.SetSrcName(newname)
 	}
 	if ip, ok := obj.GetDestIp(); ok {
 		obj.SetDestName(am.GetName(ip))

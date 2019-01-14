@@ -35,13 +35,15 @@ type DynaEventLog struct {
 	EventTime time.Time `json:"event_time"`
 
 	GameMeta *Source `json:"gamemeta"`
+
+	raw []byte
 }
 
 func NewDynaEventLog(raw []byte) (*DynaEventLog, error) {
 	var (
 		err      error
 		src      string
-		e        = &DynaEventLog{}
+		e        = &DynaEventLog{raw: raw}
 		tsFormat = eventLogTsFormatDash
 	)
 	if e.Vals, err = gabs.ParseJSON(raw); err != nil {
@@ -118,36 +120,45 @@ func (s DynaEventLog) GetSyslogTime() time.Time {
 	return s.Timestamp
 }
 
+// *TODO* best effort list
 func (s DynaEventLog) SaganString() (string, error) {
-	var keys = []string{
+	keys := []string{
 		syslogIPKey,
 		eventLogSourceKey,
 		eventLogSevKey,
 		eventLogSevKey,
 		eventLogChanKey,
 		syslogProgKey,
-		eventLogMsgKey,
 	}
 	var (
-		vals = make([]string, len(keys))
-		err  error
+		items = len(keys) + 1
+		last  = items - 1
+		vals  = make([]string, items)
+		err   error
 	)
 	for i, v := range keys {
 		if vals[i], err = s.getStringFieldWithErr(v); err != nil {
 			return "", err
 		}
 	}
+	// Message field may be missing form event log
+	vals[last] = ""
+	if s.Vals.ExistsP(eventLogMsgKey) {
+		if vals[last], err = s.getStringFieldWithErr(eventLogMsgKey); err != nil {
+			return "", err
+		}
+	}
 	return strings.Join(
 		[]string{
-			keys[0],
-			keys[1],
-			keys[2],
-			keys[3],
-			keys[4],
+			vals[0],
+			vals[1],
+			vals[2],
+			vals[3],
+			vals[4],
 			s.GetSyslogTime().Format(saganDateFormat),
 			s.GetSyslogTime().Format(saganTimeFormat),
-			keys[5],
-			keys[6],
+			vals[5],
+			vals[6],
 		}, "|",
 	), nil
 }
@@ -169,7 +180,11 @@ func (s DynaEventLog) getStringFieldWithErr(key string) (string, error) {
 		err error
 	)
 	if val, err = s.checkAndGetUntypedField(key); err != nil {
-		return "", err
+		return "", ErrKeyMissing{
+			key:    key,
+			parser: "eventlog",
+			data:   s.raw,
+		}
 	}
 	switch val.(type) {
 	case string:

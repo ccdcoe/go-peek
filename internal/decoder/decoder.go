@@ -43,13 +43,15 @@ type Decoder struct {
 
 	workers   int
 	logsender logging.LogHandler
+
+	*sync.Mutex
 }
 
 func NewMessageDecoder(
 	config DecoderConfig,
 ) (*Decoder, error) {
 	var (
-		d   = &Decoder{}
+		d   = &Decoder{Mutex: &sync.Mutex{}}
 		wg  sync.WaitGroup
 		err error
 	)
@@ -105,7 +107,9 @@ func NewMessageDecoder(
 		defer close(d.output)
 		for i := 0; i < config.Workers; i++ {
 			wg.Add(1)
+			d.Lock()
 			ctx, d.workerStoppers[i] = context.WithCancel(context.Background())
+			d.Unlock()
 			go DecodeWorker(*d, &wg, ctx)
 		}
 		wg.Wait()
@@ -119,7 +123,11 @@ func NewMessageDecoder(
 	}()
 
 	var ctx context.Context
+
+	d.Lock()
 	ctx, d.inventoryStopper = context.WithCancel(context.Background())
+	d.Unlock()
+
 	go func(ctx context.Context) {
 		var (
 			err  error
@@ -158,27 +166,33 @@ func (d *Decoder) UpdateInventoryAndMaps() error {
 	if err := d.inventory.Get(*d.inventoryConfig); err != nil {
 		return err
 	}
-	// *TODO* I'm sure something can fail here
-	d.rename.IpToStringName = types.NewStringValues(
-		d.inventory.MapKnownIP(
-			d.rename.ByName.RawValues(),
-		),
-	)
+
+	update := d.rename.ByName.RawValues()
+	vals := d.inventory.MapKnownIP(update)
+
+	d.Lock()
+	d.rename.IpToStringName = types.NewStringValues(vals)
+	d.Unlock()
 	return nil
 }
 
-func (d Decoder) getAssetIpMap() events.AssetIpMap {
+func (d *Decoder) getAssetIpMap() events.AssetIpMap {
 	if d.rename != nil && d.rename.IpToStringName != nil {
-		return events.AssetIpMap(d.rename.IpToStringName.RawValues())
+		raw := d.rename.IpToStringName.RawValues()
+		return events.AssetIpMap(raw)
 	}
-	return events.AssetIpMap(map[string]string{})
+	return map[string]string{}
 }
 
-func (d Decoder) halt() {
+func (d *Decoder) halt() {
+	d.Lock()
 	for i := range d.workerStoppers {
 		d.workerStoppers[i]()
 	}
+	d.Unlock()
+	d.Lock()
 	d.inventoryStopper()
+	d.Unlock()
 }
 
 func (d Decoder) Names() map[string]string {

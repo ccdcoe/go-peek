@@ -152,6 +152,7 @@ func doOnlineProcess(args []string, appConfg *config.Config) error {
 	}
 
 	decoderConfig := appConfg.DecoderConfig(consumer, logHandle)
+
 	if dec, err = decoder.NewMessageDecoder(
 		*decoderConfig,
 	); err != nil {
@@ -256,6 +257,7 @@ func doReplay(args []string, appConfg *config.Config) error {
 
 		decoderConfig := appConfg.DecoderConfig(messages, logHandle)
 		decoderConfig.EventMap = logMap.EventTypeMap()
+
 		fmt.Println("INPUT: ", decoderConfig.EventMap)
 		dec, err := decoder.NewMessageDecoder(*decoderConfig)
 		if err != nil {
