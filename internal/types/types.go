@@ -31,19 +31,19 @@ func (t *StringIP) UnmarshalJSON(b []byte) error {
 }
 
 type BoolValues struct {
-	*sync.RWMutex
+	sync.RWMutex
 	m map[string]bool
 }
 
 func NewEmptyBoolValues() *BoolValues {
 	return &BoolValues{
-		RWMutex: &sync.RWMutex{},
+		RWMutex: sync.RWMutex{},
 		m:       map[string]bool{},
 	}
 }
 func NewBoolValues(vals map[string]bool) *BoolValues {
 	return &BoolValues{
-		RWMutex: &sync.RWMutex{},
+		RWMutex: sync.RWMutex{},
 		m:       vals,
 	}
 }
@@ -62,13 +62,13 @@ func (v *BoolValues) UnSet(key string) *BoolValues {
 	return v
 }
 
-func (v BoolValues) Get(key string) bool {
+func (v *BoolValues) Get(key string) bool {
 	v.Lock()
 	defer v.Unlock()
 	return v.m[key]
 }
 
-func (v BoolValues) Len() int {
+func (v *BoolValues) Len() int {
 	v.Lock()
 	defer v.Unlock()
 	l := len(v.m)
@@ -82,7 +82,7 @@ func (v *BoolValues) Del(key string) *BoolValues {
 	return v
 }
 
-func (v BoolValues) GetRandom(remove bool) string {
+func (v *BoolValues) GetRandom(remove bool) string {
 	i := rand.Intn(v.Len())
 	var k string
 
@@ -104,26 +104,26 @@ func (v BoolValues) GetRandom(remove bool) string {
 	return k
 }
 
-func (v BoolValues) RawValues() map[string]bool {
+func (v *BoolValues) RawValues() map[string]bool {
 	v.Lock()
 	defer v.Unlock()
 	return v.m
 }
 
 type StringValues struct {
-	*sync.RWMutex
+	sync.RWMutex
 	m map[string]string
 }
 
 func NewStringValues(vals map[string]string) *StringValues {
 	return &StringValues{
-		RWMutex: &sync.RWMutex{},
+		RWMutex: sync.RWMutex{},
 		m:       vals,
 	}
 }
 func NewEmptyStringValues() *StringValues {
 	return &StringValues{
-		RWMutex: &sync.RWMutex{},
+		RWMutex: sync.RWMutex{},
 		m:       map[string]string{},
 	}
 }
@@ -135,7 +135,7 @@ func (v *StringValues) Set(key, val string) *StringValues {
 	return v
 }
 
-func (v StringValues) Get(key string) (string, bool) {
+func (v *StringValues) Get(key string) (string, bool) {
 	v.Lock()
 	defer v.Unlock()
 	if val, ok := v.m[key]; ok {

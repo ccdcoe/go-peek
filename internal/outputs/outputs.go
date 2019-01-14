@@ -146,17 +146,7 @@ func (o Output) Produce(
 						formatKey = "sagan"
 					)
 					topic = topic + "-" + formatKey
-					if msg.Formats == nil {
-						// *TODO* return custom error type with full event.Event for debug
-						logger.Error(fmt.Errorf(
-							"%s format requested for source %s output %s but format map missing",
-							formatKey,
-							msg.Source,
-							topic,
-						))
-						continue loop
-					}
-					if val, ok := msg.Formats[formatKey]; !ok {
+					if val := msg.Formats.Sagan; val == "" {
 						logger.Error(fmt.Errorf(
 							"%s format requested for source %s output %s but value missing",
 							formatKey,

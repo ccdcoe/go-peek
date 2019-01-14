@@ -20,6 +20,7 @@ func (t *stringIP) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+/*
 type AssetIpMap map[string]string
 
 func (am AssetIpMap) CheckSetSource(obj *Source) error {
@@ -39,6 +40,7 @@ func (am AssetIpMap) GetName(ip net.IP) string {
 	}
 	return defaultName
 }
+*/
 
 type Source struct {
 	Meta

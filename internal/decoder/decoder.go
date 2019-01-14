@@ -14,6 +14,7 @@ import (
 )
 
 const defaultWorkerCount = 4
+const defaultName = "kerrigan"
 
 type ErrParseWrong struct {
 	offset int64
@@ -176,6 +177,15 @@ func (d *Decoder) UpdateInventoryAndMaps() error {
 	return nil
 }
 
+func (d Decoder) getAssetIpMap() *types.StringValues {
+	if d.rename != nil && d.rename.IpToStringName != nil {
+		raw := d.rename.IpToStringName.RawValues()
+		return types.NewStringValues(raw)
+	}
+	return types.NewStringValues(map[string]string{})
+}
+
+/*
 func (d *Decoder) getAssetIpMap() events.AssetIpMap {
 	if d.rename != nil && d.rename.IpToStringName != nil {
 		raw := d.rename.IpToStringName.RawValues()
@@ -183,6 +193,7 @@ func (d *Decoder) getAssetIpMap() events.AssetIpMap {
 	}
 	return map[string]string{}
 }
+*/
 
 func (d *Decoder) halt() {
 	d.Lock()
@@ -220,8 +231,6 @@ func DecodeWorker(d Decoder, wg *sync.WaitGroup, ctx context.Context) {
 
 		ip2name        = d.getAssetIpMap()
 		updateAssetMap = time.NewTicker(5 * time.Second)
-
-		formats = make(map[string]string)
 	)
 	defer updateAssetMap.Stop()
 loop:
@@ -268,7 +277,7 @@ loop:
 			}
 			if d.rename != nil {
 				ev.Rename(pretty)
-				ip2name.CheckSetSource(shipper)
+				CheckSetSource(shipper, *ip2name)
 			}
 
 			if data, err = ev.JSON(); err != nil {
@@ -283,14 +292,13 @@ loop:
 					d.logsender.Error(err)
 				}
 			}
-			formats["sagan"] = sagan
 			d.output <- types.Message{
 				Data:    data,
 				Source:  msg.Source,
 				Offset:  msg.Offset,
 				Key:     ev.Key(),
 				Time:    ev.GetEventTime(),
-				Formats: formats,
+				Formats: types.Formats{Sagan: sagan},
 			}
 		case <-ctx.Done():
 			break loop
@@ -298,4 +306,21 @@ loop:
 			ip2name = d.getAssetIpMap()
 		}
 	}
+}
+
+func CheckSetSource(obj *events.Source, assets types.StringValues) {
+	name := defaultName
+	if ip, ok := obj.GetSrcIp(); ok {
+		if val, ok := assets.Get(ip.String()); ok {
+			name = val
+		}
+		obj.SetSrcName(name)
+	}
+	if ip, ok := obj.GetDestIp(); ok {
+		if val, ok := assets.Get(ip.String()); ok {
+			name = val
+		}
+		obj.SetDestName(name)
+	}
+	return
 }

@@ -8,6 +8,10 @@ type Messager interface {
 	Messages() <-chan Message
 }
 
+type Formats struct {
+	Sagan string
+}
+
 type Message struct {
 	// Raw message in byte array format
 	// Can be original message or processed
@@ -32,9 +36,7 @@ type Message struct {
 	Time time.Time
 
 	// Optional reformatted messages to integrate with message-format sensitive tools
-	// Map key should represent message format name (e.g. RFC5424, CEE, CEF )
-	// Value should correspond to formatted message
-	Formats map[string]string
+	Formats
 }
 
 // String is a helpter for accessing byte array payload in string format
