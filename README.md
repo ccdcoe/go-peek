@@ -9,6 +9,18 @@ Current version is designed to consume events from one Kafka cluster and produce
 
 Sometimes messages need to be fed into another tool in specific format to generate a new event stream. Currently, only [sagan](https://github.com/beave/sagan) is supported. See example config for more details
 
+## Replay mode
+
+The nature of online data makes experimentation difficult. Logs can be read from files post-mortem, but this approach omits temporal properties that are critical when developing correlation rules (e.g., if event A and event B occur within interval T, output new event C or take action D). This is made even more challenging in cyber exercise environment where gameplay takes place over a course of few days and new targets are constantly being added.
+
+To overcome this problem, peek supports offline replay mode. All known timestamp fields from all log files from configured source directories will be parsed using [simple time](/pkg/events/simpletime.go) library. Log sources will be processed sequentially while individual file reading and message parsing will be parallelized using configured worker count. Timestamp of first log message is used for ordering log files. Subtracted differences in nanoseconds between sequential log messages are appended to a linked list that will later be used to invoke `time.Sleep()`. Optional `-time-from` and `-time-to` flags can be used to specify a desired replay interval. Messages outside this interval will be discarded. Finally, a concurrent goroutine will be spawned for each configured stream input, whereas time-ordered log files will be read sequentially within those workers. Each worker will then pull sleep values from their respective linked list and copy messages to common [output messanger](/internal/types/message.go). Output can be processed as any online stream. `-ff` flag can be used to optionally apply speedup multiplier to this lost.
+
+### Limitations
+
+Current implementation does not store parsed timestamps, and thus timestamps will be reparsed on each run. Furthermore, these linked lists are currently kept in process memory and replay can therefor consume significant amount of RAM. Reducing memory footprint is currently not needed for our datasets.
+
+Furthermore, replay time accuracy is best effort. Nanosecond scale drift is acceptable for event correlation tools that usually operate in human-measured intervals (i.e., seconds, minutes, hours). Note that time difference calculation assumes sequential timestamps from log messages. It does have any corrective measures if log sequence timestamping is messed up, which can be a common thing when syslog sender host clocks are out of sync.
+
 ## Building from source
 
 ### Install dep

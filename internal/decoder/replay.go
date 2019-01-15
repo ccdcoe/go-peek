@@ -4,7 +4,6 @@ import (
 	"container/list"
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"sync"
 	"time"
@@ -58,7 +57,7 @@ func (lm TimeListSequenceMap) Replay(config LogReplayWorkerConfig) (types.Messag
 			})
 		}
 
-		fmt.Fprintf(os.Stdout, "Looping files\n")
+		logger.Notify(fmt.Sprintf("Looping files for %s", src))
 	sourceLoop:
 		for _, replay := range replaySlice {
 			logger.Notify(fmt.Sprintf("%s, first offset: %d last offset: %d",
@@ -87,9 +86,9 @@ func (lm TimeListSequenceMap) Replay(config LogReplayWorkerConfig) (types.Messag
 				}
 			}()
 
-			fmt.Fprintf(os.Stdout, "Reading\n")
+			logger.Notify(fmt.Sprintf("Reading %s", replay.Source))
 			if err := <-replay.File.AsyncRead(messages); err != nil {
-				fmt.Fprintf(os.Stderr, "Unable to read %s. %s\n", replay.Source, err.Error())
+				logger.Error(fmt.Errorf("Unable to read %s. %s\n", replay.Source, err.Error()))
 				continue sourceLoop
 			}
 			close(messages)
