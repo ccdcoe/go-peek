@@ -15,6 +15,10 @@ The nature of online data makes experimentation difficult. Logs can be read from
 
 To overcome this problem, peek supports offline replay mode. All known timestamp fields from all log files from configured source directories will be parsed using [simple time](/pkg/events/simpletime.go) library. Log sources will be processed sequentially while individual file reading and message parsing will be parallelized using configured worker count. Timestamp of first log message is used for ordering log files. Subtracted differences in nanoseconds between sequential log messages are appended to a linked list that will later be used to invoke `time.Sleep()`. Optional `-time-from` and `-time-to` flags can be used to specify a desired replay interval. Messages outside this interval will be discarded. Finally, a concurrent goroutine will be spawned for each configured stream input, whereas time-ordered log files will be read sequentially within those workers. Each worker will then pull sleep values from their respective linked list and copy messages to common [output messanger](/internal/types/message.go). Output can be processed as any online stream. `-ff` flag can be used to optionally apply speedup multiplier to this lost.
 
+```
+peek --config ./config.toml replay --time-from "2018-12-06 10:00:00" --time-to "2018-12-06 13:00:00" -ff 1 -stdout
+```
+
 ### Limitations
 
 Current implementation does not store parsed timestamps, and thus timestamps will be reparsed on each run. Furthermore, these linked lists are currently kept in process memory and replay can therefor consume significant amount of RAM. Reducing memory footprint is currently not needed for our datasets.
