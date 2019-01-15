@@ -243,8 +243,15 @@ func doReplay(args []string, appConfg *config.Config) error {
 		return err
 	}
 
+	decoderConfig := appConfg.DecoderConfig(messages, logHandle)
+	decoderConfig.EventMap = logMap.EventTypeMap()
+	dec, err := decoder.NewMessageDecoder(*decoderConfig)
+	if err != nil {
+		return err
+	}
+
 	if *stdout {
-		for msg := range messages.Messages() {
+		for msg := range dec.Messages() {
 			if *stdoutRaw {
 				fmt.Fprintf(os.Stdout, "%s %d %s\n", msg.Source, msg.Offset, msg.String())
 			} else {
@@ -254,15 +261,6 @@ func doReplay(args []string, appConfg *config.Config) error {
 	} else {
 		kafkaConfig := appConfg.KafkaConfig()
 		kafkaConfig.LogHandler = logHandle
-
-		decoderConfig := appConfg.DecoderConfig(messages, logHandle)
-		decoderConfig.EventMap = logMap.EventTypeMap()
-
-		fmt.Println("INPUT: ", decoderConfig.EventMap)
-		dec, err := decoder.NewMessageDecoder(*decoderConfig)
-		if err != nil {
-			return err
-		}
 
 		fmt.Fprintf(os.Stdout, "Processing messages\n")
 		outConfig := appConfg.OutputConfig(logHandle)
