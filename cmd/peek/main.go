@@ -14,8 +14,8 @@ import (
 	"github.com/ccdcoe/go-peek/internal/decoder"
 	"github.com/ccdcoe/go-peek/internal/ingest/kafka"
 	"github.com/ccdcoe/go-peek/internal/logging"
-	"github.com/ccdcoe/go-peek/internal/outputs"
 	"github.com/ccdcoe/go-peek/internal/types"
+	"github.com/ccdcoe/go-peek/pkg/outputs"
 )
 
 const argTsFormat = "2006-01-02 15:04:05"

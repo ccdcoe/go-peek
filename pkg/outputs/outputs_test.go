@@ -36,8 +36,8 @@ func Generate() (<-chan types.Message, map[string]string) {
 					Data:   json,
 					Time:   syslog.GetSyslogTime(),
 					Source: sources[rand.Int()%len(sources)],
-					Formats: map[string]string{
-						"sagan": sagan,
+					Formats: types.Formats{
+						Sagan: sagan,
 					},
 				}
 			}

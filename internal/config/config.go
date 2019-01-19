@@ -9,8 +9,8 @@ import (
 	"github.com/ccdcoe/go-peek/internal/decoder"
 	"github.com/ccdcoe/go-peek/internal/ingest/kafka"
 	"github.com/ccdcoe/go-peek/internal/logging"
-	"github.com/ccdcoe/go-peek/internal/outputs"
 	"github.com/ccdcoe/go-peek/internal/types"
+	"github.com/ccdcoe/go-peek/pkg/outputs"
 )
 
 type Config struct {

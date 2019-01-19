@@ -3,7 +3,7 @@ package config
 import (
 	"time"
 
-	"github.com/ccdcoe/go-peek/internal/outputs"
+	"github.com/ccdcoe/go-peek/pkg/outputs"
 )
 
 type StreamConfig struct {

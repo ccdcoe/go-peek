@@ -63,14 +63,22 @@ func (lm TimeListSequenceMap) Replay(config LogReplayWorkerConfig) (types.Messag
 			logger.Notify(fmt.Sprintf("%s, first offset: %d last offset: %d",
 				replay.Source, replay.Start, replay.End))
 			if replay.Start < 0 || replay.End < 0 {
-				logger.Notify(fmt.Sprintf("%s has no known messages, skipping\n", replay.Source))
+				logger.Notify(fmt.Sprintf(
+					"%s has no known messages, skipping\n",
+					replay.Source,
+				))
 				continue sourceLoop
 			}
 			messages := make(chan types.Message)
 			go func() {
 				if replay.Start > 0 {
-					logger.Notify(fmt.Sprintf("%s does not start from beginning, consuming until %d",
-						replay.Source, replay.Start))
+					logger.Notify(
+						fmt.Sprintf(
+							"%s does not start from beginning, consuming until %d",
+							replay.Source,
+							replay.Start,
+						),
+					)
 				msgLoop:
 					for msg := range messages {
 						if msg.Offset == replay.Start {
@@ -120,7 +128,9 @@ type EventFileInfoListing struct {
 
 type MultiFileInfoListing map[string]*EventFileInfoListing
 
-func (fl MultiFileInfoListing) CollectTimeStamps(config LogReplayWorkerConfig) (TimeListSequenceMap, error) {
+func (fl MultiFileInfoListing) CollectTimeStamps(
+	config LogReplayWorkerConfig,
+) (TimeListSequenceMap, error) {
 	timelistmap := make(map[string][]*TimeList)
 	for k, v := range fl {
 		if config.Logger != nil {
