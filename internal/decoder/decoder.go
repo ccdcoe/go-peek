@@ -14,7 +14,7 @@ import (
 )
 
 const defaultWorkerCount = 4
-const defaultName = "kerrigan"
+const defaultName = "Kerrigan"
 
 type ErrParseWrong struct {
 	offset int64
