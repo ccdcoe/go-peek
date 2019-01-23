@@ -20,28 +20,6 @@ func (t *stringIP) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-/*
-type AssetIpMap map[string]string
-
-func (am AssetIpMap) CheckSetSource(obj *Source) error {
-	if ip, ok := obj.GetSrcIp(); ok {
-		newname := am.GetName(ip)
-		obj.SetSrcName(newname)
-	}
-	if ip, ok := obj.GetDestIp(); ok {
-		obj.SetDestName(am.GetName(ip))
-	}
-	return nil
-}
-
-func (am AssetIpMap) GetName(ip net.IP) string {
-	if val, ok := am[ip.String()]; ok {
-		return val
-	}
-	return defaultName
-}
-*/
-
 type Source struct {
 	Meta
 	Src  *Meta `json:"Src"`
