@@ -93,9 +93,8 @@ func NewDynaEventLog(raw []byte) (*DynaEventLog, error) {
 func (s *DynaEventLog) JSON() ([]byte, error) {
 	if s.GameMeta != nil {
 		s.GameMeta.Host = s.Host
+		s.Vals.SetP(s.GameMeta, "gamemeta")
 	}
-	//s.Vals.SetP(s.Timestamp, syslogTsKey)
-	s.Vals.SetP(s.GameMeta, "gamemeta")
 	return s.Vals.Bytes(), nil
 }
 

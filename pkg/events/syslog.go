@@ -24,7 +24,10 @@ type Syslog struct {
 func NewSyslog(raw []byte) (*Syslog, error) {
 	var s = &Syslog{}
 	if err := json.Unmarshal(raw, s); err != nil {
-		return nil, err
+		return nil, &ErrDecode{
+			raw: raw,
+			err: err,
+		}
 	}
 	return s.setMeta(), nil
 }

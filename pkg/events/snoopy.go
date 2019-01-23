@@ -41,7 +41,10 @@ func (s SnoopySSH) Empty() bool {
 func NewSnoopy(raw []byte) (*Snoopy, error) {
 	var s = &Snoopy{}
 	if err := json.Unmarshal(raw, s); err != nil {
-		return nil, err
+		return nil, &ErrDecode{
+			raw: raw,
+			err: err,
+		}
 	}
 	return s.setMeta(), nil
 }

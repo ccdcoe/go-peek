@@ -65,6 +65,14 @@ func (o Output) Produce(
 		logger = logging.NewLogHandler()
 	}
 
+	brokers = config.MainKafkaBrokers
+	if producer, err = sarama.NewAsyncProducer(
+		brokers,
+		NewProducerConfig(),
+	); err != nil {
+		return nil, err
+	}
+
 	if config.FeedbackKafkaBrokers == nil || len(config.FeedbackKafkaBrokers) == 0 {
 		logger.Notify("Feedback brokers not configured, defaulting to main")
 		brokers = config.MainKafkaBrokers
@@ -76,15 +84,10 @@ func (o Output) Produce(
 		brokers = config.FeedbackKafkaBrokers
 	}
 
-	brokers = config.MainKafkaBrokers
-	if producer, err = sarama.NewAsyncProducer(
-		brokers,
-		NewProducerConfig(),
-	); err != nil {
-		return nil, err
-	}
-
 	// *TODO* map[string]AsyncProducer if more formats or clusters are needed
+	logger.Notify(
+		fmt.Sprintf("starting feedback brokers with %s", strings.Join(brokers, ",")),
+	)
 	if feedback, err = sarama.NewAsyncProducer(
 		brokers,
 		NewProducerConfig(),
@@ -114,6 +117,7 @@ func (o Output) Produce(
 
 		var topic string
 		var saganset = config.SaganSet()
+		fmt.Println(config)
 	loop:
 		for {
 			select {
