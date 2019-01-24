@@ -166,7 +166,7 @@ func doOnlineProcess(args []string, appConfg *config.Config) error {
 	out.Produce(*outConfig, context.Background())
 
 	go func() {
-		every := time.NewTicker(5 * time.Second)
+		every := time.NewTicker(30 * time.Second)
 		dumper := outputs.NewBulk(appConfg.Elastic.RenameMap.Hosts, logHandle)
 	loop:
 		for {
@@ -184,7 +184,7 @@ func doOnlineProcess(args []string, appConfg *config.Config) error {
 							Original: k,
 							Pretty:   v,
 						}); err == nil {
-						dumper.AddIndex(data, appConfg.Elastic.RenameMap.AddrIndex)
+						dumper.AddIndex(data, appConfg.Elastic.RenameMap.AddrIndex, k)
 					} else {
 						logHandle.Error(err)
 					}
@@ -200,7 +200,7 @@ func doOnlineProcess(args []string, appConfg *config.Config) error {
 							Addr:   k,
 							Pretty: v,
 						}); err == nil {
-						dumper.AddIndex(data, appConfg.Elastic.RenameMap.HostIndex)
+						dumper.AddIndex(data, appConfg.Elastic.RenameMap.HostIndex, k)
 					} else {
 						logHandle.Error(err)
 					}

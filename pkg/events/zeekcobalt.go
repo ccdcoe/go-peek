@@ -51,7 +51,9 @@ func (z *ZeekCobalt) Source() (*Source, error) {
 }
 
 func (z *ZeekCobalt) Rename(pretty string) {
-	z.GameMeta.Host = pretty
+	if z.GameMeta != nil {
+		z.GameMeta.Host = pretty
+	}
 }
 
 func (z ZeekCobalt) JSON() ([]byte, error) {

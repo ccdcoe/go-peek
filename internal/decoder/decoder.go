@@ -272,6 +272,10 @@ loop:
 			if d.rename != nil {
 				ev.Rename(pretty)
 				CheckSetSource(shipper, *ip2name)
+				if (shipper.Src != nil && shipper.Dest != nil) && (!shipper.Src.IP.Equal(shipper.Dest.IP)) && (shipper.Src.Host == shipper.Dest.Host) {
+					asd, _ := ev.JSON()
+					fmt.Println(shipper.Src, shipper.Dest, string(asd))
+				}
 			}
 
 			if data, err = ev.JSON(); err != nil {
