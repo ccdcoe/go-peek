@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -163,6 +164,52 @@ func doOnlineProcess(args []string, appConfg *config.Config) error {
 	outConfig := appConfg.OutputConfig(logHandle)
 	out := outputs.Output(dec.Messages())
 	out.Produce(*outConfig, context.Background())
+
+	go func() {
+		every := time.NewTicker(5 * time.Second)
+		dumper := outputs.NewBulk(appConfg.Elastic.RenameMap.Hosts, logHandle)
+	loop:
+		for {
+			select {
+			case <-every.C:
+				maps := dec.GetMaps()
+				if maps.IPmap == nil || len(maps.IPmap) == 0 {
+					continue loop
+				}
+				for k, v := range maps.IPmap {
+					if data, err := json.Marshal(
+						struct {
+							Original, Pretty string
+						}{
+							Original: k,
+							Pretty:   v,
+						}); err == nil {
+						dumper.AddIndex(data, appConfg.Elastic.RenameMap.AddrIndex)
+					} else {
+						logHandle.Error(err)
+					}
+				}
+				if maps.NameMap == nil || len(maps.NameMap) == 0 {
+					continue loop
+				}
+				for k, v := range maps.NameMap {
+					if data, err := json.Marshal(
+						struct {
+							Addr, Pretty string
+						}{
+							Addr:   k,
+							Pretty: v,
+						}); err == nil {
+						dumper.AddIndex(data, appConfg.Elastic.RenameMap.HostIndex)
+					} else {
+						logHandle.Error(err)
+					}
+				}
+				dumper.Flush()
+			}
+		}
+	}()
+
 	outConfig.Wait.Wait()
 
 	return nil

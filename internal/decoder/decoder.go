@@ -185,16 +185,6 @@ func (d Decoder) getAssetIpMap() *types.StringValues {
 	return types.NewStringValues(map[string]string{})
 }
 
-/*
-func (d *Decoder) getAssetIpMap() events.AssetIpMap {
-	if d.rename != nil && d.rename.IpToStringName != nil {
-		raw := d.rename.IpToStringName.RawValues()
-		return events.AssetIpMap(raw)
-	}
-	return map[string]string{}
-}
-*/
-
 func (d *Decoder) halt() {
 	d.Lock()
 	for i := range d.workerStoppers {
@@ -212,6 +202,10 @@ func (d Decoder) Names() map[string]string {
 
 func (d Decoder) IPmaps() map[string]string {
 	return d.rename.IpToStringName.RawValues()
+}
+
+func (d Decoder) GetMaps() RenameMappings {
+	return d.rename.GetMappings()
 }
 
 func DecodeWorker(d Decoder, wg *sync.WaitGroup, ctx context.Context) {

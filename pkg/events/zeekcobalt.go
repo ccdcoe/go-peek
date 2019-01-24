@@ -9,6 +9,7 @@ import (
 )
 
 type ZeekCobalt struct {
+	Timestamp   time.Time `json:"@timestamp"`
 	Ts          float64   `json:"ts"`
 	UID         string    `json:"uid"`
 	IDOrigH     *stringIP `json:"id.orig_h"`
@@ -34,6 +35,7 @@ func NewZeekCobalt(raw []byte) (*ZeekCobalt, error) {
 	if err := json.Unmarshal(raw, z); err != nil {
 		return nil, err
 	}
+	z.Timestamp = z.GetEventTime()
 	return z, nil
 }
 

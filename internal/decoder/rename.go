@@ -113,6 +113,10 @@ func (r *Rename) Check(name string) (string, bool) {
 	if val, ok := r.ByName.Get(name); ok {
 		return val, true
 	}
+	if val, ok := r.IpToStringName.Get(name); ok {
+		r.ByName.Set(name, val)
+		return val, true
+	}
 	r.ByName.Lock()
 	val := r.NameSet.GetRandom(true)
 	r.ByName.Unlock()
@@ -133,6 +137,18 @@ func (r Rename) SaveMappings() error {
 		r.D.MappingPath(),
 		r.ByName.RawValues(),
 	)
+}
+
+type RenameMappings struct {
+	IPmap   map[string]string
+	NameMap map[string]string
+}
+
+func (r Rename) GetMappings() RenameMappings {
+	return RenameMappings{
+		IPmap:   r.IpToStringName.RawValues(),
+		NameMap: r.ByName.RawValues(),
+	}
 }
 
 func NameSetFromCSV(src io.Reader) (map[string]bool, error) {
