@@ -54,16 +54,16 @@ func (o Output) Produce(
 		flush = config.ElaFlush
 	}
 
-	var (
-		send = time.NewTicker(flush)
-		ela  = NewBulk(config.ElaProxies, logger)
-	)
-
 	if config.Logger != nil {
 		logger = config.Logger
 	} else {
 		logger = logging.NewLogHandler()
 	}
+
+	var (
+		send = time.NewTicker(flush)
+		ela  = NewBulk(config.ElaProxies, logger)
+	)
 
 	brokers = config.MainKafkaBrokers
 	if producer, err = sarama.NewAsyncProducer(
