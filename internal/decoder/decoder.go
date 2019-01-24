@@ -16,6 +16,28 @@ import (
 const defaultWorkerCount = 4
 const defaultName = "Kerrigan"
 
+type ErrMessedUpRename struct {
+	msg  events.EventFormatter
+	src  events.Meta
+	dest events.Meta
+}
+
+func (e ErrMessedUpRename) Error() string {
+	data, err := e.msg.JSON()
+	msg := ""
+	if err != nil {
+		msg = string(data)
+	}
+	return fmt.Sprintf(
+		"Src: %s | %s  Dest %s | %s [%s]",
+		e.src.IP.String(),
+		e.src.Host,
+		e.dest.IP.String(),
+		e.dest.Host,
+		msg,
+	)
+}
+
 type ErrParseWrong struct {
 	offset int64
 	source string
@@ -289,12 +311,13 @@ loop:
 					}
 				}
 
-				/*
-					if (shipper.Src != nil && shipper.Dest != nil) && (!shipper.Src.IP.Equal(shipper.Dest.IP)) && (shipper.Src.Host == shipper.Dest.Host) {
-						asd, _ := ev.JSON()
-						fmt.Println(shipper.Src, shipper.Dest, string(asd))
-					}
-				*/
+				if (shipper.Src != nil && shipper.Dest != nil) && (!shipper.Src.IP.Equal(shipper.Dest.IP)) && (shipper.Src.Host == shipper.Dest.Host) && shipper.Src.Host != "Kerrigan" {
+					d.logsender.Error(&ErrMessedUpRename{
+						dest: *shipper.Dest,
+						src:  *shipper.Src,
+						msg:  ev,
+					})
+				}
 			}
 
 			if data, err = ev.JSON(); err != nil {
