@@ -271,7 +271,23 @@ loop:
 			}
 			if d.rename != nil {
 				ev.Rename(pretty)
-				CheckSetSource(shipper, *ip2name)
+
+				if ip, ok := shipper.GetSrcIp(); ok {
+					if val, ok := ip2name.Get(ip.String()); ok {
+						shipper.SetSrcName(val)
+					} else {
+						shipper.SetSrcName(defaultName)
+					}
+				}
+
+				if ip, ok := shipper.GetDestIp(); ok {
+					if val, ok := ip2name.Get(ip.String()); ok {
+						shipper.SetDestName(val)
+					} else {
+						shipper.SetDestName(defaultName)
+					}
+				}
+
 				if (shipper.Src != nil && shipper.Dest != nil) && (!shipper.Src.IP.Equal(shipper.Dest.IP)) && (shipper.Src.Host == shipper.Dest.Host) {
 					asd, _ := ev.JSON()
 					fmt.Println(shipper.Src, shipper.Dest, string(asd))
@@ -304,21 +320,4 @@ loop:
 			ip2name = d.getAssetIpMap()
 		}
 	}
-}
-
-func CheckSetSource(obj *events.Source, assets types.StringValues) {
-	name := defaultName
-	if ip, ok := obj.GetSrcIp(); ok {
-		if val, ok := assets.Get(ip.String()); ok {
-			name = val
-		}
-		obj.SetSrcName(name)
-	}
-	if ip, ok := obj.GetDestIp(); ok {
-		if val, ok := assets.Get(ip.String()); ok {
-			name = val
-		}
-		obj.SetDestName(name)
-	}
-	return
 }
