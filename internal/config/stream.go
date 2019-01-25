@@ -1,6 +1,8 @@
 package config
 
 import (
+	"os"
+	"path"
 	"time"
 
 	"github.com/ccdcoe/go-peek/pkg/outputs"
@@ -42,6 +44,7 @@ func NewDefaultStreamConfig(stream string) *StreamConfig {
 	s.Name = stream
 	s.Type = stream
 	s.Topic = stream
+	s.Dir = path.Join(os.Getenv("HOME"), "data", stream)
 	s.Sagan = *NewDefaultSaganConfig()
 	return s
 }

@@ -16,9 +16,6 @@ import (
 type Config struct {
 	General *GeneralConfig
 
-	Errors        *LogConfig
-	Notifications *LogConfig
-
 	Kafka   *KafkaConfig
 	Elastic *ElaConfig
 
@@ -30,14 +27,6 @@ func NewDefaultConfig() *Config {
 		General: &GeneralConfig{
 			Spooldir: "/var/log/gopeek",
 			Workers:  4,
-		},
-		Errors: &LogConfig{
-			Enable: true,
-			Sample: -1,
-		},
-		Notifications: &LogConfig{
-			Enable: true,
-			Sample: -1,
 		},
 		Kafka: &KafkaConfig{
 			Input:         []string{"localhost:9092"},

@@ -165,15 +165,25 @@ func doOnlineProcess(args []string, appConfg *config.Config) error {
 	out := outputs.Output(dec.Messages())
 	out.Produce(*outConfig, context.Background())
 
-	go func() {
-		every := time.NewTicker(30 * time.Second)
-		dumper := outputs.NewBulk(appConfg.Elastic.RenameMap.Hosts, logHandle)
+	dumpNamesToEla := func(
+		dec *decoder.Decoder,
+		logger logging.LogHandler,
+		interval time.Duration,
+		hosts []string,
+	) {
+		if interval.Seconds() < 1.0 {
+			interval = 1 * time.Second
+		}
+		logger.Notify(fmt.Sprintf("starting elastic name dumper with flush interval %.2f seconds", interval.Seconds()))
+		every := time.NewTicker(interval)
+		dumper := outputs.NewBulk(hosts, logger)
 	loop:
 		for {
 			select {
 			case <-every.C:
 				maps := dec.GetMaps()
 				if maps.IPmap == nil || len(maps.IPmap) == 0 {
+					logger.Notify("No IP mappings, not sending to elastic")
 					continue loop
 				}
 				for k, v := range maps.IPmap {
@@ -186,10 +196,11 @@ func doOnlineProcess(args []string, appConfg *config.Config) error {
 						}); err == nil {
 						dumper.AddIndex(data, appConfg.Elastic.RenameMap.AddrIndex, k)
 					} else {
-						logHandle.Error(err)
+						logger.Error(err)
 					}
 				}
 				if maps.NameMap == nil || len(maps.NameMap) == 0 {
+					logger.Notify("No name mappings, not sending to elastic")
 					continue loop
 				}
 				for k, v := range maps.NameMap {
@@ -202,14 +213,20 @@ func doOnlineProcess(args []string, appConfg *config.Config) error {
 						}); err == nil {
 						dumper.AddIndex(data, appConfg.Elastic.RenameMap.HostIndex, k)
 					} else {
-						logHandle.Error(err)
+						logger.Error(err)
 					}
 				}
 				dumper.Flush()
 			}
 		}
-	}()
+	}
 
+	go dumpNamesToEla(
+		dec,
+		logHandle,
+		10*time.Second,
+		appConfg.Elastic.RenameMap.Hosts,
+	)
 	outConfig.Wait.Wait()
 
 	return nil
