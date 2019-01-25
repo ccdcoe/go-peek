@@ -5,10 +5,6 @@ import (
 	"strconv"
 )
 
-const (
-	defaultName = "Kerrigan"
-)
-
 type stringIP struct{ net.IP }
 
 func (t *stringIP) UnmarshalJSON(b []byte) error {
