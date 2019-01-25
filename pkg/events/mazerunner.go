@@ -30,12 +30,13 @@ func NewMazeRunner(raw []byte) (*MazeRunner, error) {
 }
 
 func (m MazeRunner) Key() string {
-	return ""
+	return m.Cef.DeviceVendor
 }
 
 func (m *MazeRunner) Source() (*Source, error) {
 	if m.GameMeta == nil {
 		m.GameMeta = NewSource()
+		m.GameMeta.SetHost(m.Syslog.Host)
 	}
 
 	if m.Syslog.IP != nil {
@@ -69,6 +70,9 @@ func (m *MazeRunner) Source() (*Source, error) {
 
 func (m *MazeRunner) Rename(pretty string) {
 	m.Syslog.Host = pretty
+	if m.GameMeta != nil {
+		m.GameMeta.Host = pretty
+	}
 }
 
 func (m MazeRunner) JSON() ([]byte, error) {
