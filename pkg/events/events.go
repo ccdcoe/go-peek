@@ -77,6 +77,8 @@ func NewEvent(topic string, payload []byte) (Event, error) {
 		return NewPacketBeacon(payload)
 	case "nos":
 		return NewNOS(payload)
+	case "mazerunner":
+		return NewMazeRunner(payload)
 	default:
 		// *TODO* This doesn't have to fail.
 		// We can use a generic gabs / map[string]interface{} with time.now instead
