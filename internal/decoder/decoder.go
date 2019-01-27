@@ -46,7 +46,7 @@ type ErrParseWrong struct {
 }
 
 func (e ErrParseWrong) Error() string {
-	return fmt.Sprintf("Shipper IP missing for msg %d from %s.\n Original is [%s]\n Parsed is [%s]\n===",
+	return fmt.Sprintf("Shipper IP missing for msg %d from %s.\n Original is [%s]\n Parsed is [%s]\n",
 		e.offset, e.source, string(e.msg), string(e.parsed))
 }
 
@@ -63,6 +63,9 @@ type Decoder struct {
 	inventoryConfig *types.ElaTargetInventoryConfig
 
 	rename *Rename
+
+	NamePool sync.Map
+	NameMap  sync.Map
 
 	workers   int
 	logsender logging.LogHandler

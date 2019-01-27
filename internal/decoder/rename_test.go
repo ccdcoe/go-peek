@@ -2,13 +2,60 @@ package decoder
 
 import (
 	"fmt"
-	"sync"
+	"os"
 	"testing"
-	"time"
 
-	"github.com/ccdcoe/go-peek/pkg/events"
+	"github.com/ccdcoe/go-peek/internal/types"
 )
 
+func TestNewNameSet(t *testing.T) {
+	hosts := []string{os.Getenv("ELASTIC_HOST")}
+	if hosts[0] == "" {
+		hosts[0] = "http://localhost:9200"
+	}
+	names, err := newSyncNamePool("/tmp", types.ElaTargetInventoryConfig{
+		Hosts: hosts,
+		Index: "inventory-latest",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	items := 0
+	names.NamePool.Range(func(k, v interface{}) bool {
+		items++
+		return true
+	})
+	fmt.Println(items)
+	if err := saveNameSetToGob("/tmp/items.gob", names.NamePool); err != nil {
+		t.Fatal(err)
+	}
+	if loaded, err := loadNameSetFromGob("/tmp/items.gob"); err != nil {
+		t.Fatal(err)
+	} else {
+		items2 := 0
+		loaded.Range(func(k, v interface{}) bool {
+			val, ok := names.NamePool.Load(k)
+			if !ok {
+				t.Fatalf("%s missing in loaded map", k)
+			}
+			if val != v {
+				t.Fatalf("%s wrong. Should be %s is %s", k, val, v)
+			}
+			items2++
+			return true
+		})
+		if items2 != items {
+			t.Fatalf("actual %d != loaded %d\n", items, items2)
+		}
+	}
+	fmt.Println(names.LenAvailableName)
+	names.NameReMap.Range(func(k interface{}, v interface{}) bool {
+		fmt.Printf("%s - %s\n", k, v)
+		return true
+	})
+}
+
+/*
 func TestRename(t *testing.T) {
 	ren, err := NewRename("/tmp/")
 	if err != nil {
@@ -94,3 +141,4 @@ loop:
 	}
 
 }
+*/
