@@ -71,20 +71,3 @@ func (t *ElaTargetInventory) Get(config ElaTargetInventoryConfig) error {
 func (t ElaTargetInventory) JSON() ([]byte, error) {
 	return json.Marshal(t)
 }
-
-func (t ElaTargetInventory) MapKnownIP(ip2pretty map[string]string) map[string]string {
-	mapped := NewStringValues(make(map[string]string))
-
-	for _, grain := range t.Hits.Hits {
-		addrs := grain.Source.GetAddrs()
-		for k, v := range ip2pretty {
-			if addrs.ContainS(k) {
-				for _, a := range addrs {
-					mapped.Set(a.String(), v)
-				}
-			}
-		}
-	}
-
-	return mapped.RawValues()
-}

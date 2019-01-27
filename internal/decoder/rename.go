@@ -56,123 +56,6 @@ func (d Dump) MappingPath() string {
 	return filepath.Join(d.Dir, d.Mappings)
 }
 
-type RenameConfig struct {
-	SpoolDir string
-}
-
-type Rename struct {
-	NameSet        *types.BoolValues
-	ByName         *types.StringValues
-	IpToStringName *types.StringValues
-	D              Dump
-}
-
-func NewRename(config RenameConfig) (*Rename, error) {
-	var (
-		r       *Rename
-		d       Dump
-		resp    *http.Response
-		err     error
-		nameset = map[string]bool{}
-	)
-	d = Dump{
-		Dir:      config.SpoolDir,
-		Names:    "names.gob",
-		Mappings: "mappings.gob",
-	}
-	if err = d.CheckDir(); err != nil {
-		return nil, err
-	}
-	r = &Rename{D: d}
-
-	if _, err = os.Stat(r.D.NamePath()); os.IsNotExist(err) {
-		if resp, err = http.Get(names); err != nil {
-			return nil, err
-		}
-		defer resp.Body.Close()
-
-		if nameset, err = NameSetFromCSV(resp.Body); err != nil {
-			return nil, err
-		}
-		r.NameSet = types.NewBoolValues(nameset)
-
-		if err = r.SaveNames(); err != nil {
-			return nil, err
-		}
-	} else {
-		var decodedMap map[string]bool
-		if err := utils.GobLoadFile(
-			r.D.NamePath(),
-			&decodedMap,
-		); err != nil {
-			return nil, err
-		}
-		r.NameSet = types.NewBoolValues(decodedMap)
-	}
-
-	if _, err = os.Stat(
-		r.D.MappingPath(),
-	); os.IsNotExist(err) {
-		r.ByName = types.NewEmptyStringValues()
-		if err := r.SaveMappings(); err != nil {
-			return nil, err
-		}
-	} else {
-		var decodedMap map[string]string
-		if err := utils.GobLoadFile(
-			r.D.MappingPath(),
-			&decodedMap,
-		); err != nil {
-			return nil, err
-		}
-		r.ByName = types.NewStringValues(decodedMap)
-	}
-
-	return r, nil
-}
-
-func (r *Rename) Check(name string) (string, bool) {
-	if val, ok := r.ByName.Get(name); ok {
-		return val, true
-	}
-	if val, ok := r.IpToStringName.Get(name); ok {
-		r.ByName.Set(name, val)
-		return val, true
-	}
-	r.ByName.Lock()
-	val := r.NameSet.GetRandom(true)
-	r.ByName.Unlock()
-
-	r.ByName.Set(name, val)
-	return val, false
-}
-
-func (r Rename) SaveNames() error {
-	return utils.GobSaveFile(
-		r.D.NamePath(),
-		r.NameSet.RawValues(),
-	)
-}
-
-func (r Rename) SaveMappings() error {
-	return utils.GobSaveFile(
-		r.D.MappingPath(),
-		r.ByName.RawValues(),
-	)
-}
-
-type RenameMappings struct {
-	IPmap   map[string]string
-	NameMap map[string]string
-}
-
-func (r Rename) GetMappings() RenameMappings {
-	return RenameMappings{
-		IPmap:   r.IpToStringName.RawValues(),
-		NameMap: r.ByName.RawValues(),
-	}
-}
-
 func NameSetFromCSV(src io.Reader) (map[string]bool, error) {
 	var (
 		reader  = csv.NewReader(src)
@@ -210,6 +93,19 @@ type NameMappings struct {
 
 	Dump
 	*sync.Mutex
+}
+
+func (m NameMappings) DumpNames() map[string]string {
+	mappings := map[string]string{}
+	m.NameReMap.Range(func(k, v interface{}) bool {
+		key, kok := k.(string)
+		val, vok := v.(string)
+		if kok && vok {
+			mappings[key] = val
+		}
+		return true
+	})
+	return mappings
 }
 
 func newSyncNamePool(

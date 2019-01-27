@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"sync"
-	"time"
 
 	"github.com/ccdcoe/go-peek/internal/logging"
 	"github.com/ccdcoe/go-peek/internal/types"
@@ -56,16 +55,9 @@ type Decoder struct {
 
 	EventTypes map[string]string
 
-	workerStoppers   []context.CancelFunc
-	inventoryStopper context.CancelFunc
+	workerStoppers []context.CancelFunc
 
-	inventory       *types.ElaTargetInventory
-	inventoryConfig *types.ElaTargetInventoryConfig
-
-	rename *Rename
-
-	NamePool sync.Map
-	NameMap  sync.Map
+	NameMappings
 
 	workers   int
 	logsender logging.LogHandler
@@ -77,9 +69,8 @@ func NewMessageDecoder(
 	config DecoderConfig,
 ) (*Decoder, error) {
 	var (
-		d   = &Decoder{Mutex: &sync.Mutex{}}
-		wg  sync.WaitGroup
-		err error
+		d  = &Decoder{Mutex: &sync.Mutex{}}
+		wg sync.WaitGroup
 	)
 
 	if config.EventMap == nil || len(config.EventMap) == 0 {
@@ -105,10 +96,10 @@ func NewMessageDecoder(
 		d.logsender = config.LogHandler
 	}
 
-	if d.rename, err = NewRename(
-		RenameConfig{SpoolDir: config.Spooldir},
-	); err != nil {
+	if n, err := newSyncNamePool(config.Spooldir, *config.InventoryConfig); err != nil {
 		return nil, err
+	} else {
+		d.NameMappings = *n
 	}
 
 	if !config.IgnoreSigInt {
@@ -120,13 +111,6 @@ func NewMessageDecoder(
 		}()
 	}
 
-	if config.InventoryConfig != nil {
-		d.inventoryConfig = config.InventoryConfig
-	}
-	if err = d.UpdateInventoryAndMaps(); err != nil {
-		return nil, err
-	}
-
 	d.workerStoppers = make([]context.CancelFunc, config.Workers)
 	go func() {
 		var ctx context.Context
@@ -136,41 +120,10 @@ func NewMessageDecoder(
 			d.Lock()
 			ctx, d.workerStoppers[i] = context.WithCancel(context.Background())
 			d.Unlock()
-			go DecodeWorker(*d, &wg, ctx)
+			go DecodeWorker(d, &wg, ctx)
 		}
 		wg.Wait()
-
-		if err = d.rename.SaveMappings(); err != nil {
-			d.logsender.Error(err)
-		}
-		if err = d.rename.SaveNames(); err != nil {
-			d.logsender.Error(err)
-		}
 	}()
-
-	var ctx context.Context
-
-	d.Lock()
-	ctx, d.inventoryStopper = context.WithCancel(context.Background())
-	d.Unlock()
-
-	go func(ctx context.Context) {
-		var (
-			err  error
-			poll = time.NewTicker(30 * time.Second)
-		)
-	loop:
-		for {
-			select {
-			case <-poll.C:
-				if err = d.UpdateInventoryAndMaps(); err != nil {
-					d.logsender.Error(err)
-				}
-			case <-ctx.Done():
-				break loop
-			}
-		}
-	}(ctx)
 
 	return d, nil
 }
@@ -183,57 +136,15 @@ func (d Decoder) Messages() <-chan types.Message {
 	return d.output
 }
 
-func (d *Decoder) UpdateInventoryAndMaps() error {
-	if d.inventoryConfig == nil {
-		d.logsender.Notify("Inventory config missing, not loading grains")
-		return nil
-	}
-	d.inventory = types.NewElaTargetInventory()
-	if err := d.inventory.Get(*d.inventoryConfig); err != nil {
-		return err
-	}
-
-	update := d.rename.ByName.RawValues()
-	vals := d.inventory.MapKnownIP(update)
-
-	d.Lock()
-	d.rename.IpToStringName = types.NewStringValues(vals)
-	d.Unlock()
-	return nil
-}
-
-func (d Decoder) getAssetIpMap() *types.StringValues {
-	if d.rename != nil && d.rename.IpToStringName != nil {
-		raw := d.rename.IpToStringName.RawValues()
-		return types.NewStringValues(raw)
-	}
-	return types.NewStringValues(map[string]string{})
-}
-
 func (d *Decoder) halt() {
 	d.Lock()
 	for i := range d.workerStoppers {
 		d.workerStoppers[i]()
 	}
 	d.Unlock()
-	d.Lock()
-	d.inventoryStopper()
-	d.Unlock()
 }
 
-func (d Decoder) Names() map[string]string {
-	return d.rename.ByName.RawValues()
-}
-
-func (d Decoder) IPmaps() map[string]string {
-	return d.rename.IpToStringName.RawValues()
-}
-
-func (d Decoder) GetMaps() RenameMappings {
-	return d.rename.GetMappings()
-}
-
-func DecodeWorker(d Decoder, wg *sync.WaitGroup, ctx context.Context) {
+func DecodeWorker(d *Decoder, wg *sync.WaitGroup, ctx context.Context) {
 	defer wg.Done()
 	// Local variables
 	var (
@@ -244,14 +155,8 @@ func DecodeWorker(d Decoder, wg *sync.WaitGroup, ctx context.Context) {
 
 		data []byte
 
-		pretty string
-		sagan  string
-		seen   bool
-
-		ip2name        = d.getAssetIpMap()
-		updateAssetMap = time.NewTicker(5 * time.Second)
+		sagan string
 	)
-	defer updateAssetMap.Stop()
 loop:
 	for {
 		select {
@@ -286,41 +191,46 @@ loop:
 				continue loop
 			}
 
-			if pretty, seen = d.rename.Check(shipper.IP.String()); !seen {
-				d.logsender.Notify(fmt.Sprintf(
-					"New host %s, ip %s observed, name will be %s",
-					shipper.Host,
-					shipper.IP,
-					pretty,
-				))
+			pretty, loaded := d.NameReMap.Load(shipper.IP.String())
+			if !loaded {
+				pretty = defaultName
+			}
+			asserted, ok := pretty.(string)
+			if !ok {
+				d.logsender.Error(fmt.Errorf("inventory rename map type assert fail for %s", shipper.IP))
+				continue loop
 			}
 
-			if d.rename != nil {
-				ev.Rename(pretty)
+			ev.Rename(asserted)
 
-				if ip, ok := shipper.GetSrcIp(); ok {
-					if val, ok := ip2name.Get(ip.String()); ok {
-						shipper.SetSrcName(val)
-					} else {
-						shipper.SetSrcName(defaultName)
+			if ip, ok := shipper.GetSrcIp(); ok {
+				if val, ok := d.NameReMap.Load(ip.String()); ok {
+					v, ok := val.(string)
+					if ok {
+						shipper.SetSrcName(v)
 					}
+				} else {
+					shipper.SetSrcName(defaultName)
 				}
+			}
 
-				if ip, ok := shipper.GetDestIp(); ok {
-					if val, ok := ip2name.Get(ip.String()); ok {
-						shipper.SetDestName(val)
-					} else {
-						shipper.SetDestName(defaultName)
+			if ip, ok := shipper.GetDestIp(); ok {
+				if val, ok := d.NameReMap.Load(ip.String()); ok {
+					v, ok := val.(string)
+					if ok {
+						shipper.SetDestName(v)
 					}
+				} else {
+					shipper.SetDestName(defaultName)
 				}
+			}
 
-				if (shipper.Src != nil && shipper.Dest != nil) && (!shipper.Src.IP.Equal(shipper.Dest.IP)) && (shipper.Src.Host == shipper.Dest.Host) && shipper.Src.Host != "Kerrigan" {
-					d.logsender.Error(&ErrMessedUpRename{
-						dest: *shipper.Dest,
-						src:  *shipper.Src,
-						msg:  ev,
-					})
-				}
+			if (shipper.Src != nil && shipper.Dest != nil) && (!shipper.Src.IP.Equal(shipper.Dest.IP)) && (shipper.Src.Host == shipper.Dest.Host) && shipper.Src.Host != "Kerrigan" {
+				d.logsender.Error(&ErrMessedUpRename{
+					dest: *shipper.Dest,
+					src:  *shipper.Src,
+					msg:  ev,
+				})
 			}
 
 			if data, err = ev.JSON(); err != nil {
@@ -345,8 +255,6 @@ loop:
 			}
 		case <-ctx.Done():
 			break loop
-		case <-updateAssetMap.C:
-			ip2name = d.getAssetIpMap()
 		}
 	}
 }

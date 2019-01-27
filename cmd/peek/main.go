@@ -181,12 +181,12 @@ func doOnlineProcess(args []string, appConfg *config.Config) error {
 		for {
 			select {
 			case <-every.C:
-				maps := dec.GetMaps()
-				if maps.IPmap == nil || len(maps.IPmap) == 0 {
+				maps := dec.NameMappings.DumpNames()
+				if len(maps) == 0 {
 					logger.Notify("No IP mappings, not sending to elastic")
 					continue loop
 				}
-				for k, v := range maps.IPmap {
+				for k, v := range maps {
 					if data, err := json.Marshal(
 						struct {
 							Original, Pretty string
@@ -199,11 +199,7 @@ func doOnlineProcess(args []string, appConfg *config.Config) error {
 						logger.Error(err)
 					}
 				}
-				if maps.NameMap == nil || len(maps.NameMap) == 0 {
-					logger.Notify("No name mappings, not sending to elastic")
-					continue loop
-				}
-				for k, v := range maps.NameMap {
+				for k, v := range maps {
 					if data, err := json.Marshal(
 						struct {
 							Addr, Pretty string
