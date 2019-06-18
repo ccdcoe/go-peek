@@ -1,8 +1,61 @@
 package types
 
 import (
+	"fmt"
 	"time"
 )
+
+type MultiPlexorConfig struct {
+	Input Messager
+	Keys  []string
+}
+
+func (m MultiPlexorConfig) Validate() error {
+	if m.Input == nil {
+		return fmt.Errorf("cannot create message multiplexor, input missing")
+	}
+	if m.Keys == nil || len(m.Keys) == 0 {
+		return fmt.Errorf("Cannot create message multiplexor, keys missing")
+	}
+	return nil
+}
+
+func MultiPlexMessages(config MultiPlexorConfig) (map[string]SimpleMessager, error) {
+	if err := config.Validate(); err != nil {
+		return nil, err
+	}
+	output := make(map[string]SimpleMessager)
+	for _, v := range config.Keys {
+		output[v] = make(SimpleMessager, len(config.Keys))
+	}
+	finally := func() {
+		for _, v := range output {
+			close(v)
+		}
+	}
+	go func(mp map[string]SimpleMessager) {
+		defer finally()
+	loop:
+		for {
+			select {
+			case msg, ok := <-config.Input.Messages():
+				if !ok {
+					break loop
+				}
+				for k := range mp {
+					mp[k] <- msg
+				}
+			}
+		}
+	}(output)
+	return output, nil
+}
+
+type SimpleMessager chan Message
+
+func (s SimpleMessager) Messages() <-chan Message {
+	return s
+}
 
 type Messager interface {
 	Messages() <-chan Message

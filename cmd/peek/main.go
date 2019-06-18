@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -17,6 +19,7 @@ import (
 	"github.com/ccdcoe/go-peek/internal/logging"
 	"github.com/ccdcoe/go-peek/internal/types"
 	"github.com/ccdcoe/go-peek/pkg/outputs"
+	"github.com/ccdcoe/go-peek/pkg/utils"
 )
 
 const argTsFormat = "2006-01-02 15:04:05"
@@ -239,38 +242,37 @@ var (
 		`Fast forward x times`)
 	statTimeout = replayFlags.Duration("stat-timeout", 60*time.Minute,
 		`Timeout for statting logfile stats. NOT FULLY IMPLEMENTED AND BUGGY!!! USE A HIGH VALUE!!!`)
+	replProduce = replayFlags.Bool("produce", false,
+		`Produce messages to kafka and elastic.`)
 	stdout = replayFlags.Bool("stdout", false,
 		`Print messages to standard output, as opposed to producing to kafka.`)
 	stdoutRaw = replayFlags.Bool("stdout-raw", false,
 		`Used in conjunction to -stdout. Print additional message info, as opposed to textual payload.`)
+	writeFIFO = replayFlags.String("fifo-out", "",
+		`Write messages to a named pipe`,
+	)
 )
+
+func hasNoOutputs() bool {
+	return !*replProduce && !*stdout && *writeFIFO == ""
+}
 
 func doReplay(args []string, appConfg *config.Config) error {
 	if err := replayFlags.Parse(args); err != nil {
 		return err
 	}
 	args = replayFlags.Args()
+	if hasNoOutputs() {
+		return fmt.Errorf("replay function not configured for any outputs. Use --stdout, --writeFIFO=<file> and/or --produce")
+	}
 	logHandle := logging.NewLogHandler()
 	logs(logHandle)
 
-	interval := func(start, stop string) (time.Time, time.Time, error) {
-		from, err := time.Parse(argTsFormat, *timeFrom)
-		if err != nil {
-			return time.Now(), time.Now(), err
-		}
-		to, err := time.Parse(argTsFormat, *timeTo)
-		if err != nil {
-			return time.Now(), time.Now(), err
-		}
-		if from.UnixNano() > to.UnixNano() {
-			return time.Now(), time.Now(), fmt.Errorf("from > to")
-		}
-		return from, to, nil
-	}
-	from, to, err := interval(*timeFrom, *timeTo)
+	interval, err := utils.NewIntervalFromStrings(*timeFrom, *timeTo, argTsFormat)
 	if err != nil {
 		return err
 	}
+	from, to := interval.Unpack()
 
 	buildTimeListAndReplay := func() (types.Messager, decoder.MultiFileInfoListing, error) {
 		logStatConfig := appConfg.GetReplayStatConfig(logHandle, from, to, *statTimeout)
@@ -310,27 +312,79 @@ func doReplay(args []string, appConfg *config.Config) error {
 		return err
 	}
 
+	mpKeys := []string{}
 	if *stdout {
-		for msg := range dec.Messages() {
-			if *stdoutRaw {
-				fmt.Fprintf(os.Stdout, "%s %d %s\n", msg.Source, msg.Offset, msg.String())
-			} else {
-				fmt.Fprintf(os.Stdout, "%s\n", msg.String())
-			}
-		}
-	} else {
-		kafkaConfig := appConfg.KafkaConfig()
-		kafkaConfig.LogHandler = logHandle
-
-		fmt.Fprintf(os.Stdout, "Processing messages\n")
-		outConfig := appConfg.OutputConfig(logHandle)
-		outConfig.TopicMap = outConfig.TopicMap.MapSources(logMap.EventMap())
-
-		out := outputs.Output(dec.Messages())
-		out.Produce(*outConfig, context.Background())
-
-		outConfig.Wait.Wait()
+		mpKeys = append(mpKeys, "stdout")
 	}
+	if *replProduce {
+		mpKeys = append(mpKeys, "produce")
+	}
+	if *writeFIFO != "" {
+		mpKeys = append(mpKeys, "fifo")
+	}
+
+	multiplexor, err := types.MultiPlexMessages(types.MultiPlexorConfig{
+		Keys:  mpKeys,
+		Input: dec,
+	})
+	if err != nil {
+		return err
+	}
+
+	var wg sync.WaitGroup
+	if *writeFIFO != "" {
+		if _, err := os.Stat(*writeFIFO); os.IsNotExist(err) {
+			syscall.Mkfifo(*writeFIFO, 0640)
+		} else if err != nil {
+			return err
+		}
+		// to open pipe to write
+		pipe, err := os.OpenFile(*writeFIFO, os.O_RDWR, os.ModeNamedPipe)
+		if err != nil {
+			return err
+		}
+		nl := []byte("\n")
+		wg.Add(1)
+		go func(input types.Messager) {
+			defer wg.Done()
+			for msg := range input.Messages() {
+				line := append(msg.Data, nl...)
+				pipe.Write(line)
+			}
+		}(multiplexor["fifo"])
+	}
+
+	if *stdout {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for msg := range multiplexor["stdout"].Messages() {
+				if *stdoutRaw {
+					fmt.Fprintf(os.Stdout, "%s %d %s\n", msg.Source, msg.Offset, msg.String())
+				} else {
+					fmt.Fprintf(os.Stdout, "%s\n", msg.String())
+				}
+			}
+		}()
+	}
+	if *replProduce {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			kafkaConfig := appConfg.KafkaConfig()
+			kafkaConfig.LogHandler = logHandle
+
+			fmt.Fprintf(os.Stdout, "Processing messages\n")
+			outConfig := appConfg.OutputConfig(logHandle)
+			outConfig.TopicMap = outConfig.TopicMap.MapSources(logMap.EventMap())
+
+			out := outputs.Output(multiplexor["produce"].Messages())
+			out.Produce(*outConfig, context.Background())
+
+			outConfig.Wait.Wait()
+		}()
+	}
+	wg.Wait()
 
 	return nil
 }
