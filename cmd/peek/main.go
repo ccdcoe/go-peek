@@ -249,8 +249,12 @@ var (
 	stdoutRaw = replayFlags.Bool("stdout-raw", false,
 		`Used in conjunction to -stdout. Print additional message info, as opposed to textual payload.`)
 	writeFIFO = replayFlags.String("fifo-out", "",
-		`Write messages to a named pipe`,
-	)
+		`Write messages to a named pipe`)
+	cacheTimestamps = replayFlags.Bool("cache-timestamps", false,
+		`Load timestamps from a disk cache if it exists, otherwise parse from messages.`+
+			` Assumes the cache to be located in Spooldir.`)
+	cacheTimeStampFile = replayFlags.String("cache-timestamps-file", "timestamps.gob",
+		`Output file name for caching replay timestamp linked list.`)
 )
 
 func hasNoOutputs() bool {
@@ -274,8 +278,19 @@ func doReplay(args []string, appConfg *config.Config) error {
 	}
 	from, to := interval.Unpack()
 
-	buildTimeListAndReplay := func() (types.Messager, decoder.MultiFileInfoListing, error) {
-		logStatConfig := appConfg.GetReplayStatConfig(logHandle, from, to, *statTimeout)
+	buildTimeListAndReplay := func() (
+		types.Messager,
+		decoder.MultiFileInfoListing,
+		error,
+	) {
+		cacheFile := path.Join(appConfg.General.Spooldir, *cacheTimeStampFile)
+
+		logStatConfig := appConfg.GetReplayStatConfig(
+			logHandle,
+			from,
+			to,
+			*statTimeout,
+		)
 		sources, err := decoder.MultiListLogFilesAndStatEventStart(
 			logStatConfig,
 		)
@@ -290,9 +305,34 @@ func doReplay(args []string, appConfg *config.Config) error {
 			Timeout: *statTimeout,
 			Speedup: int64(*speedup),
 		}
-		timelistmap, err := sources.CollectTimeStamps(replayConfig)
-		if err != nil {
-			return nil, nil, err
+		var timelistmap decoder.TimeListSequenceMap
+		if *cacheTimestamps {
+			if utils.FileNotExists(cacheFile) {
+				timelistmap, err = sources.CollectTimeStamps(replayConfig)
+				if err != nil {
+					return nil, nil, err
+				}
+				if err := decoder.StoreReplayDump(
+					timelistmap,
+					replayConfig,
+					cacheFile,
+				); err != nil {
+					return nil, nil, err
+				}
+			} else {
+				loaded, err := decoder.LoadReplayDump(cacheFile)
+				if err != nil {
+					return nil, nil, err
+				}
+				timelistmap = loaded.Data
+				replayConfig.From = loaded.Beginning
+				replayConfig.To = loaded.End
+			}
+		} else {
+			timelistmap, err = sources.CollectTimeStamps(replayConfig)
+			if err != nil {
+				return nil, nil, err
+			}
 		}
 		messages, err := timelistmap.Replay(replayConfig)
 		if err != nil {

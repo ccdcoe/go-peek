@@ -29,16 +29,72 @@ type SourceStatConfig struct {
 	LogReplayWorkerConfig
 }
 
-type TimeList struct {
+type TimeListMeta struct {
 	Source     string
-	Times      *list.List
 	Start, End int64
 	File       *file.LogFile
 }
 
+type TimeList struct {
+	TimeListMeta
+	Times *list.List
+}
+
+func (t TimeList) Slice() *TimeListSlice {
+	slc := make([]time.Duration, t.Times.Len())
+	i := 0
+	for sleep := t.Times.Front(); sleep != nil; sleep = sleep.Next() {
+		slc[i] = sleep.Value.(time.Duration)
+		i++
+	}
+	transform := &TimeListSlice{
+		TimeListMeta: t.TimeListMeta,
+		Times:        slc,
+	}
+	return transform
+}
+
+type TimeListSlice struct {
+	TimeListMeta
+	Times []time.Duration
+}
+
+type TimeSliceSequenceMap map[string][]*TimeListSlice
+
+func (t TimeSliceSequenceMap) Transform() TimeListSequenceMap {
+	out := make(TimeListSequenceMap)
+	for k, v := range t {
+		out[k] = make([]*TimeList, len(v))
+		for i, data := range v {
+			ll := list.New()
+			for _, ts := range data.Times {
+				ll.PushBack(ts)
+			}
+			out[k][i] = &TimeList{
+				TimeListMeta: data.TimeListMeta,
+				Times:        ll,
+			}
+		}
+	}
+	return out
+}
+
 type TimeListSequenceMap map[string][]*TimeList
 
-func (lm TimeListSequenceMap) Replay(config LogReplayWorkerConfig) (types.MessageChannel, error) {
+func (t TimeListSequenceMap) Transform() TimeSliceSequenceMap {
+	out := make(TimeSliceSequenceMap)
+	for k, v := range t {
+		out[k] = make([]*TimeListSlice, len(v))
+		for i, data := range v {
+			out[k][i] = data.Slice()
+		}
+	}
+	return out
+}
+
+func (lm TimeListSequenceMap) Replay(
+	config LogReplayWorkerConfig,
+) (types.MessageChannel, error) {
 	fn := func(
 		src string,
 		output chan types.Message,
@@ -62,6 +118,15 @@ func (lm TimeListSequenceMap) Replay(config LogReplayWorkerConfig) (types.Messag
 		for _, replay := range replaySlice {
 			logger.Notify(fmt.Sprintf("%s, first offset: %d last offset: %d",
 				replay.Source, replay.Start, replay.End))
+			if replay.File == nil {
+				logger.Error(
+					fmt.Errorf(
+						"cannot read %s. Need to parse file info first",
+						replay.Source,
+					),
+				)
+				continue sourceLoop
+			}
 			if replay.Start < 0 || replay.End < 0 {
 				logger.Notify(fmt.Sprintf(
 					"%s has no known messages, skipping\n",
@@ -96,7 +161,9 @@ func (lm TimeListSequenceMap) Replay(config LogReplayWorkerConfig) (types.Messag
 
 			logger.Notify(fmt.Sprintf("Reading %s", replay.Source))
 			if err := <-replay.File.AsyncRead(messages); err != nil {
-				logger.Error(fmt.Errorf("Unable to read %s. %s\n", replay.Source, err.Error()))
+				logger.Error(
+					fmt.Errorf("Unable to read %s. %s\n", replay.Source, err.Error()),
+				)
 				continue sourceLoop
 			}
 			close(messages)
@@ -165,7 +232,10 @@ func (fl MultiFileInfoListing) EventTypeMap() map[string]string {
 
 // *TODO* refactor
 // *TODO* This may belong in ingest/file
-func CollectTimeStamps(files file.FileInfoListing, config LogReplayWorkerConfig) ([]*TimeList, error) {
+func CollectTimeStamps(
+	files file.FileInfoListing,
+	config LogReplayWorkerConfig,
+) ([]*TimeList, error) {
 	out := files.ReadFiles(config.Workers, config.Timeout)
 	if config.Logger != nil {
 		go func() {
@@ -214,10 +284,12 @@ func CollectTimeStamps(files file.FileInfoListing, config LogReplayWorkerConfig)
 					}
 				}
 				linkedListOutput <- &TimeList{
-					Times:  times,
-					Source: name,
-					Start:  first,
-					End:    last,
+					Times: times,
+					TimeListMeta: TimeListMeta{
+						Source: name,
+						Start:  first,
+						End:    last,
+					},
 				}
 				if config.Logger != nil {
 					config.Logger.Notify(
@@ -299,7 +371,9 @@ loop:
 	return replaySlice, nil
 }
 
-func MultiListLogFilesAndStatEventStart(config []SourceStatConfig) (MultiFileInfoListing, error) {
+func MultiListLogFilesAndStatEventStart(
+	config []SourceStatConfig,
+) (MultiFileInfoListing, error) {
 	out := make(map[string]*EventFileInfoListing)
 	for i, conf := range config {
 		if conf.Name == "" {
@@ -321,7 +395,9 @@ func MultiListLogFilesAndStatEventStart(config []SourceStatConfig) (MultiFileInf
 	return out, nil
 }
 
-func ListLogFilesAndStatEventStart(config SourceStatConfig) (file.FileInfoListing, error) {
+func ListLogFilesAndStatEventStart(
+	config SourceStatConfig,
+) (file.FileInfoListing, error) {
 	fileGen, err := file.ListFilesGenerator(config.Source, nil)
 	if err != nil {
 		return nil, err

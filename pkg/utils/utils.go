@@ -42,6 +42,13 @@ func GobSaveFile(path string, object interface{}) error {
 	return nil
 }
 
+func FileNotExists(path string) bool {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return true
+	}
+	return false
+}
+
 type Interval struct {
 	Beginning, End time.Time
 }

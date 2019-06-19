@@ -31,7 +31,7 @@ func ListFilesWalkGenerator(dir string, pattern *regexp.Regexp) (LogFileChan, er
 		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 			if !info.IsDir() {
 				if (pattern != nil && pattern.MatchString(path)) || pattern == nil {
-					generator <- &LogFile{Path: path, FileInfo: info}
+					generator <- &LogFile{Path: path, info: info}
 				}
 			}
 			return nil
@@ -66,8 +66,8 @@ func ListFilesIoutilGenerator(dir string, pattern *regexp.Regexp) (LogFileChan, 
 			if !info.IsDir() {
 				if (pattern != nil && pattern.MatchString(info.Name())) || pattern == nil {
 					generator <- &LogFile{
-						Path:     path.Join(dir, info.Name()),
-						FileInfo: info,
+						Path: path.Join(dir, info.Name()),
+						info: info,
 					}
 				}
 			}

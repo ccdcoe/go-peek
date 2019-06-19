@@ -36,13 +36,13 @@ type LogFile struct {
 	Empty bool
 	Ctx   context.Context
 
-	os.FileInfo
+	info os.FileInfo
 	LogFileTimeRange
 }
 
 func (f *LogFile) Stat() error {
 	stat, err := os.Stat(f.Path)
-	f.FileInfo = stat
+	f.info = stat
 	return err
 }
 
