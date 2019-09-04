@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ccdcoe/go-peek/internal/ingest/file"
+	file "github.com/ccdcoe/go-peek/internal/ingest/v1/file"
 	"github.com/ccdcoe/go-peek/internal/logging"
 	"github.com/ccdcoe/go-peek/internal/types"
-	"github.com/ccdcoe/go-peek/pkg/events"
+	events "github.com/ccdcoe/go-peek/pkg/events/v1"
 )
 
 type LogReplayWorkerConfig struct {

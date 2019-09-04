@@ -2,10 +2,10 @@ package utils
 
 import (
 	"encoding/gob"
-	"fmt"
 	"io"
 	"os"
-	"time"
+	"os/user"
+	"path/filepath"
 )
 
 func GobLoadFile(path string, object interface{}) error {
@@ -49,28 +49,38 @@ func FileNotExists(path string) bool {
 	return false
 }
 
-type Interval struct {
-	Beginning, End time.Time
+func StringIsValidDir(path string) bool {
+	data, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	if !data.IsDir() {
+		return false
+	}
+	return true
 }
 
-func NewIntervalFromStrings(start, stop, format string) (*Interval, error) {
-	from, err := time.Parse(format, start)
+func ExpandHome(path string) (string, error) {
+	if len(path) == 0 || path[0] != '~' {
+		return path, nil
+	}
+
+	usr, err := user.Current()
 	if err != nil {
-		return nil, err
+		return path, err
 	}
-	to, err := time.Parse(format, stop)
-	if err != nil {
-		return nil, err
-	}
-	if !from.Before(to) {
-		return nil, fmt.Errorf("invalid interval from > to")
-	}
-	return &Interval{
-		Beginning: from,
-		End:       to,
-	}, nil
+	return filepath.Join(usr.HomeDir, path[1:]), nil
 }
 
-func (i Interval) Unpack() (time.Time, time.Time) {
-	return i.Beginning, i.End
+// DeepCopyBytes does exactly what the name suggests
+// written for collecting scanner.Bytes() into a channel
+// passing scanner.Bytes() actually passes a pointer to something that scanner is constantly modyfing
+// resulting in a data race and broken parsers
+// only way to truly copy a slice is to loop over all elements
+func DeepCopyBytes(in []byte) []byte {
+	data := make([]byte, len(in))
+	for i, b := range in {
+		data[i] = b
+	}
+	return data
 }

@@ -1,0 +1,15 @@
+work:
+  dir: ~/.local/peek/var/
+  threads: 8
+
+stream:
+  snoopy:
+    dir: ~/Data/logs/linux/normalize/snoopy/
+  suricata:
+    dir: ~/Data/logs/suricata/filter/alert/
+  syslog:
+    dir: ~/Data/logs/linux/json/
+  sysmon:
+    dir: ~/Data/logs/windows/filter/sysmon/
+  windows:
+    dir: ~/Data/logs/windows/json/

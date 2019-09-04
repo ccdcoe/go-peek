@@ -31,7 +31,7 @@ type ElaTargetInventory struct {
 		Failed     int `json:"failed"`
 	} `json:"_shards"`
 	Hits struct {
-		Total    int               `json:"total"`
+		//Total    int               `json:"total"`
 		MaxScore float64           `json:"max_score"`
 		Hits     []*ElaGrainSource `json:"hits"`
 	} `json:"hits"`

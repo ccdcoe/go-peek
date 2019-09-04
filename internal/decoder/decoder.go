@@ -9,7 +9,7 @@ import (
 
 	"github.com/ccdcoe/go-peek/internal/logging"
 	"github.com/ccdcoe/go-peek/internal/types"
-	"github.com/ccdcoe/go-peek/pkg/events"
+	events "github.com/ccdcoe/go-peek/pkg/events/v1"
 )
 
 const defaultWorkerCount = 4
