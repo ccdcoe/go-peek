@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/ccdcoe/go-peek/internal/replay"
-	"github.com/ccdcoe/go-peek/pkg/events/v2"
+	events "github.com/ccdcoe/go-peek/pkg/models/events"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -51,17 +51,6 @@ func init() {
 			fmt.Sprintf("Format is %s.", argTsFormat)+
 			`Defaults to now.`)
 	viper.BindPFlag("time.to", replayCmd.Flags().Lookup("time-to"))
-
-	replayCmd.Flags().Bool(
-		"play-stdout-enable", false, "Play messages to standard output.")
-	viper.BindPFlag("play.stdout.enable", replayCmd.Flags().Lookup("play-stdout-enable"))
-	replayCmd.Flags().Bool(
-		"play-fifo-enable", false, "Play messages to named pipe.")
-	viper.BindPFlag("play.fifo.enable", replayCmd.Flags().Lookup("play-fifo-enable"))
-
-	replayCmd.Flags().String(
-		"play-fifo-path", "", "Path of output named pipe. Used together with --play-fifo.")
-	viper.BindPFlag("play.fifo.path", replayCmd.Flags().Lookup("play-fifo-path"))
 
 	replayCmd.Flags().Bool(
 		"play-outputs-enable", false, "Play messages to configured outputs."+

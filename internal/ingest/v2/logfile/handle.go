@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ccdcoe/go-peek/internal/ingest/v2"
+	"github.com/ccdcoe/go-peek/pkg/models/consumer"
+	"github.com/ccdcoe/go-peek/pkg/models/events"
 	"github.com/ccdcoe/go-peek/pkg/utils"
 	log "github.com/sirupsen/logrus"
 )
@@ -20,7 +21,8 @@ type Handle struct {
 	Content
 
 	Interval *utils.Interval
-	Offsets  *ingest.Offsets
+	Offsets  *consumer.Offsets
+	Atomic   events.Atomic
 }
 
 func newHandle(path Path, fn utils.StatFileIntervalFunc) (*Handle, error) {
@@ -58,7 +60,7 @@ func newHandle(path Path, fn utils.StatFileIntervalFunc) (*Handle, error) {
 		return s, err
 	}
 
-	s.Offsets = &ingest.Offsets{
+	s.Offsets = &consumer.Offsets{
 		Beginning: 0,
 		End:       lines,
 	}
@@ -97,19 +99,19 @@ func GetLine(h Handle, num int64) ([]byte, error) {
 	return nil, scanner.Err()
 }
 
-func DrainHandle(h Handle, ctx context.Context) <-chan *ingest.Message {
+func DrainHandle(h Handle, ctx context.Context) <-chan *consumer.Message {
 	f, err := open(h.Path.String())
 	if err != nil {
 		return nil
 	}
 
 	if h.Offsets == nil {
-		h.Offsets = &ingest.Offsets{}
+		h.Offsets = &consumer.Offsets{}
 	}
 
-	tx := make(chan *ingest.Message, 0)
+	tx := make(chan *consumer.Message, 0)
 
-	go func(tx chan *ingest.Message, f io.ReadCloser, from, to int64, ctx context.Context) {
+	go func(tx chan *consumer.Message, f io.ReadCloser, from, to int64, ctx context.Context) {
 
 		defer close(tx)
 		defer f.Close()
@@ -131,11 +133,12 @@ func DrainHandle(h Handle, ctx context.Context) <-chan *ingest.Message {
 				continue loop
 			}
 
-			tx <- &ingest.Message{
+			tx <- &consumer.Message{
 				Data:   utils.DeepCopyBytes(scanner.Bytes()),
 				Offset: count,
-				Type:   ingest.Logfile,
+				Type:   consumer.Logfile,
 				Source: h.Path.String(),
+				Key:    h.Atomic.String(),
 			}
 
 			if to > 0 && count == to {

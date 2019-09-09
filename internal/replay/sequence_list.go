@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/ccdcoe/go-peek/internal/ingest/v2/logfile"
-	"github.com/ccdcoe/go-peek/pkg/events/v2"
+	"github.com/ccdcoe/go-peek/pkg/models/events"
 	"github.com/ccdcoe/go-peek/pkg/utils"
 	log "github.com/sirupsen/logrus"
 )

@@ -5,15 +5,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ccdcoe/go-peek/internal/ingest/v2"
 	"github.com/ccdcoe/go-peek/internal/ingest/v2/logfile"
+	"github.com/ccdcoe/go-peek/pkg/models/consumer"
 	"github.com/ccdcoe/go-peek/pkg/utils"
 	log "github.com/sirupsen/logrus"
 )
 
-func play(collection []*Sequence, interval utils.Interval) <-chan *ingest.Message {
+func play(collection []*Sequence, interval utils.Interval) <-chan *consumer.Message {
 	log.Trace("starting the replay")
-	tx := make(chan *ingest.Message, 100)
+	tx := make(chan *consumer.Message, 100)
 
 	var wg sync.WaitGroup
 	go func() {

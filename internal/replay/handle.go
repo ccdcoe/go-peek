@@ -8,9 +8,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/ccdcoe/go-peek/internal/ingest/v2"
 	"github.com/ccdcoe/go-peek/internal/ingest/v2/logfile"
-	"github.com/ccdcoe/go-peek/pkg/events/v2"
+	"github.com/ccdcoe/go-peek/pkg/models/consumer"
+	events "github.com/ccdcoe/go-peek/pkg/models/events"
 	"github.com/ccdcoe/go-peek/pkg/utils"
 	log "github.com/sirupsen/logrus"
 )
@@ -52,7 +52,7 @@ func (h Handle) len() int {
 
 func (h *Handle) seek(interval utils.Interval) error {
 	if h.Offsets == nil {
-		h.Offsets = &ingest.Offsets{}
+		h.Offsets = &consumer.Offsets{}
 	}
 
 	if h.checkPartial(interval).Partial == CompletelyInRange {
@@ -217,7 +217,7 @@ loop:
 	return nil
 }
 
-func newHandleSlice(dir string) ([]*Handle, error) {
+func newHandleSlice(dir string, atomic events.Atomic) ([]*Handle, error) {
 	if Workers < 1 {
 		Workers = 1
 	}
@@ -251,6 +251,7 @@ func newHandleSlice(dir string) ([]*Handle, error) {
 				Function: fmt.Sprintf("log file no %d while building Handle list", i),
 			}
 		}
+		h.Atomic = atomic
 		handles[i] = &Handle{Handle: h}
 	}
 	return handles, nil

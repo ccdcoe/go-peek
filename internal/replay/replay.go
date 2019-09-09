@@ -1,13 +1,16 @@
 package replay
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/ccdcoe/go-peek/internal/ingest/v2"
-	"github.com/ccdcoe/go-peek/pkg/events/v2"
+	"github.com/ccdcoe/go-peek/pkg/models/consumer"
+	"github.com/ccdcoe/go-peek/pkg/models/events"
+	"github.com/ccdcoe/go-peek/pkg/outputs/elastic"
 	"github.com/ccdcoe/go-peek/pkg/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -52,38 +55,46 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 	}).Debug("config parameter debug")
 
 	var (
-		pth           string
+		paths         []string
 		discoverFiles = make([]*Sequence, 0)
 	)
 
 	// try to see if supported event types are configured
 	for _, event := range events.Atomics {
 		// Early return if event type is not configured
-		if pth = viper.GetString(fmt.Sprintf("stream.%s.dir", event)); pth == "" {
+		if paths = viper.GetStringSlice(fmt.Sprintf("stream.%s.dir", event)); len(paths) == 0 {
 			log.WithFields(log.Fields{
 				"type": event.String(),
 			}).Trace("input not configured")
 			continue
 		}
 		log.WithFields(log.Fields{
-			"type": event.String(),
-			"dir":  pth,
+			"type":  event.String(),
+			"src":   paths,
+			"items": len(paths),
 		}).Debug("configured input source")
 
-		if pth, err = utils.ExpandHome(pth); err != nil {
-			log.Fatal(err)
-		}
-
-		if !utils.StringIsValidDir(pth) {
+		for _, pth := range paths {
 			log.WithFields(log.Fields{
-				"path": pth,
-			}).Fatal("invalid path")
-		}
+				"type": event.String(),
+				"dir":  pth,
+			}).Debug("configured input source")
 
-		discoverFiles = append(discoverFiles, &Sequence{
-			Type:    event,
-			DataDir: pth,
-		})
+			if pth, err = utils.ExpandHome(pth); err != nil {
+				log.Fatal(err)
+			}
+
+			if !utils.StringIsValidDir(pth) {
+				log.WithFields(log.Fields{
+					"path": pth,
+				}).Fatal("invalid path")
+			}
+
+			discoverFiles = append(discoverFiles, &Sequence{
+				Type:    event,
+				DataDir: pth,
+			})
+		}
 	}
 
 	if len(discoverFiles) == 0 {
@@ -131,58 +142,135 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	SequenceList(discoverFiles).calcDiffsBetweenFiles().calcDiffBeginning(*replayInterval)
+	SequenceList(discoverFiles).
+		calcDiffsBetweenFiles().
+		calcDiffBeginning(*replayInterval)
 
 	if err := dumpSequences(spooldir, discoverFiles); err != nil {
 		log.Fatal(err)
 	}
 
+	msgs := play(discoverFiles, *replayInterval)
+
 	var (
-		stdout   = viper.GetBool("play.stdout.enable")
-		fifo     = viper.GetBool("play.fifo.enable")
-		fifoPath = viper.GetString("play.fifo.path")
+		stdout      = viper.GetBool("output.stdout")
+		fifoPaths   = viper.GetStringSlice("output.fifo.path")
+		fifoEnabled = func() bool {
+			if !viper.GetBool("output.fifo.enabled") {
+				return false
+			}
+			if fifoPaths == nil || len(fifoPaths) == 0 {
+				return false
+			}
+			return true
+		}()
+		elaEnabled = viper.GetBool("output.elastic.enabled")
 	)
 
-	if !stdout && !fifo {
+	if !stdout && !fifoEnabled && !elaEnabled {
 		log.Fatal("No outputs configured. See --help.")
 	}
 
-	msgs := play(discoverFiles, *replayInterval)
-	stdoutCh := make(chan *ingest.Message, 3)
-	fifoCh := make(chan *ingest.Message, 3)
+	// TODO - move code to internal/output or something, wrap for reusability in multiple subcommands
+	stdoutCh := make(chan consumer.Message, 100)
+	fifoCh := func() []chan consumer.Message {
+		chSl := make([]chan consumer.Message, len(fifoPaths))
+		for i := range fifoPaths {
+			chSl[i] = make(chan consumer.Message, 100)
+		}
+		return chSl
+	}()
+	elaCh := make(chan consumer.Message, 100)
 
 	defer close(stdoutCh)
-	defer close(fifoCh)
+	defer func() {
+		for _, ch := range fifoCh {
+			close(ch)
+		}
+	}()
+	defer close(elaCh)
+
+	if elaEnabled {
+		var fn elastic.IdxFmtFn
+		prefix := viper.GetString("output.elastic.prefix")
+		if viper.GetBool("output.elastic.merge") {
+			fn = func(msg consumer.Message) string {
+				return fmt.Sprintf(
+					"%s-%s",
+					prefix, func() time.Time {
+						if msg.Time.IsZero() {
+							return time.Now()
+						}
+						return msg.Time
+					}().Format(elastic.TimeFmt))
+			}
+		} else {
+			fn = func(msg consumer.Message) string {
+				return fmt.Sprintf(
+					"%s-%s-%s", prefix, func() string {
+						if msg.Key == "" {
+							return "bogon"
+						}
+						return msg.Key
+					}(), func() time.Time {
+						if msg.Time.IsZero() {
+							return time.Now()
+						}
+						return msg.Time
+					}().Format(elastic.TimeFmt))
+			}
+		}
+
+		ela, err := elastic.NewHandle(&elastic.Config{
+			Workers:  2,
+			Interval: 5 * time.Second,
+			Hosts:    viper.GetStringSlice("output.elastic.host"),
+		})
+		if err != nil {
+			log.WithFields(log.Fields{
+				"hosts": viper.GetStringSlice("output.elastic.host"),
+			}).Fatal(err)
+		}
+		ela.Feed(elaCh, "replay", context.Background(), fn)
+	}
 
 	if stdout {
 		log.Info("stdout enabled, starting handler")
-		go func(rx <-chan *ingest.Message) {
+		go func(rx <-chan consumer.Message) {
 			for msg := range rx {
 				fmt.Fprintf(os.Stdout, "%s\n", string(msg.Data))
 			}
 		}(stdoutCh)
 	}
 
-	if fifo {
-		log.Infof("fifo enabled, starting handler for %s", fifoPath)
-		pipe, err := os.OpenFile(fifoPath, os.O_RDWR, os.ModeNamedPipe)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer pipe.Close()
-		go func(rx <-chan *ingest.Message) {
-			for msg := range rx {
-				fmt.Fprintf(pipe, "%s\n", string(msg.Data))
+	if fifoEnabled {
+		for i, pth := range fifoPaths {
+			log.Infof("fifo enabled, starting handler for %s", pth)
+			// TODO - this blocks when no readers
+			pipe, err := os.OpenFile(pth, os.O_RDWR, os.ModeNamedPipe)
+			if err != nil {
+				log.Fatal(err)
 			}
-		}(fifoCh)
+			defer pipe.Close()
+			go func(rx <-chan consumer.Message) {
+				for msg := range rx {
+					fmt.Fprintf(pipe, "%s\n", string(msg.Data))
+				}
+			}(fifoCh[i])
+		}
 	}
 
 	for m := range msgs {
 		if stdout {
-			stdoutCh <- m
+			stdoutCh <- *m
 		}
-		if fifo {
-			fifoCh <- m
+		if fifoEnabled {
+			for _, tx := range fifoCh {
+				tx <- *m
+			}
+		}
+		if elaEnabled {
+			elaCh <- *m
 		}
 	}
 

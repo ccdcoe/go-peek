@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/ccdcoe/go-peek/pkg/events/v2"
+	"github.com/ccdcoe/go-peek/pkg/models/events"
 	"github.com/ccdcoe/go-peek/pkg/utils"
 )
 
@@ -24,7 +24,7 @@ func (s Sequence) ID() string {
 }
 
 func (s *Sequence) Discover() (err error) {
-	if s.Files, err = newHandleSlice(s.DataDir); err != nil {
+	if s.Files, err = newHandleSlice(s.DataDir, s.Type); err != nil {
 		switch v := err.(type) {
 		case *utils.ErrNilPointer:
 			v.Caller = v.Caller + " " + s.Type.String()

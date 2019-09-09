@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ccdcoe/go-peek/internal/ingest/v2"
 	"github.com/ccdcoe/go-peek/internal/ingest/v2/logfile"
 	"github.com/ccdcoe/go-peek/internal/replay"
-	"github.com/ccdcoe/go-peek/pkg/events/v2"
+	"github.com/ccdcoe/go-peek/pkg/models/consumer"
+	events "github.com/ccdcoe/go-peek/pkg/models/events"
 	"github.com/ccdcoe/go-peek/pkg/timebin"
 	"github.com/ccdcoe/go-peek/pkg/utils"
 	log "github.com/sirupsen/logrus"
@@ -102,13 +102,13 @@ func doSplit(cmd *cobra.Command, args []string) {
 		log.Fatal("No valid log directory paths configured")
 	}
 
-	stream := make(chan *ingest.Message, 0)
-	go func(stream chan *ingest.Message) {
+	stream := make(chan *consumer.Message, 0)
+	go func(stream chan *consumer.Message) {
 		var wg sync.WaitGroup
 
 		for _, seq := range discoverFiles {
 			wg.Add(1)
-			go func(s replay.Sequence, tx chan<- *ingest.Message, wg *sync.WaitGroup) {
+			go func(s replay.Sequence, tx chan<- *consumer.Message, wg *sync.WaitGroup) {
 				defer wg.Done()
 
 				for _, h := range s.Files {

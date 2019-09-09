@@ -3,13 +3,32 @@ work:
   threads: 8
 
 stream:
-  snoopy:
-    dir: ~/Data/logs/linux/normalize/snoopy/
-  suricata:
-    dir: ~/Data/logs/suricata/filter/alert/
-  syslog:
-    dir: ~/Data/logs/linux/json/
-  sysmon:
-    dir: ~/Data/logs/windows/filter/sysmon/
-  windows:
-    dir: ~/Data/logs/windows/json/
+  snoopy.dir:
+    - ~/Data/logs/linux/normalize/snoopy/
+  suricata.dir: 
+    - ~/Data/logs/suricata/filter/alert/
+  syslog.dir: 
+    - ~/Data/logs/linux/json/
+  sysmon.dir: 
+    - ~/Data/logs/windows/filter/sysmon/
+  windows.dir: 
+    - ~/Data/logs/windows/json/
+
+output:
+  elastic:
+    enabled: true
+    host:
+      - http://localhost:9200
+    prefix: replay
+    merge: true
+  kafka:
+    enabled: true
+    host:
+      - localhost:9092
+    prefix: replay
+    merge: false
+  fifo:
+    enabled: true
+    path: 
+      - /tmp/peek.fifo
+  stdout: false

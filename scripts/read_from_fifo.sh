@@ -1,5 +1,5 @@
 #!/bin/bash    
-fifo_name="/tmp/peek.fifo"
+fifo_name=$1
 while true
 do
     if read line; then

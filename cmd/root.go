@@ -6,7 +6,7 @@ import (
 	"path"
 
 	"github.com/ccdcoe/go-peek/internal/ingest/v2/logfile"
-	events "github.com/ccdcoe/go-peek/pkg/events/v2"
+	"github.com/ccdcoe/go-peek/pkg/models/events"
 	"github.com/ccdcoe/go-peek/pkg/utils"
 	log "github.com/sirupsen/logrus"
 
@@ -61,13 +61,14 @@ func init() {
 	viper.BindPFlag("work.dir", rootCmd.PersistentFlags().Lookup("work-dir"))
 
 	initStreamConfig()
+	initOutputConfig()
 }
 
 func initStreamConfig() {
 	for _, stream := range events.Atomics {
-		rootCmd.PersistentFlags().String(
+		rootCmd.PersistentFlags().StringSlice(
 			fmt.Sprintf("stream-%s-dir", stream),
-			"",
+			[]string{},
 			fmt.Sprintf("Source folder for event type %s. %s", stream, stream.Explain()),
 		)
 		viper.BindPFlag(
@@ -76,18 +77,49 @@ func initStreamConfig() {
 				fmt.Sprintf("stream-%s-dir", stream),
 			),
 		)
-		rootCmd.PersistentFlags().String(
-			fmt.Sprintf("stream-%s-kafka-topic", stream),
-			"",
-			fmt.Sprintf("Source kafka topic for %s. %s", stream, stream.Explain()),
-		)
-		viper.BindPFlag(
-			fmt.Sprintf("stream.%s.kafka.topic", stream),
-			rootCmd.PersistentFlags().Lookup(
-				fmt.Sprintf("stream-%s-kafka-topic", stream),
-			),
-		)
 	}
+}
+
+func initOutputConfig() {
+	// Elastic
+	rootCmd.PersistentFlags().StringSlice("output-elastic-host", []string{"http://localhost:9200"},
+		`Elasticsearch http proxy host. Can be specified multiple times to use a cluster.`)
+	viper.BindPFlag("output.elastic.host", rootCmd.PersistentFlags().Lookup("output-elastic-host"))
+
+	rootCmd.PersistentFlags().String("output-elastic-prefix", "events",
+		`Prefix for all index patterns. For example Suricata events would follow a pattern <prefix>-suricata-YYYY.MM.DD`)
+	viper.BindPFlag("output.elastic.prefix", rootCmd.PersistentFlags().Lookup("output-elastic-prefix"))
+
+	rootCmd.PersistentFlags().Bool("output-elastic-merge", false,
+		`Send all messages to a single index pattern, as opposed to creating an index per event type.`)
+	viper.BindPFlag("output.elastic.merge", rootCmd.PersistentFlags().Lookup("output-elastic-merge"))
+
+	rootCmd.PersistentFlags().Bool("output-elastic-hourly", false,
+		`Hourly index pattern as opposed to daily. In other word, new index would be created every hour. Avoid in production, will explode your shard count.`)
+	viper.BindPFlag("output.elastic.hourly", rootCmd.PersistentFlags().Lookup("output-elastic-hourly"))
+
+	// Kafka
+	rootCmd.PersistentFlags().StringSlice("output-kafka-host", []string{"localhost:9092"},
+		`Kafka bootstrap broker. Can be specified multiple times to use a cluster.`)
+	viper.BindPFlag("output.kafka.host", rootCmd.PersistentFlags().Lookup("output-kafka-host"))
+
+	rootCmd.PersistentFlags().String("output-kafka-prefix", "events",
+		`Prefix for topic names. For example Suricata events would be sent to <prefix>-suricata`)
+	viper.BindPFlag("output.kafka.prefix", rootCmd.PersistentFlags().Lookup("output-kafka-prefix"))
+
+	rootCmd.PersistentFlags().Bool("output-kafka-merge", false,
+		`Send all messages to a single topic, as opposed to topic per event type.`)
+	viper.BindPFlag("output.kafka.merge", rootCmd.PersistentFlags().Lookup("output-kafka-merge"))
+
+	// fifo
+	rootCmd.PersistentFlags().StringSlice("output-fifo-path", []string{},
+		`Named pipe, or FIFO, for outputting event messages. Multiple outputs can be specified.`)
+	viper.BindPFlag("output.fifo.path", rootCmd.PersistentFlags().Lookup("output-fifo-path"))
+
+	// stdout
+	rootCmd.PersistentFlags().Bool("output-stdout", false,
+		`Print output messages to stdout. Good for simple cli piping and debug.`)
+	viper.BindPFlag("output.stdout", rootCmd.PersistentFlags().Lookup("output-stdout"))
 }
 
 func initLogging() {
