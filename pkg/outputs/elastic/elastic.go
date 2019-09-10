@@ -16,8 +16,6 @@ var (
 	TimeFmt                  = "2006.01.02"
 )
 
-type IdxFmtFn func(consumer.Message) string
-
 type Config struct {
 	Workers  int
 	Interval time.Duration
@@ -108,15 +106,24 @@ func (h Handle) add(item interface{}, idx string) {
 	)
 }
 
-func (h Handle) Feed(rx <-chan consumer.Message, name string, ctx context.Context, fn IdxFmtFn) error {
+// Feed implements outputs.Feeder
+func (h Handle) Feed(
+	rx <-chan consumer.Message,
+	name string,
+	ctx context.Context,
+	fn consumer.TopicMapFn,
+) error {
 	if !h.active {
 		return fmt.Errorf(
 			"elastic bulk handler is not active, cannot feed to base index %s",
 			name,
 		)
 	}
-	if ctx == nil {
-		ctx = context.Background()
+	if rx == nil {
+		return fmt.Errorf(
+			"missing channel, cannot feed elastic bulk indexer with%s",
+			name,
+		)
 	}
 
 	if fn == nil {
@@ -130,7 +137,7 @@ func (h Handle) Feed(rx <-chan consumer.Message, name string, ctx context.Contex
 	}
 
 	h.feeders.Add(1)
-	go func() {
+	go func(ctx context.Context) {
 		defer h.feeders.Done()
 	loop:
 		for h.active {
@@ -150,7 +157,12 @@ func (h Handle) Feed(rx <-chan consumer.Message, name string, ctx context.Contex
 			"%s elastic bulk feeder exited properly",
 			name,
 		)
-	}()
+	}(func() context.Context {
+		if ctx == nil {
+			return context.Background()
+		}
+		return ctx
+	}())
 	return nil
 }
 
@@ -159,10 +171,16 @@ func (h Handle) Feed(rx <-chan consumer.Message, name string, ctx context.Contex
 // Wait wraps around sync.WaitGroup to properly wait all bulk feeders to finish their work
 // then flush the tail of message bulk
 func (h Handle) Wait() {
+	if h.feeders == nil {
+		return
+	}
 	h.feeders.Wait()
 }
 
 func (h Handle) Close() error {
+	if h.indexer == nil {
+		return fmt.Errorf("unable to close elastic bulk indexer")
+	}
 	// may already be handled by return statement
 	h.indexer.Flush()
 	return h.indexer.Close()

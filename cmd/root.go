@@ -82,6 +82,10 @@ func initStreamConfig() {
 
 func initOutputConfig() {
 	// Elastic
+	rootCmd.PersistentFlags().Bool("output-elastic-enabled", false,
+		`Enable elasticsearch output.`)
+	viper.BindPFlag("output.elastic.enabled", rootCmd.PersistentFlags().Lookup("output-elastic-enabled"))
+
 	rootCmd.PersistentFlags().StringSlice("output-elastic-host", []string{"http://localhost:9200"},
 		`Elasticsearch http proxy host. Can be specified multiple times to use a cluster.`)
 	viper.BindPFlag("output.elastic.host", rootCmd.PersistentFlags().Lookup("output-elastic-host"))
@@ -99,6 +103,10 @@ func initOutputConfig() {
 	viper.BindPFlag("output.elastic.hourly", rootCmd.PersistentFlags().Lookup("output-elastic-hourly"))
 
 	// Kafka
+	rootCmd.PersistentFlags().Bool("output-kafka-enabled", false,
+		`Enable elasticsearch output.`)
+	viper.BindPFlag("output.kafka.enabled", rootCmd.PersistentFlags().Lookup("output-kafka-enabled"))
+
 	rootCmd.PersistentFlags().StringSlice("output-kafka-host", []string{"localhost:9092"},
 		`Kafka bootstrap broker. Can be specified multiple times to use a cluster.`)
 	viper.BindPFlag("output.kafka.host", rootCmd.PersistentFlags().Lookup("output-kafka-host"))
@@ -160,6 +168,7 @@ func initConfig() {
 	}
 }
 
+// TODO - use more
 func errLogger(err error, exit bool) {
 	switch v := err.(type) {
 	case utils.ErrChan:

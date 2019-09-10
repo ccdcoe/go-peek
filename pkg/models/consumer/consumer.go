@@ -60,3 +60,7 @@ type Offsets struct {
 func (o Offsets) Len() int64 {
 	return (o.End - o.Beginning) + 1
 }
+
+// TopicMapFn is a helper for allowing the user to define how individual messages should be handled
+// For example, which elasticsearch index to send the message to whereas final index name requires knowledge of event timestamp
+type TopicMapFn func(Message) string

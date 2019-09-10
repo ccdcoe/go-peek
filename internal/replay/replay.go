@@ -11,6 +11,7 @@ import (
 	"github.com/ccdcoe/go-peek/pkg/models/consumer"
 	"github.com/ccdcoe/go-peek/pkg/models/events"
 	"github.com/ccdcoe/go-peek/pkg/outputs/elastic"
+	"github.com/ccdcoe/go-peek/pkg/outputs/kafka"
 	"github.com/ccdcoe/go-peek/pkg/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -164,10 +165,11 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 			}
 			return true
 		}()
-		elaEnabled = viper.GetBool("output.elastic.enabled")
+		elaEnabled   = viper.GetBool("output.elastic.enabled")
+		kafkaEnabled = viper.GetBool("output.kafka.enabled")
 	)
 
-	if !stdout && !fifoEnabled && !elaEnabled {
+	if !stdout && !fifoEnabled && !elaEnabled && !kafkaEnabled {
 		log.Fatal("No outputs configured. See --help.")
 	}
 
@@ -181,6 +183,7 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		return chSl
 	}()
 	elaCh := make(chan consumer.Message, 100)
+	kafkaCh := make(chan consumer.Message, 100)
 
 	defer close(stdoutCh)
 	defer func() {
@@ -189,9 +192,49 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		}
 	}()
 	defer close(elaCh)
+	defer close(kafkaCh)
+
+	if kafkaEnabled {
+		var fn consumer.TopicMapFn
+		prefix := viper.GetString("output.kafka.prefix")
+		if viper.GetBool("output.kafka.merge") {
+			fn = func(msg consumer.Message) string {
+				return prefix
+			}
+		} else {
+			fn = func(msg consumer.Message) string {
+				return fmt.Sprintf("%s-%s", prefix, func() string {
+					if msg.Key == "" {
+						return "bogon"
+					}
+					return msg.Key
+				}())
+			}
+		}
+
+		kafkaProducer, err := kafka.NewProducer(&kafka.Config{Brokers: viper.GetStringSlice("output.kafka.host")})
+		if err != nil {
+			log.WithFields(log.Fields{
+				"hosts": viper.GetStringSlice("output.kafka.host"),
+			}).Fatal(err)
+		}
+		kafkaProducer.Feed(kafkaCh, "replay", context.Background(), fn)
+		// TODO - better producer error handler, but panic is overkill for now
+		go func() {
+			every := time.NewTicker(1 * time.Second)
+			for {
+				select {
+				case <-every.C:
+					if err := kafkaProducer.Errors(); err != nil {
+						log.Error(err)
+					}
+				}
+			}
+		}()
+	}
 
 	if elaEnabled {
-		var fn elastic.IdxFmtFn
+		var fn consumer.TopicMapFn
 		prefix := viper.GetString("output.elastic.prefix")
 		if viper.GetBool("output.elastic.merge") {
 			fn = func(msg consumer.Message) string {
@@ -271,6 +314,9 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		}
 		if elaEnabled {
 			elaCh <- *m
+		}
+		if kafkaEnabled {
+			kafkaCh <- *m
 		}
 	}
 
