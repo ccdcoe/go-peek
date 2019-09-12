@@ -6,7 +6,9 @@ package consumer
 	for example, line number where event occurred can be considered an offset
 */
 
-import "time"
+import (
+	"time"
+)
 
 type Source int
 
@@ -32,6 +34,10 @@ type Message struct {
 	// Message offset from input
 	// e.g. kafka offset or file line number
 	Offset int64
+
+	// Message partition from input
+	// in case messages are segregated
+	Partition int64
 
 	// Enum that maps to supported source module
 	// Logfile, unix socket, kafka, redis

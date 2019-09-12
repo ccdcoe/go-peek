@@ -5,7 +5,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/ccdcoe/go-peek/internal/ingest/v2/logfile"
+	"github.com/ccdcoe/go-peek/internal/ingest/logfile"
+	"github.com/ccdcoe/go-peek/pkg/ingest"
 	"github.com/ccdcoe/go-peek/pkg/models/events"
 	"github.com/ccdcoe/go-peek/pkg/utils"
 	log "github.com/sirupsen/logrus"
@@ -60,6 +61,7 @@ func init() {
 	), "Number of threads for decoding messages")
 	viper.BindPFlag("work.dir", rootCmd.PersistentFlags().Lookup("work-dir"))
 
+	initInputConfig()
 	initStreamConfig()
 	initOutputConfig()
 }
@@ -77,7 +79,43 @@ func initStreamConfig() {
 				fmt.Sprintf("stream-%s-dir", stream),
 			),
 		)
+
+		rootCmd.PersistentFlags().StringSlice(fmt.Sprintf("stream-%s-kafka-topic", stream), []string{},
+			fmt.Sprintf("Source kafka topic for event type %s. %s", stream, stream.Explain()))
+		viper.BindPFlag(
+			fmt.Sprintf("stream.%s.kafka.topic", stream),
+			rootCmd.PersistentFlags().Lookup(
+				fmt.Sprintf("stream-%s-kafka-topic", stream),
+			),
+		)
+
 	}
+}
+
+func initInputConfig() {
+	// Kafka consumer
+	rootCmd.PersistentFlags().Bool("input-kafka-enabled", false,
+		fmt.Sprintf(`Enable kafka consumer. %s`, ingest.Kafka.Explain()))
+	viper.BindPFlag("input.kafka.enabled", rootCmd.PersistentFlags().Lookup("input-kafka-enabled"))
+
+	rootCmd.PersistentFlags().StringSlice("input-kafka-host", []string{"localhost:9092"},
+		`Kafka bootstrap broker for consumer. Can be specified multiple times to use a cluster.`)
+	viper.BindPFlag("input.kafka.host", rootCmd.PersistentFlags().Lookup("input-kafka-host"))
+
+	rootCmd.PersistentFlags().String("input-kafka-group", "peek",
+		"Kafka consumer group for maintaining offsets.")
+	viper.BindPFlag("input.kafka.group", rootCmd.PersistentFlags().Lookup("input-kafka-group"))
+
+	rootCmd.PersistentFlags().Bool("input-kafka-commit", true,
+		`Commit offsets under to the broker. To continue from last commit in case consumer is stopped.`)
+	viper.BindPFlag("input.kafka.commit", rootCmd.PersistentFlags().Lookup("input-kafka-commit"))
+
+	rootCmd.PersistentFlags().String("input-kafka-mode", "follow",
+		`Where to begin consuming. Valid options:
+		follow - continue from last committed offset for consumer group
+		beginning - start from first available message in topic
+		latest - start from most recent message in topic`)
+	viper.BindPFlag("input.kafka.mode", rootCmd.PersistentFlags().Lookup("input-kafka-mode"))
 }
 
 func initOutputConfig() {
@@ -104,11 +142,11 @@ func initOutputConfig() {
 
 	// Kafka
 	rootCmd.PersistentFlags().Bool("output-kafka-enabled", false,
-		`Enable elasticsearch output.`)
+		`Enable kafka producer.`)
 	viper.BindPFlag("output.kafka.enabled", rootCmd.PersistentFlags().Lookup("output-kafka-enabled"))
 
 	rootCmd.PersistentFlags().StringSlice("output-kafka-host", []string{"localhost:9092"},
-		`Kafka bootstrap broker. Can be specified multiple times to use a cluster.`)
+		`Kafka bootstrap broker for producer. Can be specified multiple times to use a cluster.`)
 	viper.BindPFlag("output.kafka.host", rootCmd.PersistentFlags().Lookup("output-kafka-host"))
 
 	rootCmd.PersistentFlags().String("output-kafka-prefix", "events",

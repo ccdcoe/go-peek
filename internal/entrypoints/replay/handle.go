@@ -8,7 +8,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/ccdcoe/go-peek/internal/ingest/v2/logfile"
+	"github.com/ccdcoe/go-peek/internal/ingest/logfile"
 	"github.com/ccdcoe/go-peek/pkg/models/consumer"
 	events "github.com/ccdcoe/go-peek/pkg/models/events"
 	"github.com/ccdcoe/go-peek/pkg/utils"

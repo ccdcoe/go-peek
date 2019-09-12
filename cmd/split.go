@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ccdcoe/go-peek/internal/ingest/v2/logfile"
-	"github.com/ccdcoe/go-peek/internal/replay"
+	"github.com/ccdcoe/go-peek/internal/entrypoints/replay"
+	"github.com/ccdcoe/go-peek/internal/ingest/logfile"
 	"github.com/ccdcoe/go-peek/pkg/models/consumer"
 	events "github.com/ccdcoe/go-peek/pkg/models/events"
 	"github.com/ccdcoe/go-peek/pkg/timebin"

@@ -2,17 +2,58 @@ work:
   dir: ~/.local/peek/var/
   threads: 8
 
+input:
+  kafka:
+    enabled: true
+    host:
+      - localhost:9092
+    group: peek
+    commit: true
+    # beginning, follow or latest
+    # beginning will consume from first available message in topic
+    # follow will start consuming from latest committed offset for group
+    # latest will consume from last message in topic
+    mode: follow
+
 stream:
-  snoopy.dir:
-    - ~/Data/logs/linux/normalize/snoopy/
-  suricata.dir: 
-    - ~/Data/logs/suricata/filter/alert/
-  syslog.dir: 
-    - ~/Data/logs/linux/json/
-  sysmon.dir: 
-    - ~/Data/logs/windows/filter/sysmon/
-  windows.dir: 
-    - ~/Data/logs/windows/json/
+  snoopy:
+    dir:
+      - ~/Data/logs/linux/normalize/snoopy/
+    kafka.topic:
+      - snoopy
+  suricata:
+    dir: 
+      - ~/Data/logs/suricata/filter/alert/
+    kafka.topic:
+      - suricata
+  syslog:
+    dir: 
+      - ~/Data/logs/linux/json/
+    kafka.topic:
+      - syslog
+  sysmon:
+    dir: 
+      - ~/Data/logs/windows/filter/sysmon/
+    kafka.topic:
+      - sysmon
+  windows:
+    dir: 
+      - ~/Data/logs/windows/json/
+    kafka.topic:
+      - windows
+
+archive:
+  dir:
+    enabled: true
+    merge: false
+    prefix: dev
+    path: ~/Data/logs-archive/
+  cassandra:
+    enabled: true
+    prefix: dev
+    host:
+      - localhost
+    db: peek
 
 output:
   elastic:

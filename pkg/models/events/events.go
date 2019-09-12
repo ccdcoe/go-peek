@@ -2,8 +2,6 @@ package events
 
 import (
 	"bytes"
-	"net"
-	"strconv"
 	"time"
 )
 
@@ -37,6 +35,8 @@ func (a Atomic) String() string {
 		return "sysmon"
 	case ZeekE:
 		return "zeek"
+	case MazeRunnerE:
+		return "mazerunner"
 	default:
 		return "atomic"
 	}
@@ -56,9 +56,11 @@ func (a Atomic) Explain() string {
 	case EventLogE:
 		return "Windows event log."
 	case SysmonE:
-		return "Sysmon audit log for Windows event log"
+		return "Sysmon audit log for Windows event log."
 	case ZeekE:
-		return "Zeek, formerly known as Bro. Custom output format"
+		return "Zeek, formerly known as Bro. Custom output format."
+	case MazeRunnerE:
+		return "MazeRunner. Honeypot system from Cymmertria."
 	default:
 		return "Simple fallback format for unknown JSON formats. " +
 			"May attempt to access and parse popular timestamp keys but no guarantee on success."
@@ -74,6 +76,7 @@ const (
 	EventLogE
 	SysmonE
 	ZeekE
+	MazeRunnerE
 )
 
 var Atomics = []Atomic{
@@ -84,6 +87,7 @@ var Atomics = []Atomic{
 	EventLogE,
 	SysmonE,
 	ZeekE,
+	MazeRunnerE,
 }
 
 // Functions
@@ -97,16 +101,4 @@ func TryFixBrokenMessage(data []byte) []byte {
 	data = bytes.ReplaceAll(data, []byte(`\)`), []byte(`)`))
 	data = bytes.ReplaceAll(data, []byte(`\*`), []byte(`*`))
 	return data
-}
-
-// Custom extracted fields
-type stringIP struct{ net.IP }
-
-func (t *stringIP) UnmarshalJSON(b []byte) error {
-	raw, err := strconv.Unquote(string(b))
-	if err != nil {
-		return err
-	}
-	t.IP = net.ParseIP(raw)
-	return nil
 }
