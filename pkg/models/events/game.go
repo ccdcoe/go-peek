@@ -3,14 +3,17 @@ package events
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/ccdcoe/go-peek/pkg/models/atomic"
+	"github.com/ccdcoe/go-peek/pkg/models/fields"
 	"github.com/ccdcoe/go-peek/pkg/models/meta"
 )
 
 type GameEvent interface {
 	atomic.Event
+	meta.AssetGetterSetter
 }
 
 type ErrEventParse struct {
@@ -36,19 +39,19 @@ func NewGameEvent(data []byte, enum Atomic) (GameEvent, error) {
 		if err := json.Unmarshal(data, &obj); err != nil {
 			return nil, err
 		}
-		return obj, nil
+		return &obj, nil
 	case SyslogE:
 		var obj Syslog
 		if err := json.Unmarshal(data, &obj); err != nil {
 			return nil, err
 		}
-		return obj, nil
+		return &obj, nil
 	case SnoopyE:
 		var obj Snoopy
 		if err := json.Unmarshal(data, &obj); err != nil {
 			return nil, err
 		}
-		return obj, nil
+		return &obj, nil
 	case EventLogE, SysmonE:
 		var obj atomic.DynamicEventLog
 		if err := json.Unmarshal(data, &obj); err != nil {
@@ -65,13 +68,13 @@ func NewGameEvent(data []byte, enum Atomic) (GameEvent, error) {
 		if err := json.Unmarshal(data, &obj); err != nil {
 			return nil, err
 		}
-		return obj, nil
+		return &obj, nil
 	case MazeRunnerE:
 		var obj MazeRunner
 		if err := json.Unmarshal(data, &obj); err != nil {
 			return nil, err
 		}
-		return obj, nil
+		return &obj, nil
 	default:
 		return nil, ErrEventParse{
 			Data:   data,
@@ -84,7 +87,52 @@ func NewGameEvent(data []byte, enum Atomic) (GameEvent, error) {
 type Suricata struct {
 	atomic.StaticSuricataEve
 	atomic.Syslog
-	meta.Asset
+	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+// GetAsset is a getter for receiving event source and target information
+// For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters
+// Should provide needed information for doing external asset table lookups
+func (s Suricata) GetAsset() *meta.GameAsset {
+	return &meta.GameAsset{
+		Asset: meta.Asset{
+			Host: s.Syslog.Host,
+			IP: func() net.IP {
+				if s.Syslog.IP == nil {
+					return nil
+				}
+				return s.Syslog.IP.IP
+			}(),
+		},
+		Source: &meta.Asset{
+			IP: func() net.IP {
+				if s.Alert != nil && s.Alert.Source != nil {
+					return s.Alert.Source.IP.IP
+				}
+				if s.SrcIP == nil {
+					return nil
+				}
+				return s.SrcIP.IP
+			}(),
+		},
+		Destination: &meta.Asset{
+			IP: func() net.IP {
+				if s.Alert != nil && s.Alert.Target != nil {
+					return s.Alert.Target.IP.IP
+				}
+				if s.DestIP == nil {
+					return nil
+				}
+				return s.DestIP.IP
+			}(),
+		},
+	}
+}
+
+// SetAsset is a setter for setting meta to object without knowing the object type
+// all asset lookups and field discoveries should be done before using this method to maintain readability
+func (s *Suricata) SetAsset(data meta.GameAsset) {
+	s.GameMeta = data
 }
 
 // Time implements atomic.Event
@@ -101,7 +149,31 @@ func (s Suricata) Sender() string { return s.StaticSuricataEve.Sender() }
 
 type Syslog struct {
 	atomic.Syslog
-	meta.Asset
+	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+// GetAsset is a getter for receiving event source and target information
+// For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters
+// Should provide needed information for doing external asset table lookups
+func (s Syslog) GetAsset() *meta.GameAsset {
+	return &meta.GameAsset{
+		Directionality: meta.DirLocal,
+		Asset: meta.Asset{
+			Host: s.Syslog.Host,
+			IP: func() net.IP {
+				if s.Syslog.IP == nil {
+					return nil
+				}
+				return s.Syslog.IP.IP
+			}(),
+		},
+	}
+}
+
+// SetAsset is a setter for setting meta to object without knowing the object type
+// all asset lookups and field discoveries should be done before using this method to maintain readability
+func (s *Syslog) SetAsset(data meta.GameAsset) {
+	s.GameMeta = data
 }
 
 // Time implements atomic.Event
@@ -119,7 +191,54 @@ func (s Syslog) Sender() string { return s.Syslog.Sender() }
 type Snoopy struct {
 	atomic.Snoopy
 	atomic.Syslog
-	meta.Asset
+	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+// GetAsset is a getter for receiving event source and target information
+// For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters
+// Should provide needed information for doing external asset table lookups
+func (s Snoopy) GetAsset() *meta.GameAsset {
+	return &meta.GameAsset{
+		Asset: meta.Asset{
+			Host: s.Syslog.Host,
+			IP: func() net.IP {
+				if s.Syslog.IP == nil {
+					return nil
+				}
+				return s.Syslog.IP.IP
+			}(),
+		},
+		Directionality: func() meta.Directionality {
+			if s.SSH == nil {
+				return meta.DirLocal
+			}
+			return meta.DirUnk
+		}(),
+		Source: func() *meta.Asset {
+			if s.SSH == nil {
+				return nil
+			}
+			if s.SSH.SrcIP != nil {
+				return &meta.Asset{IP: s.SSH.SrcIP.IP}
+			}
+			return nil
+		}(),
+		Destination: func() *meta.Asset {
+			if s.SSH == nil {
+				return nil
+			}
+			if s.SSH.DstIP != nil {
+				return &meta.Asset{IP: s.SSH.DstIP.IP}
+			}
+			return nil
+		}(),
+	}
+}
+
+// SetAsset is a setter for setting meta to object without knowing the object type
+// all asset lookups and field discoveries should be done before using this method to maintain readability
+func (s *Snoopy) SetAsset(data meta.GameAsset) {
+	s.GameMeta = data
 }
 
 // Time implements atomic.Event
@@ -136,7 +255,25 @@ func (s Snoopy) Sender() string { return s.Syslog.Sender() }
 
 type Eventlog struct {
 	atomic.EventLog
-	meta.Asset
+	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+// GetAsset is a getter for receiving event source and target information
+// For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters
+// Should provide needed information for doing external asset table lookups
+func (e Eventlog) GetAsset() *meta.GameAsset {
+	return &meta.GameAsset{
+		Asset: meta.Asset{
+			Host: e.Source(),
+			IP:   e.SenderIP(),
+		},
+	}
+}
+
+// SetAsset is a setter for setting meta to object without knowing the object type
+// all asset lookups and field discoveries should be done before using this method to maintain readability
+func (e *Eventlog) SetAsset(data meta.GameAsset) {
+	e.GameMeta = data
 }
 
 // Time implements atomic.Event
@@ -153,7 +290,37 @@ func (e Eventlog) Sender() string { return e.EventLog.Sender() }
 
 type ZeekCobalt struct {
 	atomic.ZeekCobalt
-	meta.Asset
+	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+// GetAsset is a getter for receiving event source and target information
+// For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters
+// Should provide needed information for doing external asset table lookups
+func (z ZeekCobalt) GetAsset() *meta.GameAsset {
+	ipFn := func(ip *fields.StringIP) net.IP {
+		if ip != nil {
+			return ip.IP
+		}
+		return nil
+	}
+	src := ipFn(z.IDOrigH)
+	srcFn := func(ip net.IP) *meta.Asset {
+		if ip != nil {
+			return &meta.Asset{IP: ip}
+		}
+		return nil
+	}
+	return &meta.GameAsset{
+		Asset:       meta.Asset{IP: src},
+		Source:      srcFn(src),
+		Destination: srcFn(ipFn(z.IDRespH)),
+	}
+}
+
+// SetAsset is a setter for setting meta to object without knowing the object type
+// all asset lookups and field discoveries should be done before using this method to maintain readability
+func (z *ZeekCobalt) SetAsset(data meta.GameAsset) {
+	z.GameMeta = data
 }
 
 // Time implements atomic.Event
@@ -170,7 +337,30 @@ func (z ZeekCobalt) Sender() string { return z.ZeekCobalt.Sender() }
 
 type MazeRunner struct {
 	atomic.MazeRunner
-	meta.Asset
+	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+// GetAsset is a getter for receiving event source and target information
+// For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters
+// Should provide needed information for doing external asset table lookups
+func (m MazeRunner) GetAsset() *meta.GameAsset {
+	srcFn := func(ip net.IP) *meta.Asset {
+		if ip != nil {
+			return &meta.Asset{IP: ip}
+		}
+		return nil
+	}
+	return &meta.GameAsset{
+		Asset:       meta.Asset{Host: m.MazeRunner.Sender()},
+		Source:      srcFn(m.MazeRunner.GetSrcIP()),
+		Destination: srcFn(m.MazeRunner.GetDstIP()),
+	}
+}
+
+// SetAsset is a setter for setting meta to object without knowing the object type
+// all asset lookups and field discoveries should be done before using this method to maintain readability
+func (m *MazeRunner) SetAsset(data meta.GameAsset) {
+	m.GameMeta = data
 }
 
 // Time implements atomic.Event

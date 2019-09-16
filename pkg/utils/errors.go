@@ -10,14 +10,33 @@ import (
 type ErrChan struct {
 	Desc  string
 	Items chan error
+	Total int
+	Max   int
 }
 
 func (e ErrChan) Error() string {
 	return fmt.Sprintf(
-		"%s experienced %d errors, please drain items channel for more information",
+		"%s experienced %d errors total, %d available for reporting limited to configured max %d, please drain items channel for more information",
 		e.Desc,
+		e.Total,
 		len(e.Items),
+		e.Max,
 	)
+}
+
+func (e *ErrChan) Send(err error) *ErrChan {
+	if e.Max < 10 {
+		e.Max = 10
+	}
+	if e.Items == nil {
+		e.Items = make(chan error, e.Max)
+	}
+	if len(e.Items) >= e.Max {
+		<-e.Items
+	}
+	e.Items <- err
+	e.Total++
+	return e
 }
 
 type ErrNilPointer struct {

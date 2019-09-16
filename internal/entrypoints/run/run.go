@@ -82,25 +82,36 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		<-c
 		kafkaCancel()
 	}()
-	modified := spawnWorkers(kafkaConsumer.Messages(), Workers, func(topic string) events.Atomic {
-		mapping := func() map[string]events.Atomic {
-			out := make(map[string]events.Atomic)
-			for _, event := range events.Atomics {
-				if src := viper.GetStringSlice(
-					fmt.Sprintf("stream.%s.kafka.topic", event.String()),
-				); len(src) > 0 {
-					for _, item := range src {
-						out[item] = event
+	modified, modWorkerErrors := spawnWorkers(
+		kafkaConsumer.Messages(),
+		Workers,
+		func(topic string) events.Atomic {
+			mapping := func() map[string]events.Atomic {
+				out := make(map[string]events.Atomic)
+				for _, event := range events.Atomics {
+					if src := viper.GetStringSlice(
+						fmt.Sprintf("stream.%s.kafka.topic", event.String()),
+					); len(src) > 0 {
+						for _, item := range src {
+							out[item] = event
+						}
 					}
 				}
+				return out
+			}()
+			if val, ok := mapping[topic]; ok {
+				return val
 			}
-			return out
-		}()
-		if val, ok := mapping[topic]; ok {
-			return val
+			return events.SimpleE
+		},
+	)
+
+	go func() {
+		for err := range modWorkerErrors.Items {
+			log.Error(err)
 		}
-		return events.SimpleE
-	})
+	}()
+
 	for msg := range modified {
 		fmt.Fprintf(os.Stdout, ">>>%s:%d:%d:%s\n", msg.Source, msg.Partition, msg.Offset, msg.Key)
 	}

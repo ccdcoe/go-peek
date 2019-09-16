@@ -1,6 +1,11 @@
 package atomic
 
-import "time"
+import (
+	"net"
+	"time"
+
+	"github.com/ccdcoe/go-peek/pkg/models/fields"
+)
 
 // EventLog is a wrapper around EventLog to avoid parsing common fields in runtime
 // DynamicEventLog methods incur full type cast and parse whenever fields are required, bad for performance
@@ -8,6 +13,7 @@ type EventLog struct {
 	DynamicEventLog
 	time           time.Time
 	source, sender string
+	senderIP       net.IP
 }
 
 func (e *EventLog) Parse() *EventLog {
@@ -17,8 +23,11 @@ func (e *EventLog) Parse() *EventLog {
 	e.time = e.DynamicEventLog.Time()
 	e.source = e.DynamicEventLog.Source()
 	e.sender = e.DynamicEventLog.Sender()
+	e.senderIP = e.DynamicEventLog.SourceIP()
 	return e
 }
+
+func (e EventLog) SenderIP() net.IP { return e.senderIP }
 
 // Time implements atomic.Event
 // Timestamp in event, should default to time.Time{} so time.IsZero() could be used to verify success
@@ -36,6 +45,15 @@ func (s EventLog) Sender() string { return s.sender }
 // it is okay to invoke full parse and typecast whenever a field is required via method
 // use the results of these methods in EventLog if performance is needed
 type DynamicEventLog map[string]interface{}
+
+func (e DynamicEventLog) SourceIP() net.IP {
+	if val, ok := e["syslog_ip"].(string); ok {
+		if ip, err := fields.ParseStringIP(val); err == nil {
+			return ip
+		}
+	}
+	return nil
+}
 
 // Time implements atomic.Event
 // Timestamp in event, should default to time.Time{} so time.IsZero() could be used to verify success
@@ -63,8 +81,10 @@ func (e DynamicEventLog) Time() time.Time {
 // Source implements atomic.Event
 // Source of message, usually emitting program
 func (e DynamicEventLog) Source() string {
-	if val, ok := e["SourceName"].(string); ok {
-		return val
+	for _, key := range []string{"SourceName", "syslog_program"} {
+		if val, ok := e[key].(string); ok {
+			return val
+		}
 	}
 	return ""
 }
@@ -72,8 +92,10 @@ func (e DynamicEventLog) Source() string {
 // Sender implements atomic.Event
 // Sender of message, usually a host
 func (e DynamicEventLog) Sender() string {
-	if val, ok := e["Host"].(string); ok {
-		return val
+	for _, key := range []string{"Host", "syslog_host"} {
+		if val, ok := e[key].(string); ok {
+			return val
+		}
 	}
 	return ""
 }
