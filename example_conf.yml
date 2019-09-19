@@ -15,6 +15,17 @@ input:
     # latest will consume from last message in topic
     mode: follow
 
+processor:
+  enabled: true
+  persist:
+    json:
+      assets: assets.json
+      nets: networks.json
+  inputs:
+    wise:
+      enabled: true
+      host: http://localhost:8085
+
 stream:
   snoopy:
     dir:

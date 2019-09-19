@@ -62,6 +62,7 @@ func init() {
 	viper.BindPFlag("work.dir", rootCmd.PersistentFlags().Lookup("work-dir"))
 
 	initInputConfig()
+	initProcessorConfig()
 	initStreamConfig()
 	initOutputConfig()
 }
@@ -116,6 +117,25 @@ func initInputConfig() {
 		beginning - start from first available message in topic
 		latest - start from most recent message in topic`)
 	viper.BindPFlag("input.kafka.mode", rootCmd.PersistentFlags().Lookup("input-kafka-mode"))
+}
+
+func initProcessorConfig() {
+	rootCmd.PersistentFlags().Bool("proc-enabled", true,
+		`Enable or disable all processor plugins globally.`)
+	viper.BindPFlag("processor.enabled", rootCmd.PersistentFlags().Lookup("proc-enabled"))
+
+	rootCmd.PersistentFlags().String("proc-persist-json-assets", "assets.json",
+		`File to store asset information in json format. 
+		Specify name to be stored in working dir or valid file path for custom location.`)
+	viper.BindPFlag("processor.persist.json.assets", rootCmd.PersistentFlags().Lookup("proc-persist-json-assets"))
+
+	rootCmd.PersistentFlags().Bool("proc-in-wise-enabled", true,
+		`Enable or disable WISE asset lookups.`)
+	viper.BindPFlag("processor.inputs.wise.enabled", rootCmd.PersistentFlags().Lookup("proc-in-wise-enabled"))
+
+	rootCmd.PersistentFlags().String("proc-in-wise-host", "http://localhost:8081",
+		`Remote Moloch WISE host that holds asset and IOC information.`)
+	viper.BindPFlag("processor.inputs.wise.host", rootCmd.PersistentFlags().Lookup("proc-in-wise-host"))
 }
 
 func initOutputConfig() {

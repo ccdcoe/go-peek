@@ -2,12 +2,14 @@ package utils
 
 import (
 	"fmt"
+	"sync"
 )
 
 // TODO: close channel after drain
 // should be done here, not by receiver
 // range loop will deadlock
 type ErrChan struct {
+	*sync.Mutex
 	Desc  string
 	Items chan error
 	Total int
@@ -28,6 +30,11 @@ func (e *ErrChan) Send(err error) *ErrChan {
 	if e.Max < 10 {
 		e.Max = 10
 	}
+	if e.Mutex == nil {
+		e.Mutex = &sync.Mutex{}
+	}
+	e.Lock()
+	defer e.Unlock()
 	if e.Items == nil {
 		e.Items = make(chan error, e.Max)
 	}
@@ -107,4 +114,13 @@ type ErrInvalidPath struct {
 
 func (e ErrInvalidPath) Error() string {
 	return fmt.Sprintf("path error for %s: %s", e.Path, e.Msg)
+}
+
+type ErrDecodeJson struct {
+	Err error
+	Raw []byte
+}
+
+func (e ErrDecodeJson) Error() string {
+	return fmt.Sprintf("%s for [%s]", e.Err, string(e.Raw))
 }

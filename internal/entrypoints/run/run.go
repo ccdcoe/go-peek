@@ -8,6 +8,7 @@ import (
 
 	inKafka "github.com/ccdcoe/go-peek/pkg/ingest/kafka"
 	"github.com/ccdcoe/go-peek/pkg/models/events"
+	"github.com/ccdcoe/go-peek/pkg/utils"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -20,10 +21,11 @@ var (
 )
 
 func Entrypoint(cmd *cobra.Command, args []string) {
-	var (
-		spooldir = viper.GetString("work.dir")
-	)
 	Workers = viper.GetInt("work.threads")
+	spooldir, err := utils.ExpandHome(viper.GetString("work.dir"))
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	log.WithFields(log.Fields{
 		"workers": Workers,
@@ -85,6 +87,7 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 	modified, modWorkerErrors := spawnWorkers(
 		kafkaConsumer.Messages(),
 		Workers,
+		spooldir,
 		func(topic string) events.Atomic {
 			mapping := func() map[string]events.Atomic {
 				out := make(map[string]events.Atomic)
@@ -113,6 +116,7 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 	}()
 
 	for msg := range modified {
-		fmt.Fprintf(os.Stdout, ">>>%s:%d:%d:%s\n", msg.Source, msg.Partition, msg.Offset, msg.Key)
+		//fmt.Fprintf(os.Stdout, ">>>%s:%d:%d:%s\n", msg.Source, msg.Partition, msg.Offset, msg.Key)
+		msg.Data = make([]byte, 0)
 	}
 }

@@ -2,14 +2,16 @@ package run
 
 import (
 	"fmt"
-	"os"
+	"path/filepath"
 	"sync"
-	"time"
 
+	"github.com/ccdcoe/go-peek/pkg/intel"
+	"github.com/ccdcoe/go-peek/pkg/intel/wise"
 	"github.com/ccdcoe/go-peek/pkg/models/consumer"
 	"github.com/ccdcoe/go-peek/pkg/models/events"
 	"github.com/ccdcoe/go-peek/pkg/utils"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 type eventMapFn func(string) events.Atomic
@@ -17,6 +19,7 @@ type eventMapFn func(string) events.Atomic
 func spawnWorkers(
 	rx <-chan *consumer.Message,
 	workers int,
+	spooldir string,
 	fn eventMapFn,
 ) (<-chan *consumer.Message, *utils.ErrChan) {
 	tx := make(chan *consumer.Message, 0)
@@ -25,9 +28,41 @@ func spawnWorkers(
 		Items: make(chan error, 100),
 	}
 	var wg sync.WaitGroup
+	noparse := func() bool {
+		if !viper.GetBool("processor.enabled") {
+			log.Debug("all procesor plugins disabled globally, only parsing for timestamps")
+			return true
+		}
+		return false
+	}()
+	globalAssetCache, err := intel.NewGlobalCache(&intel.Config{
+		Wise: func() *wise.Config {
+			if viper.GetBool("processor.inputs.wise.enabled") {
+				wh := viper.GetString("processor.inputs.wise.host")
+				log.Debugf("wise enabled, configuring for host %s", wh)
+				return &wise.Config{Host: wh}
+			}
+			return nil
+		}(),
+		Prune: true,
+		DumpJSONAssets: func() string {
+			pth := viper.GetString("processor.persist.json.assets")
+			if pth == "" || filepath.IsAbs(pth) {
+				return pth
+			}
+			return filepath.Join(spooldir, filepath.Base(pth))
+		}(),
+	})
+	if err != nil {
+		log.WithFields(log.Fields{
+			"action": "init global cache",
+			"thread": "main spawn",
+		}).Fatal(err)
+	}
 	go func() {
 		defer close(tx)
 		defer close(errs.Items)
+		defer globalAssetCache.Close()
 		for i := 0; i < workers; i++ {
 			wg.Add(1)
 			go func(id int) {
@@ -35,6 +70,8 @@ func spawnWorkers(
 				defer log.Tracef("worker %d done", id)
 
 				log.Tracef("Spawning worker %d", id)
+				localAssetCache := intel.NewLocalCache(globalAssetCache, id)
+				defer localAssetCache.Close()
 
 			loop:
 				for msg := range rx {
@@ -43,13 +80,53 @@ func spawnWorkers(
 						errs.Send(err)
 						continue loop
 					}
-					fmt.Fprintf(
-						os.Stdout,
-						"%s: %s: %+v\n",
-						fn(msg.Source),
-						e.Time().Format(time.Stamp),
-						e.GetAsset(),
-					)
+					msg.Time = e.Time()
+					if noparse {
+						tx <- msg
+						continue loop
+					}
+
+					meta := e.GetAsset()
+					if meta == nil {
+						errs.Send(fmt.Errorf(
+							"unable to get meta for event %s",
+							string(msg.Data),
+						))
+						continue loop
+					}
+
+					// Asset checking stuff
+					if ip := meta.Asset.IP; ip != nil {
+						if val, ok := localAssetCache.GetIP(ip); ok && val.IsAsset {
+							meta.Asset = *val.Data
+						}
+					}
+					if meta.Source != nil {
+						if ip := meta.Source.IP; ip != nil {
+							if val, ok := localAssetCache.GetIP(ip); ok && val.IsAsset && val.Data != nil {
+								meta.Source = val.Data
+							}
+						}
+					}
+					if meta.Destination != nil {
+						if ip := meta.Destination.IP; ip != nil {
+							if val, ok := localAssetCache.GetIP(ip); ok && val.IsAsset && val.Data != nil {
+								meta.Destination = val.Data
+							}
+						}
+					}
+
+					meta.SetDirection()
+					/*
+						if anon {
+
+						}
+					*/
+
+					j, _ := meta.JSON()
+					fmt.Println(string(j))
+
+					e.SetAsset(*meta)
 					tx <- msg
 				}
 			}(i)

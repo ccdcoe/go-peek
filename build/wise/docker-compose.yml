@@ -1,0 +1,19 @@
+version: '3.7'
+
+services:
+
+  dev-peek-redis-0:
+    image: redis:latest
+    ports:
+      - "127.0.0.1:6379:6379/tcp"
+
+  dev-peek-wise-0:
+    image: markuskont/moloch-wise:latest
+    volumes:
+      - type: bind
+        source: ./wise.ini
+        target: /data/moloch/etc/wise.ini
+    ports:
+      - "127.0.0.1:8085:8081/tcp"
+    depends_on:
+      - dev-peek-redis-0
