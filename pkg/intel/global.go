@@ -163,7 +163,6 @@ func NewGlobalCache(c *Config) (*GlobalCache, error) {
 					continue loop
 				}
 				for _, a := range stuff {
-					fmt.Fprintf(os.Stdout, "%+v\n", a)
 					j, err := a.JSON()
 					if err != nil {
 						panic(err)

@@ -79,7 +79,7 @@ func NewHandle(c *Config) (*Handle, error) {
 }
 
 func QueryIP(h Handle, key net.IP) (APIResponse, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 	defer cancel()
 	req, err := http.NewRequest("GET", h.url.String()+"/ip/"+key.String(), nil)
 	if err != nil {

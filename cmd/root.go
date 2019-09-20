@@ -124,6 +124,10 @@ func initProcessorConfig() {
 		`Enable or disable all processor plugins globally.`)
 	viper.BindPFlag("processor.enabled", rootCmd.PersistentFlags().Lookup("proc-enabled"))
 
+	rootCmd.PersistentFlags().Bool("proc-anon", false,
+		`Anonymize messages. Simple method by replacing host names with aliases`)
+	viper.BindPFlag("processor.anonymize", rootCmd.PersistentFlags().Lookup("proc-anon"))
+
 	rootCmd.PersistentFlags().String("proc-persist-json-assets", "assets.json",
 		`File to store asset information in json format. 
 		Specify name to be stored in working dir or valid file path for custom location.`)

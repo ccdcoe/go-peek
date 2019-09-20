@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/ccdcoe/go-peek/internal/engines/shipper"
 	inKafka "github.com/ccdcoe/go-peek/pkg/ingest/kafka"
 	"github.com/ccdcoe/go-peek/pkg/models/events"
 	"github.com/ccdcoe/go-peek/pkg/utils"
@@ -115,8 +116,7 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		}
 	}()
 
-	for msg := range modified {
-		//fmt.Fprintf(os.Stdout, ">>>%s:%d:%d:%s\n", msg.Source, msg.Partition, msg.Offset, msg.Key)
-		msg.Data = make([]byte, 0)
+	if err := shipper.Send(modified); err != nil {
+		log.Fatal(err)
 	}
 }

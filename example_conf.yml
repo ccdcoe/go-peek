@@ -17,6 +17,7 @@ input:
 
 processor:
   enabled: true
+  anonymize: false
   persist:
     json:
       assets: assets.json

@@ -28,6 +28,7 @@ func spawnWorkers(
 		Items: make(chan error, 100),
 	}
 	var wg sync.WaitGroup
+	anon := viper.GetBool("processor.anonymize")
 	noparse := func() bool {
 		if !viper.GetBool("processor.enabled") {
 			log.Debug("all procesor plugins disabled globally, only parsing for timestamps")
@@ -117,16 +118,24 @@ func spawnWorkers(
 					}
 
 					meta.SetDirection()
-					/*
-						if anon {
-
+					if anon {
+						// TODO - also get rid of host name fields in message
+						meta.Host = meta.Alias
+						if meta.Source != nil {
+							meta.Source.Host = meta.Source.Alias
 						}
-					*/
-
-					j, _ := meta.JSON()
-					fmt.Println(string(j))
+						if meta.Destination != nil {
+							meta.Destination.Host = meta.Destination.Alias
+						}
+					}
 
 					e.SetAsset(*meta)
+					modified, err := e.JSONFormat()
+					if err != nil {
+						errs.Send(err)
+						continue loop
+					}
+					msg.Data = modified
 					tx <- msg
 				}
 			}(i)

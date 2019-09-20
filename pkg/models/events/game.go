@@ -14,6 +14,7 @@ import (
 type GameEvent interface {
 	atomic.Event
 	meta.AssetGetterSetter
+	atomic.JSONFormatter
 }
 
 type ErrEventParse struct {
@@ -90,6 +91,9 @@ type Suricata struct {
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
+// JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
+func (s Suricata) JSONFormat() ([]byte, error) { return json.Marshal(s) }
+
 // GetAsset is a getter for receiving event source and target information
 // For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters
 // Should provide needed information for doing external asset table lookups
@@ -152,6 +156,9 @@ type Syslog struct {
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
+// JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
+func (s Syslog) JSONFormat() ([]byte, error) { return json.Marshal(s) }
+
 // GetAsset is a getter for receiving event source and target information
 // For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters
 // Should provide needed information for doing external asset table lookups
@@ -193,6 +200,9 @@ type Snoopy struct {
 	atomic.Syslog
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
+
+// JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
+func (s Snoopy) JSONFormat() ([]byte, error) { return json.Marshal(s) }
 
 // GetAsset is a getter for receiving event source and target information
 // For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters
@@ -258,13 +268,23 @@ type Eventlog struct {
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
+// JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
+func (e Eventlog) JSONFormat() ([]byte, error) {
+	data := e.EventLog.DynamicEventLog
+	if data == nil {
+		return json.Marshal(e)
+	}
+	data["GameMeta"] = e.GameMeta
+	return json.Marshal(data)
+}
+
 // GetAsset is a getter for receiving event source and target information
 // For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters
 // Should provide needed information for doing external asset table lookups
 func (e Eventlog) GetAsset() *meta.GameAsset {
 	return &meta.GameAsset{
 		Asset: meta.Asset{
-			Host: e.Source(),
+			Host: e.Sender(),
 			IP:   e.SenderIP(),
 		},
 	}
@@ -292,6 +312,9 @@ type ZeekCobalt struct {
 	atomic.ZeekCobalt
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
+
+// JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
+func (z ZeekCobalt) JSONFormat() ([]byte, error) { return json.Marshal(z) }
 
 // GetAsset is a getter for receiving event source and target information
 // For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters
@@ -339,6 +362,9 @@ type MazeRunner struct {
 	atomic.MazeRunner
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
+
+// JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
+func (m MazeRunner) JSONFormat() ([]byte, error) { return json.Marshal(m) }
 
 // GetAsset is a getter for receiving event source and target information
 // For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters

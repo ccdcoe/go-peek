@@ -13,3 +13,24 @@ type Event interface {
 	// Sender of message, usually a host
 	Sender() string
 }
+
+// Messager is for accessing raw unstructure or human-formatted payload of event
+// Useful for simple logging for humans or for text mining methods
+type Messager interface {
+	// Message implements atomic.Messager
+	// For example, syslog msg field or Suricata EVE fields in fast log format
+	Message() string
+}
+
+// JSONFormatter is for re-encoding parsed messages to byte array without knowng the payload type
+type JSONFormatter interface {
+	// JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
+	JSONFormat() ([]byte, error)
+}
+
+// CSVFormatter is for encoding parsed messages in CSV format, for easy database dumps and excel stuff
+// Output should integrate easily with encoding/csv Write() method
+type CSVFormatter interface {
+	CSVHeader() []string
+	CSVFormat() []string
+}
