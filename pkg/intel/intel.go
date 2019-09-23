@@ -38,8 +38,9 @@ func (a Asset) JSON() ([]byte, error) { return json.Marshal(a) }
 
 type Config struct {
 	Wise           *wise.Config
-	DumpJSONAssets string
 	Prune          bool
+	DumpJSONAssets string
+	LoadJSONnets   string
 }
 
 func NewDefaultConfig() *Config {

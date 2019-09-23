@@ -133,6 +133,11 @@ func initProcessorConfig() {
 		Specify name to be stored in working dir or valid file path for custom location.`)
 	viper.BindPFlag("processor.persist.json.assets", rootCmd.PersistentFlags().Lookup("proc-persist-json-assets"))
 
+	rootCmd.PersistentFlags().String("proc-persist-json-networks", "networks.json",
+		`File to store network information in json format. 
+		Specify name to be stored in working dir or valid file path for custom location.`)
+	viper.BindPFlag("processor.persist.json.networks", rootCmd.PersistentFlags().Lookup("proc-persist-json-networks"))
+
 	rootCmd.PersistentFlags().Bool("proc-in-wise-enabled", true,
 		`Enable or disable WISE asset lookups.`)
 	viper.BindPFlag("processor.inputs.wise.enabled", rootCmd.PersistentFlags().Lookup("proc-in-wise-enabled"))

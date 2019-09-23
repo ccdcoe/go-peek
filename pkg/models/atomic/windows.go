@@ -3,8 +3,6 @@ package atomic
 import (
 	"net"
 	"time"
-
-	"github.com/ccdcoe/go-peek/pkg/models/fields"
 )
 
 // EventLog is a wrapper around EventLog to avoid parsing common fields in runtime
@@ -48,9 +46,7 @@ type DynamicEventLog map[string]interface{}
 
 func (e DynamicEventLog) SourceIP() net.IP {
 	if val, ok := e["syslog_ip"].(string); ok {
-		if ip, err := fields.ParseStringIP(val); err == nil {
-			return ip
-		}
+		return net.ParseIP(val)
 	}
 	return nil
 }
@@ -92,7 +88,7 @@ func (e DynamicEventLog) Source() string {
 // Sender implements atomic.Event
 // Sender of message, usually a host
 func (e DynamicEventLog) Sender() string {
-	for _, key := range []string{"Host", "syslog_host"} {
+	for _, key := range []string{"Hostname", "syslog_host"} {
 		if val, ok := e[key].(string); ok {
 			return val
 		}

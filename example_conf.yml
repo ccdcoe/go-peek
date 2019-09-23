@@ -21,7 +21,7 @@ processor:
   persist:
     json:
       assets: assets.json
-      nets: networks.json
+      networks: networks.json
   inputs:
     wise:
       enabled: true

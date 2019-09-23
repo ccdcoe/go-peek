@@ -3,10 +3,26 @@ package fields
 import (
 	"net"
 	"strconv"
+	"strings"
 	"time"
 )
 
-// Custom extracted fields
+type StringNet struct{ net.IPNet }
+
+func (t *StringNet) UnmarshalJSON(b []byte) error {
+	raw, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	_, net, err := net.ParseCIDR(strings.Replace(raw, `\`, "", 2))
+
+	if err != nil {
+		return err
+	}
+	t.IPNet = *net
+	return nil
+}
+
 type StringIP struct{ net.IP }
 
 func (t *StringIP) UnmarshalJSON(b []byte) error {

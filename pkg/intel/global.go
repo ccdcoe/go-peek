@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"sync"
@@ -17,14 +18,14 @@ import (
 )
 
 type persist struct {
-	dump   time.Duration
-	assets string
+	dump     time.Duration
+	assets   string
+	networks string
 }
 
 // Global is a caching container that is meant to be thread safe
 // should ask from external sources if entry is missing
 type GlobalCache struct {
-	// map[string]meta.Asset
 	assets   *sync.Map
 	networks *sync.Map
 
@@ -71,7 +72,7 @@ func NewGlobalCache(c *Config) (*GlobalCache, error) {
 			return nil, err
 		}
 		if file.IsDir() {
-			return nil, fmt.Errorf("CSV asset dump path %s is dir, but should be regular file", file.Name())
+			return nil, fmt.Errorf("JSON asset dump path %s is dir, but should be regular file", file.Name())
 		}
 		gc.persist.assets = c.DumpJSONAssets
 		log.Tracef("Setting up asset persistence in %s", gc.persist.assets)
@@ -93,6 +94,44 @@ func NewGlobalCache(c *Config) (*GlobalCache, error) {
 			}
 			f.Close()
 			log.Tracef("loaded %d assets from %s", count, gc.persist.assets)
+		}
+	}
+	// TODO - move to function, or provide built network list externally
+	if pth := c.LoadJSONnets; pth != "" {
+		file, err := os.Stat(pth)
+		if err != nil {
+			return nil, err
+		}
+		if file.IsDir() {
+			return nil, fmt.Errorf("JSON network information source %s is a directory", file.Name())
+		}
+		gc.persist.networks = pth
+		log.Tracef("Loading network info from %s", gc.persist.networks)
+		var nets []*meta.Network
+		f, err := os.Open(pth)
+		if err != nil {
+			return nil, err
+		}
+		b, err := ioutil.ReadAll(f)
+		if err != nil {
+			return nil, err
+		}
+		var obj meta.NetworkPandasExport
+		if err := json.Unmarshal(b, &obj); err != nil {
+			if err := json.Unmarshal(b, &nets); err != nil {
+				return nil, fmt.Errorf(
+					"unable to read network JSON file, tried following formtats: pandas export, list of meta.Network, raw error is %s",
+					err,
+				)
+			}
+		} else {
+			nets = obj.Extract()
+		}
+		f.Close()
+		for _, net := range nets {
+			v4, v6 := net.Shorthand()
+			gc.networks.Store(v4.String(), v4)
+			gc.networks.Store(v6.String(), v6)
 		}
 	}
 	go func() {
@@ -223,7 +262,21 @@ func (g GlobalCache) GetIP(key net.IP) (*Asset, bool) {
 	} else if ok {
 		asset.Data = a
 		asset.IsAsset = true
-		//g.updateAllNets()
+
+		g.networks.Range(func(key, netData interface{}) bool {
+			switch n := netData.(type) {
+			case meta.NetSegment:
+				if n.Contains(asset.Data.IP) {
+					asset.Data.SetSegment(&n)
+				}
+			case *meta.NetSegment:
+				if n.Contains(asset.Data.IP) {
+					asset.Data.SetSegment(n)
+				}
+			}
+			return true
+		})
+
 	}
 	g.assets.Store(key.String(), asset)
 	return asset, false
@@ -235,14 +288,16 @@ func (g GlobalCache) updateAllNets() int {
 		switch a := assetData.(type) {
 		case Asset:
 			if a.Data.NetSegment == nil {
-				g.networks.Range(func(netName, netData interface{}) bool {
+				g.networks.Range(func(key, netData interface{}) bool {
 					switch n := netData.(type) {
 					case meta.NetSegment:
 						if n.Contains(a.Data.IP) {
+							updated++
 							a.Data.SetSegment(&n)
 						}
 					case *meta.NetSegment:
 						if n.Contains(a.Data.IP) {
+							updated++
 							a.Data.SetSegment(n)
 						}
 					}

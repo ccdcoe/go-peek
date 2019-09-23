@@ -48,6 +48,19 @@ func spawnWorkers(
 		Prune: true,
 		DumpJSONAssets: func() string {
 			pth := viper.GetString("processor.persist.json.assets")
+			if exp, err := utils.ExpandHome(pth); err == nil {
+				pth = exp
+			}
+			if pth == "" || filepath.IsAbs(pth) {
+				return pth
+			}
+			return filepath.Join(spooldir, filepath.Base(pth))
+		}(),
+		LoadJSONnets: func() string {
+			pth := viper.GetString("processor.persist.json.networks")
+			if exp, err := utils.ExpandHome(pth); err == nil {
+				pth = exp
+			}
 			if pth == "" || filepath.IsAbs(pth) {
 				return pth
 			}

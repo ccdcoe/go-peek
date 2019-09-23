@@ -2,7 +2,6 @@ package meta
 
 import (
 	"encoding/json"
-	"net"
 )
 
 // AssetGetterSetter is a collection of methods for enritching exercise events with meta information for correlation without explicitly knowing the item type in runtime
@@ -16,32 +15,6 @@ type AssetGetterSetter interface {
 	// SetAsset is a setter for setting meta to object without knowing the object type
 	// all asset lookups and field discoveries should be done before using this method to maintain readability
 	SetAsset(GameAsset)
-}
-
-type NetSegment struct {
-	net.IPNet
-	Name string `json:"name"`
-	Desc string `json:"desc"`
-}
-
-type Indicators struct {
-	IsAsset bool `json:"is_asset"`
-	IsRogue bool `json:"is_rogue"`
-	IsBad   bool `json:"is_bad"`
-}
-
-type Asset struct {
-	Host   string `json:"Host"`
-	Alias  string `json:"Alias,omitempty"`
-	Kernel string `json:"Kernel,omitempty"`
-	IP     net.IP `json:"IP"`
-	Indicators
-	NetSegment *NetSegment
-}
-
-func (a Asset) SetSegment(s *NetSegment) *Asset {
-	a.NetSegment = s
-	return &a
 }
 
 type GameAsset struct {
