@@ -5,6 +5,10 @@ import (
 	"sync"
 )
 
+var (
+	defaultErrBufSize = 10
+)
+
 // TODO: close channel after drain
 // should be done here, not by receiver
 // range loop will deadlock
@@ -14,6 +18,18 @@ type ErrChan struct {
 	Items chan error
 	Total int
 	Max   int
+}
+
+func NewErrChan(max int, desc string) *ErrChan {
+	if max < defaultErrBufSize {
+		max = defaultErrBufSize
+	}
+	return &ErrChan{
+		Mutex: &sync.Mutex{},
+		Max:   max,
+		Items: make(chan error, max),
+		Desc:  desc,
+	}
 }
 
 func (e ErrChan) Error() string {
@@ -27,11 +43,8 @@ func (e ErrChan) Error() string {
 }
 
 func (e *ErrChan) Send(err error) *ErrChan {
-	if e.Max < 10 {
-		e.Max = 10
-	}
-	if e.Mutex == nil {
-		e.Mutex = &sync.Mutex{}
+	if e.Max < defaultErrBufSize {
+		e.Max = defaultErrBufSize
 	}
 	e.Lock()
 	defer e.Unlock()

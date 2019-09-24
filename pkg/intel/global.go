@@ -61,7 +61,7 @@ func NewGlobalCache(c *Config) (*GlobalCache, error) {
 		ctx:     ctx,
 		stopper: cancel,
 		wg:      &sync.WaitGroup{},
-		Errs:    &utils.ErrChan{Max: 100},
+		Errs:    utils.NewErrChan(100, "Global asset cache errors"),
 		persist: persist{
 			dump: 5 * time.Second,
 		},
