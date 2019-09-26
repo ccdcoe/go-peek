@@ -2,6 +2,7 @@ package elastic
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -100,9 +101,12 @@ func NewHandle(c *Config) (*Handle, error) {
 	return h, nil
 }
 
-func (h Handle) add(item interface{}, idx string) {
+func (h Handle) add(item []byte, idx string) {
 	h.indexer.Add(
-		olivere.NewBulkIndexRequest().Index(idx).Type("doc"),
+		olivere.NewBulkIndexRequest().
+			Index(idx).
+			Type("doc").
+			Doc(json.RawMessage(item)),
 	)
 }
 
@@ -146,7 +150,7 @@ func (h Handle) Feed(
 				if !ok {
 					break loop
 				}
-				h.add(msg, fn(msg))
+				h.add(msg.Data, fn(msg))
 			case <-ctx.Done():
 				break loop
 			}
