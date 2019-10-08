@@ -81,6 +81,18 @@ func initStreamConfig() {
 			),
 		)
 
+		rootCmd.PersistentFlags().StringSlice(
+			fmt.Sprintf("stream-%s-uxsock", stream),
+			[]string{},
+			fmt.Sprintf("Source unix socket for event type %s. %s", stream, stream.Explain()),
+		)
+		viper.BindPFlag(
+			fmt.Sprintf("stream.%s.uxsock", stream),
+			rootCmd.PersistentFlags().Lookup(
+				fmt.Sprintf("stream-%s-uxsock", stream),
+			),
+		)
+
 		rootCmd.PersistentFlags().StringSlice(fmt.Sprintf("stream-%s-kafka-topic", stream), []string{},
 			fmt.Sprintf("Source kafka topic for event type %s. %s", stream, stream.Explain()))
 		viper.BindPFlag(
@@ -118,9 +130,15 @@ func initInputConfig() {
 		latest - start from most recent message in topic`)
 	viper.BindPFlag("input.kafka.mode", rootCmd.PersistentFlags().Lookup("input-kafka-mode"))
 
+	// Directory consumer
 	rootCmd.PersistentFlags().Bool("input-dir-enabled", false,
 		`Enable reading compressed or plaintext log files from directory. For post-mortem processing`)
 	viper.BindPFlag("input.dir.enabled", rootCmd.PersistentFlags().Lookup("input-dir-enabled"))
+
+	// Unix socket consumer
+	rootCmd.PersistentFlags().Bool("input-uxsock-enabled", false,
+		`Enable reading from unix sockets. Sockets will be created and cleaned up by peek process.`)
+	viper.BindPFlag("input.uxsock.enabled", rootCmd.PersistentFlags().Lookup("input-uxsock-enabled"))
 }
 
 func initProcessorConfig() {

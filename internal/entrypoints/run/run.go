@@ -11,6 +11,7 @@ import (
 	"github.com/ccdcoe/go-peek/internal/helpers"
 	inKafka "github.com/ccdcoe/go-peek/pkg/ingest/kafka"
 	"github.com/ccdcoe/go-peek/pkg/ingest/logfile"
+	"github.com/ccdcoe/go-peek/pkg/ingest/uxsock"
 	"github.com/ccdcoe/go-peek/pkg/models/consumer"
 	"github.com/ccdcoe/go-peek/pkg/models/events"
 	"github.com/ccdcoe/go-peek/pkg/utils"
@@ -37,7 +38,9 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		"dir":     spooldir,
 	}).Debug("config parameter debug")
 
-	if !viper.GetBool("input.kafka.enabled") && !viper.GetBool("input.dir.enabled") {
+	if !viper.GetBool("input.kafka.enabled") &&
+		!viper.GetBool("input.dir.enabled") &&
+		!viper.GetBool("input.uxsock.enabled") {
 		log.Fatal("no inputs")
 	}
 	inputs := make([]consumer.Messager, 0)
@@ -58,6 +61,20 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 			}(),
 			MapFunc: files.MapFunc(),
 			Ctx:     ctx,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		inputs = append(inputs, consumer)
+		stoppers = append(stoppers, cancel)
+	}
+	if viper.GetBool("input.uxsock.enabled") {
+		ctx, cancel := context.WithCancel(context.Background())
+		files := helpers.GetUxSockistingFromViper()
+		consumer, err := uxsock.NewConsumer(&uxsock.Config{
+			Ctx:     ctx,
+			Sockets: files.Files(),
+			MapFunc: files.MapFunc(),
 		})
 		if err != nil {
 			log.Fatal(err)

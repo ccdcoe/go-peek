@@ -37,6 +37,42 @@ func (d DirSources) Files() []string {
 	return f
 }
 
+func GetUxSockistingFromViper() DirSources {
+	var pth []string
+	var err error
+	paths := make(DirSources, 0)
+	for _, event := range events.Atomics {
+		// Early return if event type is not configured
+		if pth = viper.GetStringSlice(fmt.Sprintf("stream.%s.uxsock", event)); pth == nil || len(pth) == 0 {
+			log.WithFields(log.Fields{
+				"type": event.String(),
+			}).Trace("input not configured")
+			continue
+		}
+
+		for i, p := range pth {
+			if p, err = utils.ExpandHome(p); err != nil {
+				log.WithFields(log.Fields{
+					"path": pth,
+				}).Fatal("invalid path")
+			}
+			pth[i] = filepath.Clean(p)
+		}
+
+		paths = append(paths, DirSource{
+			Paths: pth,
+			Type:  event,
+		})
+
+		log.WithFields(log.Fields{
+			"type": event.String(),
+			"path": pth,
+		}).Debug("configured input source")
+	}
+	log.Tracef("found %d unix sockets", len(paths))
+	return paths
+}
+
 func GetDirListingFromViper() DirSources {
 	var pth []string
 	var err error
@@ -66,7 +102,7 @@ func GetDirListingFromViper() DirSources {
 
 		log.WithFields(log.Fields{
 			"type": event.String(),
-			"dir":  pth,
+			"path": pth,
 		}).Debug("configured input source")
 	}
 	log.Tracef("found %d logfile directories", len(paths))

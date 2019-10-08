@@ -15,6 +15,13 @@ func NewWorkerStoppers(count int) WorkerStoppers {
 	return w
 }
 
+func (s WorkerStoppers) Close() error {
+	for _, w := range s {
+		w.Cancel()
+	}
+	return nil
+}
+
 type WorkerStopper struct {
 	Id     int
 	Ctx    context.Context

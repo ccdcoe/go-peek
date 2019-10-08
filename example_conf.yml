@@ -15,6 +15,7 @@ input:
     # latest will consume from last message in topic
     mode: follow
   dir.enabled: false
+  uxsock.enabled: false
 
 processor:
   enabled: true
@@ -39,6 +40,9 @@ stream:
       - ~/Data/logs/suricata/filter/alert/
     kafka.topic:
       - suricata
+    uxsock:
+      - /tmp/suricata/alert.sock
+      - /tmp/suricata/http.sock
   syslog:
     dir: 
       - ~/Data/logs/linux/json/
