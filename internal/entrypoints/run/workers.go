@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/ccdcoe/go-peek/pkg/intel"
 	"github.com/ccdcoe/go-peek/pkg/intel/wise"
@@ -14,19 +15,32 @@ import (
 	"github.com/spf13/viper"
 )
 
-type eventMapFn func(string) events.Atomic
-
 func spawnWorkers(
 	rx <-chan *consumer.Message,
 	workers int,
 	spooldir string,
-	fn eventMapFn,
 ) (<-chan *consumer.Message, *utils.ErrChan) {
 	tx := make(chan *consumer.Message, 0)
-	errs := &utils.ErrChan{
-		Desc:  "Event parse worker runtime errors",
-		Items: make(chan error, 100),
+	kafkaTopicToEvent := func(topic string) events.Atomic {
+		mapping := func() map[string]events.Atomic {
+			out := make(map[string]events.Atomic)
+			for _, event := range events.Atomics {
+				if src := viper.GetStringSlice(
+					fmt.Sprintf("stream.%s.kafka.topic", event.String()),
+				); len(src) > 0 {
+					for _, item := range src {
+						out[item] = event
+					}
+				}
+			}
+			return out
+		}()
+		if val, ok := mapping[topic]; ok {
+			return val
+		}
+		return events.SimpleE
 	}
+	errs := utils.NewErrChan(100, "Event parse worker runtime errors")
 	var wg sync.WaitGroup
 	anon := viper.GetBool("processor.anonymize")
 	noparse := func() bool {
@@ -89,16 +103,23 @@ func spawnWorkers(
 
 			loop:
 				for msg := range rx {
-					e, err := events.NewGameEvent(msg.Data, fn(msg.Source))
+					evType := msg.Event
+					switch msg.Type {
+					case consumer.Kafka:
+						evType = kafkaTopicToEvent(msg.Source)
+					}
+					if noparse {
+						msg.Time = time.Now()
+						tx <- msg
+						continue loop
+					}
+
+					e, err := events.NewGameEvent(msg.Data, evType)
 					if err != nil {
 						errs.Send(err)
 						continue loop
 					}
 					msg.Time = e.Time()
-					if noparse {
-						tx <- msg
-						continue loop
-					}
 
 					meta := e.GetAsset()
 					if meta == nil {

@@ -1,4 +1,4 @@
-package logfile
+package utils
 
 import "fmt"
 

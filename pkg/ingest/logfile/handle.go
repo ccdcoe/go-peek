@@ -12,6 +12,29 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type StatFileIntervalFunc func(first, last []byte) (utils.Interval, error)
+
+type Content int
+
+const (
+	Octet Content = iota
+	Plaintext
+	Gzip
+	Xz
+	Bzip
+	Utf8
+	Utf16
+)
+
+func (c Content) String() string {
+	switch c {
+	case Gzip:
+		return "application/gzip"
+	default:
+		return "application/octet-stream"
+	}
+}
+
 // Handle is a container for commonly needed information about log file
 // Path, number of lines, beginning and end times, etc
 // Keep it separate from logfile.Path, as parsing timestamps and counting lines can take significant amount of time
@@ -25,9 +48,9 @@ type Handle struct {
 	Atomic   events.Atomic
 }
 
-func newHandle(path Path, fn utils.StatFileIntervalFunc) (*Handle, error) {
+func NewHandle(path Path, stat bool, fn StatFileIntervalFunc, atomic events.Atomic) (*Handle, error) {
 	if fn == nil {
-		return nil, &ErrFuncMissing{
+		return nil, &utils.ErrFuncMissing{
 			Caller: fmt.Sprintf("Handle %s", path.String()),
 			Func:   "File interval parse",
 		}
@@ -43,8 +66,10 @@ func newHandle(path Path, fn utils.StatFileIntervalFunc) (*Handle, error) {
 	}
 
 	s := &Handle{
-		Path:    path,
-		Content: mime,
+		Path:     path,
+		Content:  mime,
+		Interval: &utils.Interval{},
+		Atomic:   atomic,
 	}
 
 	h, err := open(s.Path.String())
@@ -53,6 +78,9 @@ func newHandle(path Path, fn utils.StatFileIntervalFunc) (*Handle, error) {
 	}
 	defer h.Close()
 
+	if !stat {
+		return s, nil
+	}
 	first, last, lines, err := statLogFileSinglePass(h)
 
 	s.Lines = lines
@@ -74,6 +102,8 @@ func newHandle(path Path, fn utils.StatFileIntervalFunc) (*Handle, error) {
 	if err := s.Interval.Validate(); err != nil {
 		switch e := err.(type) {
 		case *utils.ErrInvalidInterval:
+			return s, e.SetSrc(path.String())
+		case utils.ErrInvalidInterval:
 			return s, e.SetSrc(path.String())
 		}
 		return s, err
@@ -99,7 +129,57 @@ func GetLine(h Handle, num int64) ([]byte, error) {
 	return nil, scanner.Err()
 }
 
-func DrainHandle(h Handle, ctx context.Context) <-chan *consumer.Message {
+func DrainTo(h Handle, ctx context.Context, tx chan<- *consumer.Message) error {
+	f, err := open(h.Path.String())
+	if err != nil {
+		return err
+	}
+
+	if h.Offsets == nil {
+		h.Offsets = &consumer.Offsets{}
+	}
+
+	do := func(tx chan<- *consumer.Message, f io.ReadCloser, from, to int64, ctx context.Context) error {
+		defer f.Close()
+
+		scanner := bufio.NewScanner(f)
+		var count int64
+
+	loop:
+		for scanner.Scan() {
+			select {
+			case <-ctx.Done():
+				log.Tracef("Scanner break received for %s, exiting", h.Path.String())
+				break loop
+			default:
+			}
+
+			if count < from {
+				count++
+				continue loop
+			}
+
+			tx <- &consumer.Message{
+				Data:   utils.DeepCopyBytes(scanner.Bytes()),
+				Offset: count,
+				Type:   consumer.Logfile,
+				Source: h.Path.String(),
+				Key:    h.Atomic.String(),
+				Event:  h.Atomic,
+			}
+
+			if to > 0 && count == to {
+				break loop
+			}
+
+			count++
+		}
+		return scanner.Err()
+	}
+
+	return do(tx, f, h.Offsets.Beginning, h.Offsets.End, ctx)
+}
+func Drain(h Handle, ctx context.Context) <-chan *consumer.Message {
 	f, err := open(h.Path.String())
 	if err != nil {
 		return nil

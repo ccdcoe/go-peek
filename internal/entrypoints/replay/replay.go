@@ -5,6 +5,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/ccdcoe/go-peek/internal/engines/directory"
 	"github.com/ccdcoe/go-peek/internal/engines/shipper"
 	"github.com/ccdcoe/go-peek/pkg/models/events"
 	"github.com/ccdcoe/go-peek/pkg/utils"
@@ -31,6 +32,9 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		spooldir    = viper.GetString("work.dir")
 	)
 	Workers = viper.GetInt("work.threads")
+	directory.TimeStampFormat = TimeStampFormat
+	directory.Fn = getIntervalFromJSON
+	directory.Workers = Workers
 
 	replayInterval, err := utils.NewIntervalFromStrings(
 		viper.GetString("time.from"),
@@ -52,7 +56,7 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 
 	var (
 		paths         []string
-		discoverFiles = make([]*Sequence, 0)
+		discoverFiles = make([]*directory.Sequence, 0)
 	)
 
 	// try to see if supported event types are configured
@@ -86,7 +90,7 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 				}).Fatal("invalid path")
 			}
 
-			discoverFiles = append(discoverFiles, &Sequence{
+			discoverFiles = append(discoverFiles, &directory.Sequence{
 				Type:    event,
 				DataDir: pth,
 			})
@@ -108,13 +112,13 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		}).Debug("file discovery")
 
 		// TODO: filter out files in each sequence that do not belong to specified range here
-		files := make([]*Handle, 0)
+		files := make([]*directory.Handle, 0)
 		for _, f := range seq.Files {
 			if !utils.IntervalInRange(*f.Interval, *replayInterval) {
 				continue
 			}
 
-			files = append(files, f.checkPartial(*replayInterval).enable())
+			files = append(files, f.CheckPartial(*replayInterval).Enable())
 			log.WithFields(log.Fields{
 				"type":  seq.Type.String(),
 				"file":  f.Base(),
@@ -127,22 +131,22 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		seq.Files = files
 	}
 
-	if err := SequenceList(discoverFiles).asyncBuildOrLoadAll(
+	if err := directory.SequenceList(discoverFiles).AsyncBuildOrLoadAll(
 		spooldir,
 		enableCache,
 	); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := SequenceList(discoverFiles).seekAll(*replayInterval); err != nil {
+	if err := directory.SequenceList(discoverFiles).SeekAll(*replayInterval); err != nil {
 		log.Fatal(err)
 	}
 
-	SequenceList(discoverFiles).
-		calcDiffsBetweenFiles().
-		calcDiffBeginning(*replayInterval)
+	directory.SequenceList(discoverFiles).
+		CalcDiffsBetweenFiles().
+		CalcDiffBeginning(*replayInterval)
 
-	if err := dumpSequences(spooldir, discoverFiles); err != nil {
+	if err := directory.DumpSequences(spooldir, discoverFiles); err != nil {
 		log.Fatal(err)
 	}
 

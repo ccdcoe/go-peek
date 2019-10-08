@@ -5,13 +5,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ccdcoe/go-peek/internal/ingest/logfile"
+	"github.com/ccdcoe/go-peek/internal/engines/directory"
+	"github.com/ccdcoe/go-peek/pkg/ingest/logfile"
 	"github.com/ccdcoe/go-peek/pkg/models/consumer"
 	"github.com/ccdcoe/go-peek/pkg/utils"
 	log "github.com/sirupsen/logrus"
 )
 
-func play(collection []*Sequence, interval utils.Interval) <-chan *consumer.Message {
+func play(collection []*directory.Sequence, interval utils.Interval) <-chan *consumer.Message {
 	log.Trace("starting the replay")
 	tx := make(chan *consumer.Message, 100)
 
@@ -21,9 +22,9 @@ func play(collection []*Sequence, interval utils.Interval) <-chan *consumer.Mess
 
 		for _, seq := range collection {
 			wg.Add(1)
-			go func(s Sequence) {
+			go func(s directory.Sequence) {
 				defer wg.Done()
-				var fle *Handle
+				var fle *directory.Handle
 
 				for _, fle = range s.Files {
 
@@ -43,7 +44,7 @@ func play(collection []*Sequence, interval utils.Interval) <-chan *consumer.Mess
 						"to":    fle.Offsets.End,
 						"diffs": len(fle.Diffs),
 					}).Debug("reading from input")
-					lines := logfile.DrainHandle(*fle.Handle, context.Background())
+					lines := logfile.Drain(*fle.Handle, context.Background())
 
 					log.Trace(fle.Diffs[0])
 					diffs := make(chan time.Duration, fle.Offsets.Len())

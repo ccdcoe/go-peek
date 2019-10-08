@@ -87,5 +87,3 @@ func IntervalHeadInRange(i, rng Interval) bool {
 func TimeFullyInRange(t time.Time, rng Interval) bool {
 	return t.After(rng.Beginning) && t.Before(rng.End)
 }
-
-type StatFileIntervalFunc func(first, last []byte) (Interval, error)

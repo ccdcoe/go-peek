@@ -8,12 +8,16 @@ package consumer
 
 import (
 	"time"
+
+	"github.com/ccdcoe/go-peek/pkg/models/events"
 )
 
 type Source int
 
 func (s Source) String() string {
 	switch s {
+	case Kafka:
+		return "kafka"
 	case Logfile:
 		return "logfile"
 	default:
@@ -22,8 +26,17 @@ func (s Source) String() string {
 }
 
 const (
-	Logfile Source = iota
+	Unknown Source = iota
+	Logfile
+	Kafka
+	UxSock
+	Redis
 )
+
+type Messager interface {
+	// Messages implements consumer.Messager
+	Messages() <-chan *Message
+}
 
 // Message is an atomic log entry that is closely modeled after kafka event
 type Message struct {
@@ -42,6 +55,11 @@ type Message struct {
 	// Enum that maps to supported source module
 	// Logfile, unix socket, kafka, redis
 	Type Source
+
+	// Enum that maps to message format
+	// for example, suricata, syslog, eventlog, etc
+	// for efficiently deciding which parser to use
+	Event events.Atomic
 
 	// Textual representation of input source
 	// e.g. source file, kafka topic, redis key, etc

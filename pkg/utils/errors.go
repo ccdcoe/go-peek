@@ -43,11 +43,11 @@ func (e ErrChan) Error() string {
 }
 
 func (e *ErrChan) Send(err error) *ErrChan {
+	e.Lock()
+	defer e.Unlock()
 	if e.Max < defaultErrBufSize {
 		e.Max = defaultErrBufSize
 	}
-	e.Lock()
-	defer e.Unlock()
 	if e.Items == nil {
 		e.Items = make(chan error, e.Max)
 	}

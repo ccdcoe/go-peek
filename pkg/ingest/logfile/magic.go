@@ -8,27 +8,6 @@ import (
 	"os"
 )
 
-type Content int
-
-const (
-	Octet Content = iota
-	Plaintext
-	Gzip
-	Xz
-	Bzip
-	Utf8
-	Utf16
-)
-
-func (c Content) String() string {
-	switch c {
-	case Gzip:
-		return "application/gzip"
-	default:
-		return "application/octet-stream"
-	}
-}
-
 // GetFileContentType attempts to read first 512bytes of a file and returns an enum value of MIME content type
 func GetFileContentType(path string) (Content, error) {
 	mime, err := getFileMimeContentType(path)

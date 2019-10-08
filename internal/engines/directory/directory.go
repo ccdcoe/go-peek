@@ -1,19 +1,67 @@
-package replay
+package directory
 
 import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"time"
 
-	"github.com/ccdcoe/go-peek/internal/ingest/logfile"
-	"github.com/ccdcoe/go-peek/pkg/models/consumer"
-	events "github.com/ccdcoe/go-peek/pkg/models/events"
-	"github.com/ccdcoe/go-peek/pkg/utils"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/ccdcoe/go-peek/pkg/ingest/logfile"
+	"github.com/ccdcoe/go-peek/pkg/models/consumer"
+	"github.com/ccdcoe/go-peek/pkg/models/events"
+	"github.com/ccdcoe/go-peek/pkg/utils"
 )
+
+var (
+	// IgnoreParseErrors defines weather an individual message parse error should stop processing altogether
+	// Alternatively, files will be read to end and total number of encountered errors will be retruned as an error type
+	IgnoreParseErrors = false
+	// TimeStampFormat is for parsing time range from cli arguments
+	TimeStampFormat = "2006-01-02 15:04:05"
+)
+
+type Partial int
+
+const (
+	CompletelyInRange Partial = iota
+	HeadInRange
+	TailInRange
+	MiddleSectionInRange
+)
+
+func (p Partial) string() string {
+	switch p {
+	case HeadInRange:
+		return "handle head is in specified range"
+	case TailInRange:
+		return "handle tail is in specified range"
+	case MiddleSectionInRange:
+		return "handle middle section is in specified range"
+	default:
+		return "handle is fully or not at all in range"
+	}
+}
+
+type Format int
+
+const (
+	JSON Format = iota
+	Gob
+)
+
+func (f Format) Ext() string {
+	switch f {
+	case JSON:
+		return ".json"
+	case Gob:
+		return ".gob"
+	default:
+		return ".dump"
+	}
+}
 
 // Handle essentially wraps logfile.Handle but also stores time.Duration diffs between each message
 type Handle struct {
@@ -23,12 +71,12 @@ type Handle struct {
 	Enabled bool
 }
 
-func (h *Handle) enable() *Handle {
+func (h *Handle) Enable() *Handle {
 	h.Enabled = true
 	return h
 }
 
-func (h *Handle) checkPartial(rng utils.Interval) *Handle {
+func (h *Handle) CheckPartial(rng utils.Interval) *Handle {
 	if utils.IntervalContains(*h.Interval, rng) {
 		h.Partial = MiddleSectionInRange
 	} else if utils.IntervalHeadInRange(*h.Interval, rng) {
@@ -50,18 +98,18 @@ func (h Handle) len() int {
 	return len(h.Diffs)
 }
 
-func (h *Handle) seek(interval utils.Interval) error {
+func (h *Handle) Seek(interval utils.Interval) error {
 	if h.Offsets == nil {
 		h.Offsets = &consumer.Offsets{}
 	}
 
-	if h.checkPartial(interval).Partial == CompletelyInRange {
+	if h.CheckPartial(interval).Partial == CompletelyInRange {
 		return nil
 	}
 
 	var (
 		ctx, cancel = context.WithCancel(context.Background())
-		lines       = logfile.DrainHandle(*h.Handle, ctx)
+		lines       = logfile.Drain(*h.Handle, ctx)
 		obj         events.KnownTimeStamps
 		count       int64
 		first, last bool
@@ -109,7 +157,7 @@ func (h *Handle) seek(interval utils.Interval) error {
 	return nil
 }
 
-func (h *Handle) build() error {
+func (h *Handle) Build() error {
 	if h == nil {
 		return &utils.ErrNilPointer{
 			Caller:   "handle build",
@@ -138,7 +186,7 @@ func (h *Handle) build() error {
 		// TODO: code may deadlock if h.Lines is not initialized properly
 	)
 
-	msgs := logfile.DrainHandle(*h.Handle, context.Background())
+	msgs := logfile.Drain(*h.Handle, context.Background())
 
 	log.WithFields(log.Fields{
 		"file":   h.Handle.Base(),
@@ -215,44 +263,4 @@ loop:
 	}
 
 	return nil
-}
-
-func newHandleSlice(dir string, atomic events.Atomic) ([]*Handle, error) {
-	if Workers < 1 {
-		Workers = 1
-	}
-
-	log.WithFields(log.Fields{
-		"workers": Workers,
-		"dir":     dir,
-		"action":  "invoking async stat",
-	}).Trace("replay sequence discovery")
-
-	files, err := logfile.AsyncStatAll(dir, getIntervalFromJSON, Workers)
-	if err != nil {
-		return nil, err
-	}
-
-	log.WithFields(log.Fields{
-		"found":  len(files),
-		"dir":    dir,
-		"action": "sorting",
-	}).Trace("discovery done")
-
-	sort.Slice(files, func(i, j int) bool {
-		return files[i].Interval.Beginning.Before(files[j].Interval.Beginning)
-	})
-
-	handles := make([]*Handle, len(files))
-	for i, h := range files {
-		if h == nil {
-			return handles, &utils.ErrNilPointer{
-				Caller:   "log file discovery",
-				Function: fmt.Sprintf("log file no %d while building Handle list", i),
-			}
-		}
-		h.Atomic = atomic
-		handles[i] = &Handle{Handle: h}
-	}
-	return handles, nil
 }

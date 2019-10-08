@@ -14,6 +14,7 @@ input:
     # follow will start consuming from latest committed offset for group
     # latest will consume from last message in topic
     mode: follow
+  dir.enabled: false
 
 processor:
   enabled: true

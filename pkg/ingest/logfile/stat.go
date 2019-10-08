@@ -1,28 +1,20 @@
 package logfile
 
 import (
-	"fmt"
 	"sync"
 
+	"github.com/ccdcoe/go-peek/pkg/models/events"
 	"github.com/ccdcoe/go-peek/pkg/utils"
 )
 
-var lineSep = []byte{'\n'}
-
-type ErrMissingParam struct {
-	Param, Func string
-}
-
-func (e ErrMissingParam) Error() string {
-	return fmt.Sprintf("Missing param %s for function %s", e.Param, e.Func)
-}
-
 func AsyncStatAll(
 	root string,
-	fn utils.StatFileIntervalFunc,
+	fn StatFileIntervalFunc,
 	workers int,
+	stat bool,
+	atomic events.Atomic,
 ) ([]*Handle, error) {
-	files, err := genFileList(root, false)
+	files, err := GenFileList(root, false)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +36,7 @@ func AsyncStatAll(
 			go func() {
 				defer wg.Done()
 				for f := range rx {
-					s, err := newHandle(f, fn)
+					s, err := NewHandle(f, stat, fn, atomic)
 					if err != nil {
 						errs <- err
 					}
