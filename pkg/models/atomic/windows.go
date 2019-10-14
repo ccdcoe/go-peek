@@ -1,9 +1,21 @@
 package atomic
 
 import (
+	"encoding/json"
 	"net"
 	"time"
 )
+
+func NewWindowsEventLog(data []byte) (*EventLog, error) {
+	var obj DynamicEventLog
+	if err := json.Unmarshal(data, &obj); err != nil {
+		return nil, err
+	}
+	static := &EventLog{
+		DynamicEventLog: obj,
+	}
+	return static, nil
+}
 
 // EventLog is a wrapper around EventLog to avoid parsing common fields in runtime
 // DynamicEventLog methods incur full type cast and parse whenever fields are required, bad for performance

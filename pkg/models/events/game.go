@@ -54,15 +54,12 @@ func NewGameEvent(data []byte, enum Atomic) (GameEvent, error) {
 		}
 		return &obj, nil
 	case EventLogE, SysmonE:
-		var obj atomic.DynamicEventLog
-		if err := json.Unmarshal(data, &obj); err != nil {
+		e, err := atomic.NewWindowsEventLog(data)
+		if err != nil {
 			return nil, err
 		}
-		static := &atomic.EventLog{
-			DynamicEventLog: obj,
-		}
 		return &Eventlog{
-			EventLog: *static.Parse(),
+			EventLog: *e.Parse(),
 		}, nil
 	case ZeekE:
 		var obj ZeekCobalt

@@ -128,3 +128,6 @@ test/log*/
 
 # testing throwaway code
 cmd/peek-test-*/
+
+# Vagrant
+.vagrant/

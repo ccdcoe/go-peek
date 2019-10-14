@@ -7,6 +7,7 @@ package consumer
 */
 
 import (
+	"net"
 	"time"
 
 	"github.com/ccdcoe/go-peek/pkg/models/events"
@@ -75,6 +76,10 @@ type Message struct {
 	// Can default to time.Now() if timestamp is missing or not parsed
 	// Should default to time.Now() if message is consumed online
 	Time time.Time
+
+	// Optional sender IP address
+	// For example, syslog UDP sender info is usually taken from UDP source
+	Sender net.IP
 }
 
 type Offsets struct {
