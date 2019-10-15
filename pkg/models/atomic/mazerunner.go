@@ -51,32 +51,3 @@ func (m MazeRunner) Sender() string {
 	}
 	return m.Cef.Sender()
 }
-
-type Cef struct {
-	DeviceVendor  string            `json:"DeviceVendor"`
-	DeviceProduct string            `json:"DeviceProduct"`
-	DeviceVersion string            `json:"DeviceVersion"`
-	SignatureID   string            `json:"SignatureID"`
-	Name          string            `json:"Name"`
-	Severity      string            `json:"Severity"`
-	Extensions    map[string]string `json:"Extensions"`
-}
-
-func (c Cef) Content() map[string]string {
-	if c.Extensions == nil {
-		return nil
-	}
-	return c.Extensions
-}
-
-// Time implements atomic.Event
-// Timestamp in event, should default to time.Time{} so time.IsZero() could be used to verify success
-func (c Cef) Time() time.Time { return time.Time{} }
-
-// Source implements atomic.Event
-// Source of message, usually emitting program
-func (c Cef) Source() string { return c.DeviceProduct }
-
-// Sender implements atomic.Event
-// Sender of message, usually a host
-func (c Cef) Sender() string { return c.DeviceVendor }
