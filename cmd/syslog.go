@@ -35,13 +35,11 @@ func init() {
 	syslogCmd.PersistentFlags().Int("syslog-port", 10001, "Port to listen incoming syslog messages.")
 	viper.BindPFlag("syslog.port", syslogCmd.PersistentFlags().Lookup("syslog-port"))
 
-	// Here you will define your flags and configuration settings.
+	syslogCmd.PersistentFlags().Bool("syslog-msg-parse", false,
+		`Enable syslog msg parser. Best-effort to grab known event types.`)
+	viper.BindPFlag("syslog.msg.parse", syslogCmd.PersistentFlags().Lookup("syslog-msg-parse"))
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// syslogCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// syslogCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	syslogCmd.PersistentFlags().Bool("syslog-msg-drop", false,
+		`Drop syslog msg field. Meant to be used together with --syslog-parse-msg to avoid duplicating unstructured message.`)
+	viper.BindPFlag("syslog.msg.drop", syslogCmd.PersistentFlags().Lookup("syslog-msg-drop"))
 }

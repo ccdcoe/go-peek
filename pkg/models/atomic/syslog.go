@@ -72,16 +72,7 @@ func ParseSyslogMessage(s Syslog) (interface{}, error) {
 	case "CEF":
 		// Some vendors have a thing where hostname duplicates as program and CEF: is stuck as program name in syslog header
 		switch s.Host {
-		case "MazeRunner":
-			obj, err := ParseCEF(s.Message)
-			if err != nil {
-				return obj, err
-			}
-			return &MazeRunner{
-				Syslog: s,
-				Cef:    *obj,
-			}, nil
-		case "Mendel":
+		case "MazeRunner", "Mendel":
 			obj, err := ParseCEF(s.Message)
 			if err != nil {
 				return obj, err

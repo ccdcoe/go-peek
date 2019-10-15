@@ -75,15 +75,46 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 						Message:   *msg.Message(),
 						IP:        &fields.StringIP{IP: item.Sender},
 					}
-					b, err := json.Marshal(s)
-					if err != nil {
-						log.WithFields(log.Fields{
-							"msg":    string(item.Data),
-							"parsed": s,
-						}).Error(err)
-						continue loop
+					// TODO - make parsing optional by flag
+					if viper.GetBool("syslog.msg.parse") {
+						event, err := atomic.ParseSyslogMessage(s)
+						if err != nil {
+							log.WithFields(log.Fields{
+								"msg": string(item.Data),
+								"err": err,
+							}).Error("Unable to parse syslog msg to atomic event")
+							continue loop
+						}
+						if viper.GetBool("syslog.msg.drop") {
+							s.Message = "parsed"
+						}
+						if b, err := json.Marshal(&struct {
+							Syslog atomic.Syslog
+							Event  interface{}
+						}{
+							Syslog: s,
+							Event:  event,
+						}); err != nil {
+							log.WithFields(log.Fields{
+								"msg": string(item.Data),
+								"err": err,
+							}).Error("Unable to marshal json")
+							continue loop
+						} else {
+							item.Data = b
+						}
+					} else {
+						b, err := json.Marshal(s)
+						if err != nil {
+							log.WithFields(log.Fields{
+								"msg":    string(item.Data),
+								"parsed": s,
+							}).Error(err)
+							continue loop
+						}
+						item.Data = b
+
 					}
-					item.Data = b
 					item.Time = s.Timestamp
 					item.Partition = int64(id)
 					tx <- item
