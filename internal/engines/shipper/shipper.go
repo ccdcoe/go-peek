@@ -126,7 +126,7 @@ func Send(msgs <-chan *consumer.Message) error {
 		}
 
 		ela, err := elastic.NewHandle(&elastic.Config{
-			Workers:  2,
+			Workers:  viper.GetInt("work.threads"),
 			Interval: 5 * time.Second,
 			Hosts:    viper.GetStringSlice("output.elastic.host"),
 		})

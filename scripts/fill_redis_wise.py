@@ -67,7 +67,7 @@ if __name__ == "__main__":
 
         fields = []
         for k, v in asset.items():
-            if k == "ip": continue
+            if k == "ip" or v == "": continue
             k = ".".join([args.field_prefix, k])
             fields.append("=".join([k, v]))
         tagger = "{};{}".format(asset["ip"], ";".join(fields))
