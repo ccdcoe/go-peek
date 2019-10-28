@@ -105,7 +105,7 @@ func (h Handle) add(item []byte, idx string) {
 	h.indexer.Add(
 		olivere.NewBulkIndexRequest().
 			Index(idx).
-			Type("doc").
+			//Type("_doc").
 			Doc(json.RawMessage(item)),
 	)
 }
