@@ -93,7 +93,9 @@ func initStreamConfig() {
 			),
 		)
 
-		rootCmd.PersistentFlags().StringSlice(fmt.Sprintf("stream-%s-kafka-topic", stream), []string{},
+		rootCmd.PersistentFlags().StringSlice(
+			fmt.Sprintf("stream-%s-kafka-topic", stream),
+			[]string{},
 			fmt.Sprintf("Source kafka topic for event type %s. %s", stream, stream.Explain()))
 		viper.BindPFlag(
 			fmt.Sprintf("stream.%s.kafka.topic", stream),
@@ -101,7 +103,6 @@ func initStreamConfig() {
 				fmt.Sprintf("stream-%s-kafka-topic", stream),
 			),
 		)
-
 	}
 }
 
