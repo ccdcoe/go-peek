@@ -18,16 +18,19 @@ type StaticSuricataEve struct {
 	TCP  map[string]interface{} `json:"tcp,omitempty"`
 	DNS  map[string]interface{} `json:"dns,omitempty"`
 	HTTP map[string]interface{} `json:"http,omitempty"`
+	RDP  map[string]interface{} `json:"rdp,omitempty"`
+	FTP  map[string]interface{} `json:"ftp,omitempty"`
+	SMB  map[string]interface{} `json:"smb,omitempty"`
+	DHCP map[string]interface{} `json:"dhcp,omitempty"`
+	SNMP map[string]interface{} `json:"snmp,omitempty"`
+	TFTP map[string]interface{} `json:"tftp,omitempty"`
 
-	Dhcp       map[string]interface{} `json:"dhcp,omitempty"`
+	FTPdata    map[string]interface{} `json:"ftp_data,omitempty"`
 	PacketInfo map[string]interface{} `json:"packet_info,omitempty"`
-	Smb        map[string]interface{} `json:"smb,omitempty"`
 	Traffic    map[string]interface{} `json:"traffic,omitempty"`
 	Fileinfo   map[string]interface{} `json:"fileinfo,omitempty"`
 	Flow       map[string]interface{} `json:"flow,omitempty"`
-	Tftp       map[string]interface{} `json:"tftp,omitempty"`
 	Krb5       map[string]interface{} `json:"krb5,omitempty"`
-	Snmp       map[string]interface{} `json:"snmp,omitempty"`
 	Ikev2      map[string]interface{} `json:"ikev2,omitempty"`
 	Tunnel     map[string]interface{} `json:"tunnel,omitempty"`
 	Metadata   map[string]interface{} `json:"metadata,omitempty"`
