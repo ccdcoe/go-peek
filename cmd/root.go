@@ -193,6 +193,10 @@ func initOutputConfig() {
 		`Hourly index pattern as opposed to daily. In other word, new index would be created every hour. Avoid in production, will explode your shard count.`)
 	viper.BindPFlag("output.elastic.hourly", rootCmd.PersistentFlags().Lookup("output-elastic-hourly"))
 
+	rootCmd.PersistentFlags().Int("output-elastic-threads", viper.GetInt("work.threads"),
+		`Number of workers. Can be useful for increasing throughput when elastic cluster has a lot of resources.`)
+	viper.BindPFlag("output.elastic.threads", rootCmd.PersistentFlags().Lookup("output-elastic-threads"))
+
 	// Kafka
 	rootCmd.PersistentFlags().Bool("output-kafka-enabled", false,
 		`Enable kafka producer.`)
