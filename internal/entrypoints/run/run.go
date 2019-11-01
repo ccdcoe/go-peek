@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"time"
 
 	"github.com/ccdcoe/go-peek/internal/engines/shipper"
 	"github.com/ccdcoe/go-peek/internal/helpers"
@@ -163,11 +164,26 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		spooldir,
 	)
 
-	go func() {
-		for err := range errs.Items {
-			log.Error(err)
+	go func(ctx context.Context) {
+		if l := log.GetLevel(); l > log.DebugLevel {
+			for err := range errs.Items {
+				log.Error(err)
+			}
+		} else {
+			tick := time.NewTicker(3 * time.Second)
+		loop:
+			for {
+				select {
+				case <-tick.C:
+					if errs.Total > 0 {
+						log.Error(errs)
+					}
+				case <-ctx.Done():
+					break loop
+				}
+			}
 		}
-	}()
+	}(context.TODO())
 
 	if err := shipper.Send(modified); err != nil {
 		log.Fatal(err)

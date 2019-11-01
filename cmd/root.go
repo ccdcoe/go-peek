@@ -267,7 +267,7 @@ func initConfig() {
 func errLogger(err error, exit bool) {
 	switch v := err.(type) {
 	case utils.ErrChan:
-		if debug || trace {
+		if l := log.GetLevel(); l >= log.DebugLevel {
 			for i := 0; i < len(v.Items); i++ {
 				errLogger(<-v.Items, false)
 			}
