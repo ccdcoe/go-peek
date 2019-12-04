@@ -81,11 +81,14 @@ func spawnWorkers(
 			return filepath.Join(spooldir, filepath.Base(pth))
 		}(),
 	})
-	if err != nil {
-		log.WithFields(log.Fields{
-			"action": "init global cache",
-			"thread": "main spawn",
-		}).Fatal(err)
+	logContext := log.WithFields(log.Fields{
+		"action": "init global cache",
+		"thread": "main spawn",
+	})
+	if err != nil && !noparse {
+		logContext.Fatal(err)
+	} else if err != nil && noparse {
+		logContext.Warn(err)
 	}
 	go func() {
 		defer close(tx)

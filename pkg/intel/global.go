@@ -69,10 +69,10 @@ func NewGlobalCache(c *Config) (*GlobalCache, error) {
 	if c.DumpJSONAssets != "" {
 		file, err := os.Stat(c.DumpJSONAssets)
 		if err != nil {
-			return nil, err
+			return gc, err
 		}
 		if file.IsDir() {
-			return nil, fmt.Errorf("JSON asset dump path %s is dir, but should be regular file", file.Name())
+			return gc, fmt.Errorf("JSON asset dump path %s is dir, but should be regular file", file.Name())
 		}
 		gc.persist.assets = c.DumpJSONAssets
 		log.Tracef("Setting up asset persistence in %s", gc.persist.assets)
