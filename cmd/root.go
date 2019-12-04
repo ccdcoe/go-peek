@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/ccdcoe/go-peek/pkg/ingest"
 	"github.com/ccdcoe/go-peek/pkg/ingest/logfile"
@@ -255,6 +256,8 @@ func initConfig() {
 		viper.SetConfigName(".peek")
 	}
 
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.SetEnvPrefix("peek")
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
