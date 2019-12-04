@@ -109,6 +109,14 @@
   version = "v1.0"
 
 [[projects]]
+  digest = "1:98d79d9c272b9833ecbe3ca44d999cac95e4d08314f3f400a50ae51d0b8584c4"
+  name = "github.com/influxdata/go-syslog"
+  packages = ["rfc5424"]
+  pruneopts = "UT"
+  revision = "eecd51df3ad85464a2bab9b7d3a45bc1e299059e"
+  version = "v1.0.1"
+
+[[projects]]
   digest = "1:ae221758bdddd57f5c76f4ee5e4110af32ee62583c46299094697f8f127e63da"
   name = "github.com/jcmturner/gofork"
   packages = [
@@ -395,6 +403,7 @@
   input-imports = [
     "github.com/Shopify/sarama",
     "github.com/bsm/sarama-cluster",
+    "github.com/influxdata/go-syslog/rfc5424",
     "github.com/mitchellh/go-homedir",
     "github.com/olivere/elastic",
     "github.com/sirupsen/logrus",
