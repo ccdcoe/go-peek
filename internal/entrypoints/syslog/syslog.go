@@ -55,10 +55,11 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 			wg.Add(1)
 			go func(id int) {
 				defer wg.Done()
-				p := rfc5424.NewParser(rfc5424.WithBestEffort())
+				p := rfc5424.NewParser()
+				bestEffort := true
 			loop:
 				for item := range rx {
-					msg, err := p.Parse(item.Data)
+					msg, err := p.Parse(item.Data, &bestEffort)
 					if err != nil {
 						log.WithFields(log.Fields{
 							"msg": string(item.Data),
