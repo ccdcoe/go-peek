@@ -33,6 +33,7 @@ type Config struct {
 	Sockets []string
 	MapFunc func(string) events.Atomic
 	Ctx     context.Context
+	Force   bool
 }
 
 func (c *Config) Validate() error {
@@ -76,6 +77,11 @@ func NewConsumer(c *Config) (*Consumer, error) {
 		errs: utils.NewErrChan(100, "uxsock consume"),
 	}
 	for _, f := range c.Sockets {
+		if !utils.FileNotExists(f) && c.Force {
+			if err := os.Remove(f); err != nil {
+				return nil, err
+			}
+		}
 		sock, err := net.Listen("unix", f)
 		if err != nil {
 			return nil, &ErrSocketCreate{

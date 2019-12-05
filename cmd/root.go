@@ -142,6 +142,10 @@ func initInputConfig() {
 	rootCmd.PersistentFlags().Bool("input-uxsock-enabled", false,
 		`Enable reading from unix sockets. Sockets will be created and cleaned up by peek process.`)
 	viper.BindPFlag("input.uxsock.enabled", rootCmd.PersistentFlags().Lookup("input-uxsock-enabled"))
+
+	rootCmd.PersistentFlags().Bool("input-uxsock-overwrite", false,
+		`Delete existing file if socket path already exists.`)
+	viper.BindPFlag("input.uxsock.overwrite", rootCmd.PersistentFlags().Lookup("input-uxsock-overwrite"))
 }
 
 func initProcessorConfig() {
