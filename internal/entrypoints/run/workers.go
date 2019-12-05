@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ccdcoe/go-peek/pkg/intel"
@@ -90,6 +91,16 @@ func spawnWorkers(
 	} else if err != nil && noparse {
 		logContext.Warn(err)
 	}
+	var count uint64
+	var every = time.NewTicker(3 * time.Second)
+	go func() {
+		for {
+			select {
+			case <-every.C:
+				log.Infof("Collected %d events", atomic.LoadUint64(&count))
+			}
+		}
+	}()
 	go func() {
 		defer close(tx)
 		defer close(errs.Items)
@@ -106,6 +117,7 @@ func spawnWorkers(
 
 			loop:
 				for msg := range rx {
+					atomic.AddUint64(&count, 1)
 					evType := msg.Event
 					switch msg.Type {
 					case consumer.Kafka:
