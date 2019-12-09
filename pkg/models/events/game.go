@@ -54,13 +54,17 @@ func NewGameEvent(data []byte, enum Atomic) (GameEvent, error) {
 		}
 		return &obj, nil
 	case EventLogE, SysmonE:
-		e, err := atomic.NewWindowsEventLog(data)
-		if err != nil {
-			return nil, err
-		}
-		return &Eventlog{
-			EventLog: *e.Parse(),
-		}, nil
+		/*
+			e, err := atomic.NewWindowsEventLog(data)
+			if err != nil {
+				return nil, err
+			}
+			return &Eventlog{
+				EventLog: *e.Parse(),
+			}, nil
+			return atomic.NewWinlogbeatMessage(data)
+		*/
+		return nil, nil
 	case ZeekE:
 		var obj ZeekCobalt
 		if err := json.Unmarshal(data, &obj); err != nil {
@@ -80,6 +84,54 @@ func NewGameEvent(data []byte, enum Atomic) (GameEvent, error) {
 			Reason: "object not supported",
 		}
 	}
+}
+
+type DynamicWinlogbeat struct {
+	atomic.DynamicWinlogbeat
+	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+// Time implements atomic.Event
+// Timestamp in event, should default to time.Time{} so time.IsZero() could be used to verify success
+func (d DynamicWinlogbeat) Time() time.Time {
+	return d.DynamicWinlogbeat.Time()
+}
+
+// Source implements atomic.Event
+// Source of message, usually emitting program
+func (d DynamicWinlogbeat) Source() string {
+	return d.DynamicWinlogbeat.Source()
+}
+
+// Sender implements atomic.Event
+// Sender of message, usually a host
+func (d DynamicWinlogbeat) Sender() string {
+	return d.DynamicWinlogbeat.Sender()
+}
+
+// GetAsset is a getter for receiving event source and target information
+// For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters
+// Should provide needed information for doing external asset table lookups
+func (d DynamicWinlogbeat) GetAsset() *meta.GameAsset {
+	return &meta.GameAsset{
+		Asset: meta.Asset{
+			Host: d.Sender(),
+			IP:   nil,
+		},
+		Source:      nil,
+		Destination: nil,
+	}
+}
+
+// SetAsset is a setter for setting meta to object without knowing the object type
+// all asset lookups and field discoveries should be done before using this method to maintain readability
+func (d *DynamicWinlogbeat) SetAsset(obj meta.GameAsset) {
+	d.GameMeta = obj
+}
+
+// JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
+func (d DynamicWinlogbeat) JSONFormat() ([]byte, error) {
+	return json.Marshal(d)
 }
 
 type Suricata struct {

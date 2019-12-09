@@ -62,6 +62,10 @@ func Send(msgs <-chan *consumer.Message) error {
 			fn = func(msg consumer.Message) string {
 				return prefix
 			}
+		} else if topic := viper.GetString("output.kafka.topic"); topic != "" {
+			fn = func(msg consumer.Message) string {
+				return topic
+			}
 		} else {
 			fn = func(msg consumer.Message) string {
 				return fmt.Sprintf("%s-%s", prefix, func() string {

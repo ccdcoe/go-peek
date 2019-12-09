@@ -56,7 +56,7 @@ if __name__ == "__main__":
     assets = []
     for i, item in enumerate(fn(args.assets)):
         item = item.decode().strip().split(",")
-        if i is 0: 
+        if i is 0:
             keys = item
         else:
             assets.append(dict(zip(keys, item)))

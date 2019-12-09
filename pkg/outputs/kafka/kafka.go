@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/Shopify/sarama"
 	"github.com/ccdcoe/go-peek/pkg/models/consumer"
+	log "github.com/sirupsen/logrus"
 )
 
 // Config is used as parameter when instanciating new Producer instance
@@ -103,6 +105,8 @@ func (p Producer) Feed(
 
 	p.feeders.Add(1)
 	go func(ctx context.Context) {
+		debug := time.NewTicker(3 * time.Second)
+		var count uint64
 		defer p.feeders.Done()
 	loop:
 		for p.active {
@@ -117,6 +121,9 @@ func (p Producer) Feed(
 					Value:     sarama.ByteEncoder(msg.Data),
 					Topic:     fn(msg),
 				}
+				count++
+			case <-debug.C:
+				log.Infof("Sent %d events to kafka producer", count)
 			case <-ctx.Done():
 				break loop
 			}

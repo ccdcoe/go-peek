@@ -215,6 +215,10 @@ func initOutputConfig() {
 		`Prefix for topic names. For example Suricata events would be sent to <prefix>-suricata`)
 	viper.BindPFlag("output.kafka.prefix", rootCmd.PersistentFlags().Lookup("output-kafka-prefix"))
 
+	rootCmd.PersistentFlags().String("output-kafka-topic", "",
+		`Optional topic name for producing messages. Applies on all streams and overrides --output-kafka-prefix and --output-kafka-merge parameters. Meant for simple scenarios when dynamic stream splitting is not needed.`)
+	viper.BindPFlag("output.kafka.topic", rootCmd.PersistentFlags().Lookup("output-kafka-topic"))
+
 	rootCmd.PersistentFlags().Bool("output-kafka-merge", false,
 		`Send all messages to a single topic, as opposed to topic per event type.`)
 	viper.BindPFlag("output.kafka.merge", rootCmd.PersistentFlags().Lookup("output-kafka-merge"))
