@@ -9,6 +9,7 @@ import (
 	"github.com/ccdcoe/go-peek/pkg/models/atomic"
 	"github.com/ccdcoe/go-peek/pkg/models/fields"
 	"github.com/ccdcoe/go-peek/pkg/models/meta"
+	"github.com/influxdata/go-syslog/rfc5424"
 )
 
 type GameEvent interface {
@@ -33,80 +34,88 @@ func (e ErrEventParse) Error() string {
 	)
 }
 
-func NewGameEvent(data []byte, enum Atomic) (GameEvent, error) {
+func ParseSyslog(data []byte, enum Atomic) (GameEvent, error) {
+	bestEffort := true
+	msg, err := rfc5424.NewParser().Parse(data, &bestEffort)
+	if err != nil {
+		return nil, err
+	}
+	s := atomic.Syslog{
+		Timestamp: *msg.Timestamp(),
+		Message:   *msg.Message(),
+		Host:      *msg.Hostname(),
+		Program:   *msg.Appname(),
+	}
 	switch enum {
 	case SuricataE:
-		var obj Suricata
-		if err := json.Unmarshal(data, &obj); err != nil {
+		var obj atomic.StaticSuricataEve
+		if err := json.Unmarshal([]byte(s.Message), &obj); err != nil {
 			return nil, err
 		}
-		return &obj, nil
-	case SyslogE:
-		var obj Syslog
-		if err := json.Unmarshal(data, &obj); err != nil {
-			return nil, err
-		}
-		return &obj, nil
-	case SnoopyE:
-		var obj Snoopy
-		if err := json.Unmarshal(data, &obj); err != nil {
-			return nil, err
-		}
-		return &obj, nil
+		return &Suricata{
+			Payload: obj,
+		}, nil
 	case EventLogE, SysmonE:
-		/*
-			e, err := atomic.NewWindowsEventLog(data)
-			if err != nil {
-				return nil, err
-			}
-			return &Eventlog{
-				EventLog: *e.Parse(),
-			}, nil
-			return atomic.NewWinlogbeatMessage(data)
-		*/
-		return nil, nil
-	case ZeekE:
-		var obj ZeekCobalt
-		if err := json.Unmarshal(data, &obj); err != nil {
+		var obj atomic.DynamicWinlogbeat
+		if err := json.Unmarshal([]byte(s.Message), &obj); err != nil {
 			return nil, err
 		}
-		return &obj, nil
-	case MazeRunnerE:
-		var obj MazeRunner
-		if err := json.Unmarshal(data, &obj); err != nil {
-			return nil, err
-		}
-		return &obj, nil
-	default:
-		return nil, ErrEventParse{
-			Data:   data,
-			Wanted: enum,
-			Reason: "object not supported",
-		}
+		return &DynamicWinlogbeat{
+			Payload: obj,
+		}, nil
 	}
+
+	payload, err := atomic.ParseSyslogMessage(s)
+	if err != nil {
+		return nil, err
+	}
+	switch val := payload.(type) {
+	case *atomic.Snoopy:
+		return &Snoopy{
+			Syslog: s,
+			Snoopy: *val,
+		}, nil
+	case atomic.Snoopy:
+		return &Snoopy{
+			Syslog: s,
+			Snoopy: val,
+		}, nil
+	case atomic.Syslog:
+		return &Syslog{
+			Syslog: s,
+		}, nil
+	case *atomic.Syslog:
+		return &Syslog{
+			Syslog: s,
+		}, nil
+	}
+	return nil, fmt.Errorf("Unsupported event type")
 }
 
+type Parser int
+
+const (
+	ParseJSON Parser = iota
+	ParseRFC5424
+)
+
 type DynamicWinlogbeat struct {
-	atomic.DynamicWinlogbeat
-	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+	Payload  atomic.DynamicWinlogbeat `json:"payload"`
+	GameMeta meta.GameAsset           `json:"GameMeta,omitempty"`
 }
 
 // Time implements atomic.Event
 // Timestamp in event, should default to time.Time{} so time.IsZero() could be used to verify success
-func (d DynamicWinlogbeat) Time() time.Time {
-	return d.DynamicWinlogbeat.Time()
-}
+func (d DynamicWinlogbeat) Time() time.Time { return d.Payload.Time() }
 
 // Source implements atomic.Event
 // Source of message, usually emitting program
-func (d DynamicWinlogbeat) Source() string {
-	return d.DynamicWinlogbeat.Source()
-}
+func (d DynamicWinlogbeat) Source() string { return d.Payload.Source() }
 
 // Sender implements atomic.Event
 // Sender of message, usually a host
 func (d DynamicWinlogbeat) Sender() string {
-	return d.DynamicWinlogbeat.Sender()
+	return d.Payload.Sender()
 }
 
 // GetAsset is a getter for receiving event source and target information
@@ -135,9 +144,9 @@ func (d DynamicWinlogbeat) JSONFormat() ([]byte, error) {
 }
 
 type Suricata struct {
-	atomic.StaticSuricataEve
-	atomic.Syslog
-	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+	Payload  atomic.StaticSuricataEve `json:"payload,omitempty"`
+	Syslog   *atomic.Syslog           `json:"syslog,omitempty"`
+	GameMeta meta.GameAsset           `json:"GameMeta,omitempty"`
 }
 
 // JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
@@ -149,9 +158,9 @@ func (s Suricata) JSONFormat() ([]byte, error) { return json.Marshal(s) }
 func (s Suricata) GetAsset() *meta.GameAsset {
 	return &meta.GameAsset{
 		Asset: meta.Asset{
-			Host: s.Syslog.Host,
+			Host: s.Payload.Host,
 			IP: func() net.IP {
-				if s.Syslog.IP == nil {
+				if s.Syslog == nil || s.Syslog.IP == nil {
 					return nil
 				}
 				return s.Syslog.IP.IP
@@ -159,24 +168,24 @@ func (s Suricata) GetAsset() *meta.GameAsset {
 		},
 		Source: &meta.Asset{
 			IP: func() net.IP {
-				if s.Alert != nil && s.Alert.Source != nil {
-					return s.Alert.Source.IP.IP
+				if s.Payload.Alert != nil && s.Payload.Alert.Source != nil {
+					return s.Payload.Alert.Source.IP.IP
 				}
-				if s.SrcIP == nil {
+				if s.Payload.SrcIP == nil {
 					return nil
 				}
-				return s.SrcIP.IP
+				return s.Payload.SrcIP.IP
 			}(),
 		},
 		Destination: &meta.Asset{
 			IP: func() net.IP {
-				if s.Alert != nil && s.Alert.Target != nil {
-					return s.Alert.Target.IP.IP
+				if s.Payload.Alert != nil && s.Payload.Alert.Target != nil {
+					return s.Payload.Alert.Target.IP.IP
 				}
-				if s.DestIP == nil {
+				if s.Payload.DestIP == nil {
 					return nil
 				}
-				return s.DestIP.IP
+				return s.Payload.DestIP.IP
 			}(),
 		},
 	}
@@ -190,18 +199,18 @@ func (s *Suricata) SetAsset(data meta.GameAsset) {
 
 // Time implements atomic.Event
 // Timestamp in event, should default to time.Time{} so time.IsZero() could be used to verify success
-func (s Suricata) Time() time.Time { return s.StaticSuricataEve.Time() }
+func (s Suricata) Time() time.Time { return s.Payload.Time() }
 
 // Source implements atomic.Event
 // Source of message, usually emitting program
-func (s Suricata) Source() string { return s.StaticSuricataEve.Source() }
+func (s Suricata) Source() string { return s.Payload.Source() }
 
 // Sender implements atomic.Event
 // Sender of message, usually a host
-func (s Suricata) Sender() string { return s.StaticSuricataEve.Sender() }
+func (s Suricata) Sender() string { return s.Payload.Sender() }
 
 type Syslog struct {
-	atomic.Syslog
+	Syslog   atomic.Syslog  `json:"syslog"`
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
@@ -245,8 +254,8 @@ func (s Syslog) Source() string { return s.Syslog.Source() }
 func (s Syslog) Sender() string { return s.Syslog.Sender() }
 
 type Snoopy struct {
-	atomic.Snoopy
-	atomic.Syslog
+	Snoopy   atomic.Snoopy  `json:"snoopy"`
+	Syslog   atomic.Syslog  `json:"syslog"`
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
@@ -268,26 +277,26 @@ func (s Snoopy) GetAsset() *meta.GameAsset {
 			}(),
 		},
 		Directionality: func() meta.Directionality {
-			if s.SSH == nil {
+			if s.Snoopy.SSH == nil {
 				return meta.DirLocal
 			}
 			return meta.DirUnk
 		}(),
 		Source: func() *meta.Asset {
-			if s.SSH == nil {
+			if s.Snoopy.SSH == nil {
 				return nil
 			}
-			if s.SSH.SrcIP != nil {
-				return &meta.Asset{IP: s.SSH.SrcIP.IP}
+			if s.Snoopy.SSH.SrcIP != nil {
+				return &meta.Asset{IP: s.Snoopy.SSH.SrcIP.IP}
 			}
 			return nil
 		}(),
 		Destination: func() *meta.Asset {
-			if s.SSH == nil {
+			if s.Snoopy.SSH == nil {
 				return nil
 			}
-			if s.SSH.DstIP != nil {
-				return &meta.Asset{IP: s.SSH.DstIP.IP}
+			if s.Snoopy.SSH.DstIP != nil {
+				return &meta.Asset{IP: s.Snoopy.SSH.DstIP.IP}
 			}
 			return nil
 		}(),
