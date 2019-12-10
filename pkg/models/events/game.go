@@ -53,7 +53,7 @@ func ParseSyslog(data []byte, enum Atomic) (GameEvent, error) {
 			return nil, err
 		}
 		return &Suricata{
-			Payload: obj,
+			StaticSuricataEve: obj,
 		}, nil
 	case EventLogE, SysmonE:
 		var obj atomic.DynamicWinlogbeat
@@ -61,7 +61,7 @@ func ParseSyslog(data []byte, enum Atomic) (GameEvent, error) {
 			return nil, err
 		}
 		return &DynamicWinlogbeat{
-			Payload: obj,
+			DynamicWinlogbeat: obj,
 		}, nil
 	}
 
@@ -100,22 +100,22 @@ const (
 )
 
 type DynamicWinlogbeat struct {
-	Payload  atomic.DynamicWinlogbeat `json:"payload"`
-	GameMeta meta.GameAsset           `json:"GameMeta,omitempty"`
+	atomic.DynamicWinlogbeat
+	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
 // Time implements atomic.Event
 // Timestamp in event, should default to time.Time{} so time.IsZero() could be used to verify success
-func (d DynamicWinlogbeat) Time() time.Time { return d.Payload.Time() }
+func (d DynamicWinlogbeat) Time() time.Time { return d.DynamicWinlogbeat.Time() }
 
 // Source implements atomic.Event
 // Source of message, usually emitting program
-func (d DynamicWinlogbeat) Source() string { return d.Payload.Source() }
+func (d DynamicWinlogbeat) Source() string { return d.DynamicWinlogbeat.Source() }
 
 // Sender implements atomic.Event
 // Sender of message, usually a host
 func (d DynamicWinlogbeat) Sender() string {
-	return d.Payload.Sender()
+	return d.DynamicWinlogbeat.Sender()
 }
 
 // GetAsset is a getter for receiving event source and target information
@@ -144,9 +144,9 @@ func (d DynamicWinlogbeat) JSONFormat() ([]byte, error) {
 }
 
 type Suricata struct {
-	Payload  atomic.StaticSuricataEve `json:"payload,omitempty"`
-	Syslog   *atomic.Syslog           `json:"syslog,omitempty"`
-	GameMeta meta.GameAsset           `json:"GameMeta,omitempty"`
+	atomic.StaticSuricataEve
+	Syslog   *atomic.Syslog `json:"syslog,omitempty"`
+	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
 // JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
@@ -158,7 +158,7 @@ func (s Suricata) JSONFormat() ([]byte, error) { return json.Marshal(s) }
 func (s Suricata) GetAsset() *meta.GameAsset {
 	return &meta.GameAsset{
 		Asset: meta.Asset{
-			Host: s.Payload.Host,
+			Host: s.StaticSuricataEve.Host,
 			IP: func() net.IP {
 				if s.Syslog == nil || s.Syslog.IP == nil {
 					return nil
@@ -168,24 +168,24 @@ func (s Suricata) GetAsset() *meta.GameAsset {
 		},
 		Source: &meta.Asset{
 			IP: func() net.IP {
-				if s.Payload.Alert != nil && s.Payload.Alert.Source != nil {
-					return s.Payload.Alert.Source.IP.IP
+				if s.StaticSuricataEve.Alert != nil && s.StaticSuricataEve.Alert.Source != nil {
+					return s.StaticSuricataEve.Alert.Source.IP.IP
 				}
-				if s.Payload.SrcIP == nil {
+				if s.StaticSuricataEve.SrcIP == nil {
 					return nil
 				}
-				return s.Payload.SrcIP.IP
+				return s.StaticSuricataEve.SrcIP.IP
 			}(),
 		},
 		Destination: &meta.Asset{
 			IP: func() net.IP {
-				if s.Payload.Alert != nil && s.Payload.Alert.Target != nil {
-					return s.Payload.Alert.Target.IP.IP
+				if s.StaticSuricataEve.Alert != nil && s.StaticSuricataEve.Alert.Target != nil {
+					return s.StaticSuricataEve.Alert.Target.IP.IP
 				}
-				if s.Payload.DestIP == nil {
+				if s.StaticSuricataEve.DestIP == nil {
 					return nil
 				}
-				return s.Payload.DestIP.IP
+				return s.StaticSuricataEve.DestIP.IP
 			}(),
 		},
 	}
@@ -199,15 +199,15 @@ func (s *Suricata) SetAsset(data meta.GameAsset) {
 
 // Time implements atomic.Event
 // Timestamp in event, should default to time.Time{} so time.IsZero() could be used to verify success
-func (s Suricata) Time() time.Time { return s.Payload.Time() }
+func (s Suricata) Time() time.Time { return s.StaticSuricataEve.Time() }
 
 // Source implements atomic.Event
 // Source of message, usually emitting program
-func (s Suricata) Source() string { return s.Payload.Source() }
+func (s Suricata) Source() string { return s.StaticSuricataEve.Source() }
 
 // Sender implements atomic.Event
 // Sender of message, usually a host
-func (s Suricata) Sender() string { return s.Payload.Sender() }
+func (s Suricata) Sender() string { return s.StaticSuricataEve.Sender() }
 
 type Syslog struct {
 	Syslog   atomic.Syslog  `json:"syslog"`
@@ -254,7 +254,7 @@ func (s Syslog) Source() string { return s.Syslog.Source() }
 func (s Syslog) Sender() string { return s.Syslog.Sender() }
 
 type Snoopy struct {
-	Snoopy   atomic.Snoopy  `json:"snoopy"`
+	atomic.Snoopy
 	Syslog   atomic.Syslog  `json:"syslog"`
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
