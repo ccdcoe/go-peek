@@ -33,58 +33,57 @@ func (e ErrEventParse) Error() string {
 	)
 }
 
-func NewGameEvent(data []byte, enum Atomic) (GameEvent, error) {
-	switch enum {
-	case SuricataE:
-		var obj Suricata
-		if err := json.Unmarshal(data, &obj); err != nil {
-			return nil, err
-		}
-		return &obj, nil
-	case SyslogE:
-		var obj Syslog
-		if err := json.Unmarshal(data, &obj); err != nil {
-			return nil, err
-		}
-		return &obj, nil
-	case SnoopyE:
-		var obj Snoopy
-		if err := json.Unmarshal(data, &obj); err != nil {
-			return nil, err
-		}
-		return &obj, nil
-	case EventLogE, SysmonE:
-		e, err := atomic.NewWindowsEventLog(data)
-		if err != nil {
-			return nil, err
-		}
-		return &Eventlog{
-			EventLog: *e.Parse(),
-		}, nil
-	case ZeekE:
-		var obj ZeekCobalt
-		if err := json.Unmarshal(data, &obj); err != nil {
-			return nil, err
-		}
-		return &obj, nil
-	case MazeRunnerE:
-		var obj MazeRunner
-		if err := json.Unmarshal(data, &obj); err != nil {
-			return nil, err
-		}
-		return &obj, nil
-	default:
-		return nil, ErrEventParse{
-			Data:   data,
-			Wanted: enum,
-			Reason: "object not supported",
-		}
+type DynamicWinlogbeat struct {
+	Timestamp time.Time `json:"@timestamp"`
+	atomic.DynamicWinlogbeat
+	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+// Time implements atomic.Event
+// Timestamp in event, should default to time.Time{} so time.IsZero() could be used to verify success
+func (d DynamicWinlogbeat) Time() time.Time { return d.DynamicWinlogbeat.Time() }
+
+// Source implements atomic.Event
+// Source of message, usually emitting program
+func (d DynamicWinlogbeat) Source() string { return d.DynamicWinlogbeat.Source() }
+
+// Sender implements atomic.Event
+// Sender of message, usually a host
+func (d DynamicWinlogbeat) Sender() string {
+	return d.DynamicWinlogbeat.Sender()
+}
+
+// GetAsset is a getter for receiving event source and target information
+// For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters
+// Should provide needed information for doing external asset table lookups
+func (d DynamicWinlogbeat) GetAsset() *meta.GameAsset {
+	return &meta.GameAsset{
+		Asset: meta.Asset{
+			Host: d.Sender(),
+			IP:   nil,
+		},
+		MitreAttack: &meta.MitreAttack{
+			Techniques: make([]meta.Technique, 0),
+		},
+		Source:      nil,
+		Destination: nil,
 	}
+}
+
+// SetAsset is a setter for setting meta to object without knowing the object type
+// all asset lookups and field discoveries should be done before using this method to maintain readability
+func (d *DynamicWinlogbeat) SetAsset(obj meta.GameAsset) {
+	d.GameMeta = obj
+}
+
+// JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
+func (d DynamicWinlogbeat) JSONFormat() ([]byte, error) {
+	return json.Marshal(d)
 }
 
 type Suricata struct {
 	atomic.StaticSuricataEve
-	atomic.Syslog
+	Syslog   *atomic.Syslog `json:"syslog,omitempty"`
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
@@ -97,34 +96,37 @@ func (s Suricata) JSONFormat() ([]byte, error) { return json.Marshal(s) }
 func (s Suricata) GetAsset() *meta.GameAsset {
 	return &meta.GameAsset{
 		Asset: meta.Asset{
-			Host: s.Syslog.Host,
+			Host: s.StaticSuricataEve.Host,
 			IP: func() net.IP {
-				if s.Syslog.IP == nil {
+				if s.Syslog == nil || s.Syslog.IP == nil {
 					return nil
 				}
 				return s.Syslog.IP.IP
 			}(),
 		},
+		MitreAttack: &meta.MitreAttack{
+			Techniques: make([]meta.Technique, 0),
+		},
 		Source: &meta.Asset{
 			IP: func() net.IP {
-				if s.Alert != nil && s.Alert.Source != nil {
-					return s.Alert.Source.IP.IP
+				if s.StaticSuricataEve.Alert != nil && s.StaticSuricataEve.Alert.Source != nil {
+					return s.StaticSuricataEve.Alert.Source.IP.IP
 				}
-				if s.SrcIP == nil {
+				if s.StaticSuricataEve.SrcIP == nil {
 					return nil
 				}
-				return s.SrcIP.IP
+				return s.StaticSuricataEve.SrcIP.IP
 			}(),
 		},
 		Destination: &meta.Asset{
 			IP: func() net.IP {
-				if s.Alert != nil && s.Alert.Target != nil {
-					return s.Alert.Target.IP.IP
+				if s.StaticSuricataEve.Alert != nil && s.StaticSuricataEve.Alert.Target != nil {
+					return s.StaticSuricataEve.Alert.Target.IP.IP
 				}
-				if s.DestIP == nil {
+				if s.StaticSuricataEve.DestIP == nil {
 					return nil
 				}
-				return s.DestIP.IP
+				return s.StaticSuricataEve.DestIP.IP
 			}(),
 		},
 	}
@@ -149,7 +151,7 @@ func (s Suricata) Source() string { return s.StaticSuricataEve.Source() }
 func (s Suricata) Sender() string { return s.StaticSuricataEve.Sender() }
 
 type Syslog struct {
-	atomic.Syslog
+	Syslog   atomic.Syslog  `json:"syslog"`
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
@@ -162,6 +164,9 @@ func (s Syslog) JSONFormat() ([]byte, error) { return json.Marshal(s) }
 func (s Syslog) GetAsset() *meta.GameAsset {
 	return &meta.GameAsset{
 		Directionality: meta.DirLocal,
+		MitreAttack: &meta.MitreAttack{
+			Techniques: make([]meta.Technique, 0),
+		},
 		Asset: meta.Asset{
 			Host: s.Syslog.Host,
 			IP: func() net.IP {
@@ -194,7 +199,7 @@ func (s Syslog) Sender() string { return s.Syslog.Sender() }
 
 type Snoopy struct {
 	atomic.Snoopy
-	atomic.Syslog
+	Syslog   atomic.Syslog  `json:"syslog"`
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
@@ -215,27 +220,30 @@ func (s Snoopy) GetAsset() *meta.GameAsset {
 				return s.Syslog.IP.IP
 			}(),
 		},
+		MitreAttack: &meta.MitreAttack{
+			Techniques: make([]meta.Technique, 0),
+		},
 		Directionality: func() meta.Directionality {
-			if s.SSH == nil {
+			if s.Snoopy.SSH == nil {
 				return meta.DirLocal
 			}
 			return meta.DirUnk
 		}(),
 		Source: func() *meta.Asset {
-			if s.SSH == nil {
+			if s.Snoopy.SSH == nil {
 				return nil
 			}
-			if s.SSH.SrcIP != nil {
-				return &meta.Asset{IP: s.SSH.SrcIP.IP}
+			if s.Snoopy.SSH.SrcIP != nil {
+				return &meta.Asset{IP: s.Snoopy.SSH.SrcIP.IP}
 			}
 			return nil
 		}(),
 		Destination: func() *meta.Asset {
-			if s.SSH == nil {
+			if s.Snoopy.SSH == nil {
 				return nil
 			}
-			if s.SSH.DstIP != nil {
-				return &meta.Asset{IP: s.SSH.DstIP.IP}
+			if s.Snoopy.SSH.DstIP != nil {
+				return &meta.Asset{IP: s.Snoopy.SSH.DstIP.IP}
 			}
 			return nil
 		}(),
@@ -284,6 +292,9 @@ func (e Eventlog) GetAsset() *meta.GameAsset {
 			Host: e.Sender(),
 			IP:   e.SenderIP(),
 		},
+		MitreAttack: &meta.MitreAttack{
+			Techniques: make([]meta.Technique, 0),
+		},
 	}
 }
 
@@ -331,7 +342,10 @@ func (z ZeekCobalt) GetAsset() *meta.GameAsset {
 		return nil
 	}
 	return &meta.GameAsset{
-		Asset:       meta.Asset{IP: src},
+		Asset: meta.Asset{IP: src},
+		MitreAttack: &meta.MitreAttack{
+			Techniques: make([]meta.Technique, 0),
+		},
 		Source:      srcFn(src),
 		Destination: srcFn(ipFn(z.IDRespH)),
 	}
@@ -374,7 +388,10 @@ func (m MazeRunner) GetAsset() *meta.GameAsset {
 		return nil
 	}
 	return &meta.GameAsset{
-		Asset:       meta.Asset{Host: m.MazeRunner.Sender()},
+		Asset: meta.Asset{Host: m.MazeRunner.Sender()},
+		MitreAttack: &meta.MitreAttack{
+			Techniques: make([]meta.Technique, 0),
+		},
 		Source:      srcFn(m.MazeRunner.GetSrcIP()),
 		Destination: srcFn(m.MazeRunner.GetDstIP()),
 	}

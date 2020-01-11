@@ -1,4 +1,4 @@
-package intel
+package assetcache
 
 import (
 	"context"
@@ -68,8 +68,28 @@ func NewLocalCache(parent *GlobalCache, id int) *LocalCache {
 	return lc
 }
 
+func (l LocalCache) GetString(key string) (*Asset, bool) {
+	if l.assets == nil {
+		return nil, false
+	}
+	l.Lock()
+	defer l.Unlock()
+	if val, ok := l.assets[key]; ok {
+		return &val, true
+	}
+	if l.parent != nil {
+
+		if val, ok := l.parent.GetString(key); ok {
+			l.assets[key] = *val
+			return val, true
+		} else if !ok && val != nil {
+			l.assets[key] = *val
+		}
+
+	}
+	return nil, false
+}
 func (l LocalCache) GetIP(key net.IP) (*Asset, bool) {
-	// TODO - new instance instead of silent fail?
 	if l.assets == nil {
 		return nil, false
 	}
@@ -80,16 +100,7 @@ func (l LocalCache) GetIP(key net.IP) (*Asset, bool) {
 	}
 	if l.parent != nil {
 
-		/*
-			log.WithFields(log.Fields{
-				"val":    key,
-				"worker": l.id,
-				"cache":  "local",
-			}).Trace("parent cache query")
-		*/
-
-		// TODO - async here?
-		if val, ok := l.parent.GetIP(key); ok {
+		if val, ok := l.parent.GetString(key.String()); ok {
 			l.assets[key.String()] = *val
 			return val, true
 		} else if !ok && val != nil {

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/ccdcoe/go-peek/pkg/models/consumer"
-	olivere "github.com/olivere/elastic"
+	olivere "github.com/olivere/elastic/v7"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -72,8 +72,9 @@ func NewHandle(c *Config) (*Handle, error) {
 	log.Tracef("Elastic libary version %s", olivere.Version)
 	client, err := olivere.NewClient(
 		olivere.SetURL(c.Hosts...),
-		//olivere.SetSniff(true),
+		olivere.SetSniff(false),
 		olivere.SetHealthcheckInterval(10*time.Second),
+		olivere.SetHealthcheckTimeout(5*time.Second),
 	)
 	if err != nil {
 		return nil, err
@@ -105,7 +106,6 @@ func (h Handle) add(item []byte, idx string) {
 	h.indexer.Add(
 		olivere.NewBulkIndexRequest().
 			Index(idx).
-			//Type("_doc").
 			Doc(json.RawMessage(item)),
 	)
 }

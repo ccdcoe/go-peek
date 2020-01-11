@@ -20,7 +20,10 @@ type AssetGetterSetter interface {
 type GameAsset struct {
 	Asset
 
-	Directionality
+	DirectionString string `json:"DirectionString"`
+	Directionality  `json:"Directionality"`
+
+	MitreAttack *MitreAttack `json:"MitreAttack"`
 
 	Source      *Asset `json:"Src"`
 	Destination *Asset `json:"Dest"`
@@ -29,18 +32,19 @@ type GameAsset struct {
 func (g *GameAsset) SetDirection() *GameAsset {
 	if g.Source != nil && g.Destination != nil {
 		if g.Source.IsAsset && !g.Destination.IsAsset {
-			return g.SetOutbound()
+			g.SetOutbound()
 		}
 		if !g.Source.IsAsset && g.Destination.IsAsset {
-			return g.SetInbound()
+			g.SetInbound()
 		}
 		if g.Source.IsAsset && g.Destination.IsAsset {
-			return g.SetLateral()
+			g.SetLateral()
 		}
 	}
 	if g.Source == nil && g.Destination == nil {
-		return g.SetLocal()
+		g.SetLocal()
 	}
+	g.DirectionString = g.Directionality.String()
 	return g
 }
 
@@ -63,6 +67,11 @@ func (g *GameAsset) SetLocal() *GameAsset {
 
 func (g GameAsset) JSON() ([]byte, error) { return json.Marshal(g) }
 
+type Direction struct {
+	ID   Directionality
+	Desc string
+}
+
 type Directionality int
 
 const (
@@ -73,3 +82,18 @@ const (
 	DirInbound
 	DirOutbound
 )
+
+func (d Directionality) String() string {
+	switch d {
+	case DirLateral:
+		return "Lateral"
+	case DirLocal:
+		return "Local"
+	case DirInbound:
+		return "Inbound"
+	case DirOutbound:
+		return "Outbound"
+	default:
+		return "Unknown"
+	}
+}

@@ -76,6 +76,7 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 			Ctx:     ctx,
 			Sockets: files.Files(),
 			MapFunc: files.MapFunc(),
+			Force:   viper.GetBool("input.uxsock.overwrite"),
 		})
 		if err != nil {
 			log.Fatal(err)

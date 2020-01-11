@@ -142,34 +142,40 @@ func initInputConfig() {
 	rootCmd.PersistentFlags().Bool("input-uxsock-enabled", false,
 		`Enable reading from unix sockets. Sockets will be created and cleaned up by peek process.`)
 	viper.BindPFlag("input.uxsock.enabled", rootCmd.PersistentFlags().Lookup("input-uxsock-enabled"))
+
+	rootCmd.PersistentFlags().Bool("input-uxsock-overwrite", false,
+		`Delete existing file if socket path already exists.`)
+	viper.BindPFlag("input.uxsock.overwrite", rootCmd.PersistentFlags().Lookup("input-uxsock-overwrite"))
 }
 
 func initProcessorConfig() {
-	rootCmd.PersistentFlags().Bool("proc-enabled", true,
+	rootCmd.PersistentFlags().Bool("processor-enabled", true,
 		`Enable or disable all processor plugins globally.`)
-	viper.BindPFlag("processor.enabled", rootCmd.PersistentFlags().Lookup("proc-enabled"))
+	viper.BindPFlag("processor.enabled", rootCmd.PersistentFlags().Lookup("processor-enabled"))
 
-	rootCmd.PersistentFlags().Bool("proc-anon", false,
+	rootCmd.PersistentFlags().Bool("processor-anonymize", false,
 		`Anonymize messages. Simple method by replacing host names with aliases`)
-	viper.BindPFlag("processor.anonymize", rootCmd.PersistentFlags().Lookup("proc-anon"))
+	viper.BindPFlag("processor.anonymize", rootCmd.PersistentFlags().Lookup("processor-anonymize"))
 
-	rootCmd.PersistentFlags().String("proc-persist-json-assets", "assets.json",
-		`File to store asset information in json format. 
-		Specify name to be stored in working dir or valid file path for custom location.`)
-	viper.BindPFlag("processor.persist.json.assets", rootCmd.PersistentFlags().Lookup("proc-persist-json-assets"))
-
-	rootCmd.PersistentFlags().String("proc-persist-json-networks", "networks.json",
-		`File to store network information in json format. 
-		Specify name to be stored in working dir or valid file path for custom location.`)
-	viper.BindPFlag("processor.persist.json.networks", rootCmd.PersistentFlags().Lookup("proc-persist-json-networks"))
-
-	rootCmd.PersistentFlags().Bool("proc-in-wise-enabled", true,
+	rootCmd.PersistentFlags().Bool("processor-inputs-wise-enabled", false,
 		`Enable or disable WISE asset lookups.`)
-	viper.BindPFlag("processor.inputs.wise.enabled", rootCmd.PersistentFlags().Lookup("proc-in-wise-enabled"))
+	viper.BindPFlag("processor.inputs.wise.enabled", rootCmd.PersistentFlags().Lookup("processor-inputs-wise-enabled"))
 
-	rootCmd.PersistentFlags().String("proc-in-wise-host", "http://localhost:8081",
+	rootCmd.PersistentFlags().String("processor-inputs-wise-host", "http://localhost:8081",
 		`Remote Moloch WISE host that holds asset and IOC information.`)
-	viper.BindPFlag("processor.inputs.wise.host", rootCmd.PersistentFlags().Lookup("proc-in-wise-host"))
+	viper.BindPFlag("processor.inputs.wise.host", rootCmd.PersistentFlags().Lookup("processor-inputs-wise-host"))
+
+	rootCmd.PersistentFlags().String("processor-inputs-redis-host", "localhost",
+		`Redis host for collecting asset and threat intel.`)
+	viper.BindPFlag("processor.inputs.redis.host", rootCmd.PersistentFlags().Lookup("processor-inputs-redis-host"))
+
+	rootCmd.PersistentFlags().Int("processor-inputs-redis-port", 6379,
+		`Redis port for collecting asset and threat intel.`)
+	viper.BindPFlag("processor.inputs.redis.port", rootCmd.PersistentFlags().Lookup("processor-inputs-redis-port"))
+
+	rootCmd.PersistentFlags().Int("processor-inputs-redis-db", 0,
+		`Redis database for collecting asset and threat intel.`)
+	viper.BindPFlag("processor.inputs.redis.db", rootCmd.PersistentFlags().Lookup("processor-inputs-redis-db"))
 }
 
 func initOutputConfig() {
@@ -210,6 +216,10 @@ func initOutputConfig() {
 	rootCmd.PersistentFlags().String("output-kafka-prefix", "events",
 		`Prefix for topic names. For example Suricata events would be sent to <prefix>-suricata`)
 	viper.BindPFlag("output.kafka.prefix", rootCmd.PersistentFlags().Lookup("output-kafka-prefix"))
+
+	rootCmd.PersistentFlags().String("output-kafka-topic", "",
+		`Optional topic name for producing messages. Applies on all streams and overrides --output-kafka-prefix and --output-kafka-merge parameters. Meant for simple scenarios when dynamic stream splitting is not needed.`)
+	viper.BindPFlag("output.kafka.topic", rootCmd.PersistentFlags().Lookup("output-kafka-topic"))
 
 	rootCmd.PersistentFlags().Bool("output-kafka-merge", false,
 		`Send all messages to a single topic, as opposed to topic per event type.`)

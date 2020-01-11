@@ -1,15 +1,14 @@
-package intel
+package assetcache
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/ccdcoe/go-peek/pkg/intel/wise"
 	"github.com/ccdcoe/go-peek/pkg/models/meta"
 )
 
-var FieldPrefix = "peek"
+var FieldPrefix = "target"
 
 // Asset is a wrapper around meta.Asset, with cache specific helper fields and methods
 type Asset struct {
@@ -21,17 +20,6 @@ type Asset struct {
 func (a Asset) Update() *Asset {
 	a.updated = time.Now()
 	return &a
-}
-
-func (a Asset) CSV() []string {
-	return []string{
-		fmt.Sprintf("%t", a.IsAsset),
-		a.updated.String(),
-		a.Data.Host,
-		a.Data.Alias,
-		a.Data.Kernel,
-		a.Data.IP.String(),
-	}
 }
 
 func (a Asset) JSON() ([]byte, error) { return json.Marshal(a) }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
 	"time"
@@ -62,26 +61,24 @@ func NewHandle(c *Config) (*Handle, error) {
 	}
 	h := &Handle{
 		Plugin: c.Plugin,
-		client: http.Client{
-			//Timeout: 500 * time.Millisecond,
-		},
+		client: http.Client{},
 	}
 	if u, err := url.Parse(c.Host); err != nil {
 		return nil, err
 	} else {
 		h.url = *u
 	}
-	if _, err := QueryIP(*h, net.ParseIP("8.8.8.8")); err != nil {
+	if _, err := QueryIP(*h, "8.8.8.8"); err != nil {
 		h.alive = false
 		return h, err
 	}
 	return h, nil
 }
 
-func QueryIP(h Handle, key net.IP) (APIResponse, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+func QueryIP(h Handle, key string) (APIResponse, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
-	req, err := http.NewRequest("GET", h.url.String()+"/ip/"+key.String(), nil)
+	req, err := http.NewRequest("GET", h.url.String()+"/ip/"+key, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -109,13 +106,17 @@ func QueryIP(h Handle, key net.IP) (APIResponse, error) {
 	return data, nil
 }
 
-func GetAsset(h Handle, key net.IP, hostKey, aliasKey, kernelKey string) (*meta.Asset, bool, error) {
+func GetAsset(
+	h Handle,
+	key string,
+	hostKey, aliasKey, osKey, vmKey string,
+) (*meta.Asset, bool, error) {
 	resp, err := QueryIP(h, key)
 	if err != nil {
 		return nil, false, err
 	}
 	if len(resp) > 0 {
-		m := &meta.Asset{IP: key, Indicators: meta.Indicators{
+		m := &meta.Asset{Indicators: meta.Indicators{
 			IsAsset: true,
 		}}
 		for _, field := range resp {
@@ -125,8 +126,11 @@ func GetAsset(h Handle, key net.IP, hostKey, aliasKey, kernelKey string) (*meta.
 			if aliasKey != "" && field.Field == aliasKey {
 				m.Alias = field.Value
 			}
-			if kernelKey != "" && field.Field == kernelKey {
-				m.Kernel = field.Value
+			if osKey != "" && field.Field == osKey {
+				m.OS = field.Value
+			}
+			if vmKey != "" && field.Field == vmKey {
+				m.VM = field.Value
 			}
 		}
 		return m, true, nil
