@@ -28,7 +28,6 @@ class SyslogBSD(object):
 
     def Format(self):
         return "<{}>{} {} {}[{}]:{}".format(self.Pri, self.Time, self.Host, self.Program, self.Pid, self.Message)
-        
 
 if __name__ == "__main__":
 

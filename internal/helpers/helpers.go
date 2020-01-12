@@ -100,10 +100,14 @@ func GetDirListingFromViper() DirSources {
 			Type:  event,
 		})
 
-		log.WithFields(log.Fields{
-			"type": event.String(),
-			"path": pth,
-		}).Debug("configured input source")
+		logContext := log.WithFields(log.Fields{
+			"type":  event.String(),
+			"event": "configured input source",
+		})
+		for _, p := range pth {
+			logContext.Debug(p)
+		}
+
 	}
 	log.Tracef("found %d logfile directories", len(paths))
 	return paths

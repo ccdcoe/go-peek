@@ -78,11 +78,11 @@ if __name__ == "__main__":
             consumer_timeout_ms=args.timeout*1000)
 
     data = {}
-    data["topics"] = consumer.topics()
+    data["topics"] = list(consumer.topics())
 
     data["partitions"] = {}
     for topic in data["topics"]:
-        data["partitions"][topic] = consumer.partitions_for_topic(topic)
+        data["partitions"][topic] = list(consumer.partitions_for_topic(topic))
 
     if not args.noConsume:
         consumer.subscribe(args.topics)
@@ -108,4 +108,4 @@ if __name__ == "__main__":
         except KeyboardInterrupt as e:
                 consumer.close(autocommit=False)
 
-    print(data) if args.noConsume else print("Consumed:", data["consumed"], "messages")
+    print(json.dumps(data)) if args.noConsume else print("Consumed:", data["consumed"], "messages")

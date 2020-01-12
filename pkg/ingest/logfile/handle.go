@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/ccdcoe/go-peek/pkg/models/consumer"
 	"github.com/ccdcoe/go-peek/pkg/models/events"
@@ -129,7 +130,7 @@ func GetLine(h Handle, num int64) ([]byte, error) {
 	return nil, scanner.Err()
 }
 
-func DrainTo(h Handle, ctx context.Context, tx chan<- *consumer.Message) error {
+func DrainTo(h Handle, ctx context.Context, tx chan<- *consumer.Message, done *sync.WaitGroup) error {
 	f, err := open(h.Path.String())
 	if err != nil {
 		return err
@@ -139,8 +140,16 @@ func DrainTo(h Handle, ctx context.Context, tx chan<- *consumer.Message) error {
 		h.Offsets = &consumer.Offsets{}
 	}
 
-	do := func(tx chan<- *consumer.Message, f io.ReadCloser, from, to int64, ctx context.Context) error {
+	do := func(
+		tx chan<- *consumer.Message,
+		f io.ReadCloser,
+		from,
+		to int64,
+		ctx context.Context,
+		done *sync.WaitGroup,
+	) error {
 		defer f.Close()
+		defer done.Done()
 
 		scanner := bufio.NewScanner(f)
 		var count int64
@@ -177,8 +186,9 @@ func DrainTo(h Handle, ctx context.Context, tx chan<- *consumer.Message) error {
 		return scanner.Err()
 	}
 
-	return do(tx, f, h.Offsets.Beginning, h.Offsets.End, ctx)
+	return do(tx, f, h.Offsets.Beginning, h.Offsets.End, ctx, done)
 }
+
 func Drain(h Handle, ctx context.Context) <-chan *consumer.Message {
 	f, err := open(h.Path.String())
 	if err != nil {
@@ -212,6 +222,9 @@ func Drain(h Handle, ctx context.Context) <-chan *consumer.Message {
 				count++
 				continue loop
 			}
+
+			out := make([]byte, len(scanner.Bytes()))
+			copy(scanner.Bytes(), out)
 
 			tx <- &consumer.Message{
 				Data:   utils.DeepCopyBytes(scanner.Bytes()),

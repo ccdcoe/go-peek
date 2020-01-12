@@ -19,6 +19,7 @@ type Consumer struct {
 	ctx      context.Context
 	stoppers utils.WorkerStoppers
 	workers  int
+	wg       *sync.WaitGroup
 }
 
 func NewConsumer(c *Config) (*Consumer, error) {
@@ -35,6 +36,7 @@ func NewConsumer(c *Config) (*Consumer, error) {
 		ctx:      c.Ctx,
 		stoppers: utils.NewWorkerStoppers(c.ConsumeWorkers),
 		workers:  c.ConsumeWorkers,
+		wg:       &sync.WaitGroup{},
 	}
 	for i, dir := range c.Paths {
 		log.WithFields(log.Fields{
@@ -72,6 +74,7 @@ func NewConsumer(c *Config) (*Consumer, error) {
 				files <- h
 			}
 		}
+		l.wg.Wait()
 	}(l.ctx)
 
 	var wg sync.WaitGroup
@@ -84,19 +87,17 @@ func NewConsumer(c *Config) (*Consumer, error) {
 			wg.Add(1)
 			go func(id int, ctx context.Context) {
 				defer wg.Done()
-				defer func() {
-					log.WithFields(log.Fields{
-						"type": "file", "fn": "reader done", "worker": id,
-					}).Trace()
-				}()
-				log.WithFields(log.Fields{
-					"type": "file", "fn": "reader spawn", "worker": id,
-				}).Trace()
+				logContext := log.WithFields(log.Fields{
+					"type":   "file",
+					"worker": id,
+				})
+				defer func() { logContext.Trace("reader done") }()
+
+				logContext.Trace("reader spawn")
 				for h := range files {
-					log.WithFields(log.Fields{
-						"type": "file", "fn": "file read", "worker": id,
-					}).Trace()
-					DrainTo(*h, ctx, l.tx)
+					logContext.Trace("reading file")
+					l.wg.Add(1)
+					DrainTo(*h, ctx, l.tx, l.wg)
 				}
 			}(i, l.stoppers[i].Ctx)
 		}
@@ -114,6 +115,14 @@ func (c Consumer) Files() []string {
 	}
 	return f
 }
+func (c Consumer) GetFileListing() []string {
+	files := make([]string, 0)
+	for _, f := range c.h {
+		files = append(files, f.Path.String())
+	}
+	return files
+}
+
 func (c Consumer) close() error {
 	if c.stoppers == nil || len(c.stoppers) != c.workers {
 		return fmt.Errorf("Log file consumer not instanciated properly, cannot close")
