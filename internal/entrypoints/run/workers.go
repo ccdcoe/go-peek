@@ -28,14 +28,14 @@ func spawnWorkers(
 	var wg sync.WaitGroup
 	noparse := func() bool {
 		if !viper.GetBool("processor.enabled") {
-			log.Debug("all procesor plugins disabled globally, only parsing for timestamps")
+			log.Debug("all procesor plugins disabled globally")
 			return true
 		}
 		return false
 	}()
 	var (
-		count uint64
 		every = time.NewTicker(3 * time.Second)
+		count uint64
 	)
 	globalAssetCache, err := assetcache.NewGlobalCache(&assetcache.Config{
 		Wise: func() *wise.Config {
