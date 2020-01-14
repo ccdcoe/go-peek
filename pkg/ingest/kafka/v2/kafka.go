@@ -62,7 +62,7 @@ func NewConsumer(c *Config) (*Consumer, error) {
 	obj.wg.Add(1)
 	go func() {
 		defer obj.wg.Done()
-		defer obj.group.Close()
+		//defer obj.group.Close()
 	loop:
 		for {
 			select {
@@ -77,6 +77,7 @@ func NewConsumer(c *Config) (*Consumer, error) {
 	}()
 	go func() {
 		obj.wg.Wait()
+		obj.group.Close()
 		close(obj.handle.messages)
 	}()
 	return obj, nil

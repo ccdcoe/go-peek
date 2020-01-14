@@ -2,6 +2,7 @@ package run
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"sync"
@@ -10,6 +11,7 @@ import (
 	"github.com/ccdcoe/go-peek/internal/engines/inputs"
 	"github.com/ccdcoe/go-peek/internal/engines/shipper"
 	"github.com/ccdcoe/go-peek/pkg/models/consumer"
+	"github.com/ccdcoe/go-peek/pkg/models/events"
 	"github.com/ccdcoe/go-peek/pkg/utils"
 
 	"github.com/spf13/cobra"
@@ -49,6 +51,34 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		}
 	}()
 
+	mapping := func() map[string]events.Atomic {
+		out := make(map[string]events.Atomic)
+		for _, event := range events.Atomics {
+			if src := viper.GetStringSlice(
+				fmt.Sprintf("stream.%s.kafka.topic", event.String()),
+			); len(src) > 0 {
+				for _, item := range src {
+					out[item] = event
+				}
+			}
+			if src := viper.GetStringSlice(
+				fmt.Sprintf("stream.%s.dir", event.String()),
+			); len(src) > 0 {
+				for _, item := range src {
+					out[item] = event
+				}
+			}
+			if src := viper.GetStringSlice(
+				fmt.Sprintf("stream.%s.uxsock", event.String()),
+			); len(src) > 0 {
+				for _, item := range src {
+					out[item] = event
+				}
+			}
+		}
+		return out
+	}()
+
 	modified, errs := spawnWorkers(
 		func() <-chan *consumer.Message {
 			if len(inputs) == 1 {
@@ -73,6 +103,7 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		}(),
 		Workers,
 		spooldir,
+		mapping,
 	)
 
 	go func(ctx context.Context) {

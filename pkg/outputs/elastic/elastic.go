@@ -125,7 +125,7 @@ func (h Handle) Feed(
 	}
 	if rx == nil {
 		return fmt.Errorf(
-			"missing channel, cannot feed elastic bulk indexer with%s",
+			"missing channel, cannot feed elastic bulk indexer with %s",
 			name,
 		)
 	}

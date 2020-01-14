@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/ccdcoe/go-peek/pkg/ingest"
 	"github.com/ccdcoe/go-peek/pkg/ingest/logfile"
@@ -234,6 +235,39 @@ func initOutputConfig() {
 	rootCmd.PersistentFlags().Bool("output-stdout", false,
 		`Print output messages to stdout. Good for simple cli piping and debug.`)
 	viper.BindPFlag("output.stdout", rootCmd.PersistentFlags().Lookup("output-stdout"))
+
+	// regular file output
+	rootCmd.PersistentFlags().Bool("output-file-enabled", false,
+		`Write all messages to single file. Good for creating and archive.`)
+	viper.BindPFlag("output.file.enabled", rootCmd.PersistentFlags().Lookup("output-file-enabled"))
+
+	rootCmd.PersistentFlags().String("output-file-path", "",
+		`Path for output file.`)
+	viper.BindPFlag("output.file.path", rootCmd.PersistentFlags().Lookup("output-file-path"))
+
+	rootCmd.PersistentFlags().String("output-file-dir", "",
+		`Direcotry for sorted output files.`)
+	viper.BindPFlag("output.file.dir", rootCmd.PersistentFlags().Lookup("output-file-dir"))
+
+	rootCmd.PersistentFlags().Bool("output-file-gzip", false,
+		`Write directly to gzip file. Reduces disk usage by approximately 90 per cent. Cannot be used together with --output-file-rotate-enabled.`)
+	viper.BindPFlag("output.file.gzip", rootCmd.PersistentFlags().Lookup("output-file-gzip"))
+
+	rootCmd.PersistentFlags().Bool("output-file-timestamp", false,
+		`Append timestamp to output file name. Useful for keeping track in case consumer breaks.`)
+	viper.BindPFlag("output.file.timestamp", rootCmd.PersistentFlags().Lookup("output-file-timestamp"))
+
+	rootCmd.PersistentFlags().Bool("output-file-rotate-enabled", false,
+		`Enable periodic log file rotation.`)
+	viper.BindPFlag("output.file.rotate.enabled", rootCmd.PersistentFlags().Lookup("output-file-rotate-enabled"))
+
+	rootCmd.PersistentFlags().Bool("output-file-rotate-gzip", false,
+		`Gzip compress log files post-rotation.`)
+	viper.BindPFlag("output.file.rotate.gzip", rootCmd.PersistentFlags().Lookup("output-file-rotate-gzip"))
+
+	rootCmd.PersistentFlags().Duration("output-file-rotate-interval", 1*time.Hour,
+		`Interval for rotating output files if enabled with --output-file-rotate-enabled.`)
+	viper.BindPFlag("output.file.rotate.interval", rootCmd.PersistentFlags().Lookup("output-file-rotate-interval"))
 }
 
 func initLogging() {

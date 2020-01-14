@@ -8,12 +8,15 @@ import (
 
 	"github.com/ccdcoe/go-peek/pkg/models/consumer"
 	"github.com/ccdcoe/go-peek/pkg/outputs/elastic"
+	"github.com/ccdcoe/go-peek/pkg/outputs/filestorage"
 	"github.com/ccdcoe/go-peek/pkg/outputs/kafka"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
-func Send(msgs <-chan *consumer.Message) error {
+func Send(
+	msgs <-chan *consumer.Message,
+) error {
 	// TODO - move code to internal/output or something, wrap for reusability in multiple subcommands
 	var (
 		stdout      = viper.GetBool("output.stdout")
@@ -29,23 +32,30 @@ func Send(msgs <-chan *consumer.Message) error {
 		}()
 		elaEnabled   = viper.GetBool("output.elastic.enabled")
 		kafkaEnabled = viper.GetBool("output.kafka.enabled")
+		fileEnabled  = viper.GetBool("output.file.enabled")
 	)
 
-	if !stdout && !fifoEnabled && !elaEnabled && !kafkaEnabled {
+	if !stdout && !fifoEnabled && !elaEnabled && !kafkaEnabled && !fileEnabled {
 		log.Fatal("No outputs configured. See --help.")
 	}
 
-	stdoutCh := make(chan consumer.Message, 100)
+	bufsize := 0
+	stdoutCh := make(chan consumer.Message, bufsize)
 	fifoCh := func() []chan consumer.Message {
 		chSl := make([]chan consumer.Message, len(fifoPaths))
 		for i := range fifoPaths {
-			chSl[i] = make(chan consumer.Message, 100)
+			chSl[i] = make(chan consumer.Message, bufsize)
 		}
 		return chSl
 	}()
-	elaCh := make(chan consumer.Message, 100)
-	kafkaCh := make(chan consumer.Message, 100)
+	elaCh := make(chan consumer.Message, bufsize)
+	kafkaCh := make(chan consumer.Message, bufsize)
+	fileCh := make(chan consumer.Message, bufsize)
 
+	defer func() {
+		close(fileCh)
+		log.Trace("closing filestorage channel")
+	}()
 	defer close(stdoutCh)
 	defer func() {
 		for _, ch := range fifoCh {
@@ -168,6 +178,31 @@ func Send(msgs <-chan *consumer.Message) error {
 		}
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	if fileEnabled {
+		writer, err := filestorage.NewHandle(&filestorage.Config{
+			Dir:            viper.GetString("output.file.dir"),
+			Combined:       viper.GetString("output.file.path"),
+			Gzip:           viper.GetBool("output.file.gzip"),
+			Timestamp:      viper.GetBool("output.file.timestamp"),
+			RotateEnabled:  viper.GetBool("output.file.rotate.enabled"),
+			RotateInterval: viper.GetDuration("output.file.rotate.interval"),
+			Stream:         fileCh,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := writer.Do(ctx); err != nil {
+			log.Fatal(err)
+		}
+		defer writer.Wait()
+		go func() {
+			for err := range writer.Errors() {
+				log.Error(err)
+			}
+		}()
+	}
+
 	for m := range msgs {
 		if stdout {
 			stdoutCh <- *m
@@ -183,6 +218,10 @@ func Send(msgs <-chan *consumer.Message) error {
 		if kafkaEnabled {
 			kafkaCh <- *m
 		}
+		if fileEnabled {
+			fileCh <- *m
+		}
 	}
+	cancel()
 	return nil
 }
