@@ -78,7 +78,9 @@ func (d *DynamicWinlogbeat) SetAsset(obj meta.GameAsset) {
 
 // JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
 func (d DynamicWinlogbeat) JSONFormat() ([]byte, error) {
-	return json.Marshal(d)
+	obj := d.DynamicWinlogbeat
+	obj["GameMeta"] = d.GameMeta
+	return json.Marshal(obj)
 }
 
 type Suricata struct {

@@ -23,7 +23,7 @@ func spawnWorkers(
 	rx <-chan *consumer.Message,
 	workers int,
 	spooldir string,
-	mapping map[string]events.Atomic,
+	mapping consumer.ParseMap,
 ) (<-chan *consumer.Message, *utils.ErrChan) {
 	tx := make(chan *consumer.Message, 0)
 	errs := utils.NewErrChan(100, "Event parse worker runtime errors")
@@ -70,11 +70,11 @@ func spawnWorkers(
 	go func() {
 		defer close(tx)
 		defer close(errs.Items)
-		sourceToEvent := func(topic string) events.Atomic {
+		sourceToEvent := func(topic string) consumer.ParseMapping {
 			if val, ok := mapping[topic]; ok {
 				return val
 			}
-			return events.SimpleE
+			return consumer.ParseMapping{}
 		}
 		defer globalAssetCache.Close()
 		for i := 0; i < workers; i++ {
@@ -103,7 +103,9 @@ func spawnWorkers(
 				for msg := range rx {
 					atomic.AddUint64(&count, 1)
 
-					evType := sourceToEvent(msg.Source)
+					evInfo := sourceToEvent(msg.Source)
+					evType := evInfo.Atomic
+					evParse := evInfo.Parser
 					msg.Event = evType
 
 					if noparse {
@@ -112,7 +114,7 @@ func spawnWorkers(
 						continue loop
 					}
 
-					ev, err := parsers.ParseSyslogGameEvent(msg.Data, evType)
+					ev, err := parsers.Parse(msg.Data, evType, evParse)
 					if err != nil {
 						errs.Send(err)
 						continue loop

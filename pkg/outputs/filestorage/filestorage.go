@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
@@ -274,7 +275,7 @@ func writeSingleFile(
 				if !ok {
 					break loop
 				}
-				fmt.Fprintf(w, "%s\n", string(msg.Data))
+				fmt.Fprintf(w, "%s\n", strings.TrimRight(string(msg.Data), "\n"))
 				written++
 			case <-ctx.Done():
 				break loop

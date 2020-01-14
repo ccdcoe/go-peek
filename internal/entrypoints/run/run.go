@@ -51,28 +51,33 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		}
 	}()
 
-	mapping := func() map[string]events.Atomic {
-		out := make(map[string]events.Atomic)
+	mapping := func() consumer.ParseMap {
+		out := make(consumer.ParseMap)
 		for _, event := range events.Atomics {
+			p := viper.GetString(fmt.Sprintf("stream.%s.parser", event))
+			m := consumer.ParseMapping{
+				Atomic: event,
+				Parser: consumer.NewParser(p),
+			}
 			if src := viper.GetStringSlice(
 				fmt.Sprintf("stream.%s.kafka.topic", event.String()),
 			); len(src) > 0 {
 				for _, item := range src {
-					out[item] = event
+					out[item] = m
 				}
 			}
 			if src := viper.GetStringSlice(
 				fmt.Sprintf("stream.%s.dir", event.String()),
 			); len(src) > 0 {
 				for _, item := range src {
-					out[item] = event
+					out[item] = m
 				}
 			}
 			if src := viper.GetStringSlice(
 				fmt.Sprintf("stream.%s.uxsock", event.String()),
 			); len(src) > 0 {
 				for _, item := range src {
-					out[item] = event
+					out[item] = m
 				}
 			}
 		}

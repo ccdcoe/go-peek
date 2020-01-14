@@ -5,16 +5,20 @@ import (
 	"fmt"
 
 	"github.com/ccdcoe/go-peek/pkg/models/atomic"
+	"github.com/ccdcoe/go-peek/pkg/models/consumer"
 	"github.com/ccdcoe/go-peek/pkg/models/events"
 	"github.com/influxdata/go-syslog/rfc5424"
 )
 
-type Format int
-
-const (
-	ParseJSON Format = iota
-	ParseRFC5424
-)
+func Parse(data []byte, enum events.Atomic, p consumer.Parser) (interface{}, error) {
+	if p == consumer.RFC5424 {
+		return ParseSyslogGameEvent(data, enum)
+	}
+	if p == consumer.RawJSON {
+		return UnmarshalStructuredEvent(data, enum)
+	}
+	return nil, fmt.Errorf("UNSUPPORTED %s, %s for [%s]", p, enum, string(data))
+}
 
 func ParseSyslogGameEvent(data []byte, enum events.Atomic) (interface{}, error) {
 	bestEffort := true
@@ -29,23 +33,8 @@ func ParseSyslogGameEvent(data []byte, enum events.Atomic) (interface{}, error) 
 		Program:   *msg.Appname(),
 	}
 	switch enum {
-	case events.SuricataE:
-		var obj atomic.StaticSuricataEve
-		if err := json.Unmarshal([]byte(s.Message), &obj); err != nil {
-			return nil, err
-		}
-		return &events.Suricata{
-			StaticSuricataEve: obj,
-		}, nil
-	case events.EventLogE, events.SysmonE:
-		var obj atomic.DynamicWinlogbeat
-		if err := json.Unmarshal([]byte(s.Message), &obj); err != nil {
-			return nil, err
-		}
-		return &events.DynamicWinlogbeat{
-			Timestamp:         obj.Time(),
-			DynamicWinlogbeat: obj,
-		}, nil
+	case events.EventLogE, events.SysmonE, events.SuricataE:
+		return UnmarshalStructuredEvent([]byte(*msg.Message()), enum)
 	}
 
 	payload, err := atomic.ParseSyslogMessage(s)
@@ -73,4 +62,27 @@ func ParseSyslogGameEvent(data []byte, enum events.Atomic) (interface{}, error) 
 		}, nil
 	}
 	return nil, fmt.Errorf("Unsupported event type")
+}
+
+func UnmarshalStructuredEvent(data []byte, enum events.Atomic) (interface{}, error) {
+	switch enum {
+	case events.SuricataE:
+		var obj atomic.StaticSuricataEve
+		if err := json.Unmarshal([]byte(data), &obj); err != nil {
+			return nil, err
+		}
+		return &events.Suricata{
+			StaticSuricataEve: obj,
+		}, nil
+	case events.EventLogE, events.SysmonE:
+		var obj atomic.DynamicWinlogbeat
+		if err := json.Unmarshal([]byte(data), &obj); err != nil {
+			return nil, err
+		}
+		return &events.DynamicWinlogbeat{
+			Timestamp:         obj.Time(),
+			DynamicWinlogbeat: obj,
+		}, nil
+	}
+	return nil, fmt.Errorf("Unsupported structured event type")
 }

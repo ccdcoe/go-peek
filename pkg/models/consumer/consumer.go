@@ -93,3 +93,42 @@ func (o Offsets) Len() int64 {
 // TopicMapFn is a helper for allowing the user to define how individual messages should be handled
 // For example, which elasticsearch index to send the message to whereas final index name requires knowledge of event timestamp
 type TopicMapFn func(Message) string
+
+type Parser int
+
+const (
+	RFC5424 Parser = iota
+	RawJSON
+	PeekJSON
+)
+
+func NewParser(p string) Parser {
+	switch p {
+	case RFC5424.String():
+		return RFC5424
+	case RawJSON.String():
+		return RawJSON
+	default:
+		return PeekJSON
+	}
+}
+
+func (p Parser) String() string {
+	switch p {
+	case RFC5424:
+		return "rfc5424"
+	case RawJSON:
+		return "json-raw"
+	case PeekJSON:
+		return "json-peek"
+	default:
+		return "unknown parser"
+	}
+}
+
+type ParseMapping struct {
+	events.Atomic
+	Parser
+}
+
+type ParseMap map[string]ParseMapping

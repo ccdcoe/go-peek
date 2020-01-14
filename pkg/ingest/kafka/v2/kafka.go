@@ -77,7 +77,7 @@ func NewConsumer(c *Config) (*Consumer, error) {
 	}()
 	go func() {
 		obj.wg.Wait()
-		obj.group.Close()
+		//obj.group.Close()
 		close(obj.handle.messages)
 	}()
 	return obj, nil

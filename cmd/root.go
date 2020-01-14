@@ -60,7 +60,7 @@ func init() {
 	rootCmd.PersistentFlags().String("work-dir", path.Join(
 		os.Getenv("HOME"),
 		".local/peek",
-	), "Number of threads for decoding messages")
+	), "Working directory for storing dumps, temp files, etc.")
 	viper.BindPFlag("work.dir", rootCmd.PersistentFlags().Lookup("work-dir"))
 
 	initInputConfig()
@@ -106,6 +106,19 @@ func initStreamConfig() {
 				fmt.Sprintf("stream-%s-kafka-topic", stream),
 			),
 		)
+
+		rootCmd.PersistentFlags().String(
+			fmt.Sprintf("stream-%s-parser", stream),
+			"rfc5424",
+			fmt.Sprintf("Parser for event type %s. Supported options are rfc5424 for IETF syslog formatted messages, json-raw for structured events, and json-game for meta-enritched events.", stream),
+		)
+		viper.BindPFlag(
+			fmt.Sprintf("stream.%s.parser", stream),
+			rootCmd.PersistentFlags().Lookup(
+				fmt.Sprintf("stream-%s-parser", stream),
+			),
+		)
+
 	}
 }
 
