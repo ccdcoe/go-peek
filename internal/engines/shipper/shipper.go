@@ -150,6 +150,15 @@ func Send(
 			}).Fatal(err)
 		}
 		ela.Feed(elaCh, "replay", context.Background(), fn)
+		go func() {
+			debug := time.NewTicker(3 * time.Second)
+			for {
+				select {
+				case <-debug.C:
+					log.Debugf("%+v", ela.Stats())
+				}
+			}
+		}()
 	}
 
 	if stdout {

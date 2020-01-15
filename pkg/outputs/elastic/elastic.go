@@ -90,7 +90,7 @@ func NewHandle(c *Config) (*Handle, error) {
 		BulkSize(2 << 20).
 		FlushInterval(c.Interval).
 		Stats(true).
-		Do(context.Background())
+		Do(context.TODO())
 
 	if err != nil {
 		return h, err
@@ -188,4 +188,8 @@ func (h Handle) Close() error {
 	// may already be handled by return statement
 	h.indexer.Flush()
 	return h.indexer.Close()
+}
+
+func (b Handle) Stats() olivere.BulkProcessorStats {
+	return b.indexer.Stats()
 }
