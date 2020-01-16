@@ -203,8 +203,6 @@ func spawnWorkers(
 						if res := obj.MitreAttack(); res != nil {
 							res.Set()
 							m.MitreAttack = res
-							fmt.Println(m.MitreAttack)
-							panic("BREAK")
 						}
 					}
 					if checkRules {
