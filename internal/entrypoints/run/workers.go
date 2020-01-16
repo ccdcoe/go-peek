@@ -196,7 +196,15 @@ func spawnWorkers(
 									ID:   mapping.ID,
 									Name: mapping.Name,
 								})
+								m.MitreAttack.Set()
 							}
+						}
+					case *events.DynamicWinlogbeat:
+						if res := obj.MitreAttack(); res != nil {
+							res.Set()
+							m.MitreAttack = res
+							fmt.Println(m.MitreAttack)
+							panic("BREAK")
 						}
 					}
 					if checkRules {

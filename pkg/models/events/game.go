@@ -40,6 +40,26 @@ type DynamicWinlogbeat struct {
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
+func (d DynamicWinlogbeat) MitreAttack() *meta.MitreAttack {
+	if val, ok := d.GetField("winlog.event_data.RuleName"); ok {
+		if s, ok := val.(string); ok {
+			if bits := strings.Split(s, ","); len(bits) == 2 {
+				technique := &meta.Technique{}
+				if id := strings.Split(bits[0], "="); len(id) == 2 {
+					technique.ID = id[1]
+				}
+				if name := strings.Split(bits[1], "="); len(name) == 2 {
+					technique.Name = name[1]
+				}
+				return &meta.MitreAttack{
+					Techniques: []meta.Technique{*technique},
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // GetMessage implements MessageGetter
 func (d DynamicWinlogbeat) GetMessage() []string {
 	m, ok := d.DynamicWinlogbeat["message"].(string)
