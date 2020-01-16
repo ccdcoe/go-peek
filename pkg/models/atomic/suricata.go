@@ -24,6 +24,7 @@ type StaticSuricataEve struct {
 	DHCP map[string]interface{} `json:"dhcp,omitempty"`
 	SNMP map[string]interface{} `json:"snmp,omitempty"`
 	TFTP map[string]interface{} `json:"tftp,omitempty"`
+	SIP  map[string]interface{} `json:"sip,omitempty"`
 
 	FTPdata    map[string]interface{} `json:"ftp_data,omitempty"`
 	PacketInfo map[string]interface{} `json:"packet_info,omitempty"`
@@ -68,10 +69,50 @@ type EveBase struct {
 	Payload          string `json:"payload,omitempty"`
 	PayloadPrintable string `json:"payload_printable,omitempty"`
 	Stream           int    `json:"stream,omitempty"`
-	TXid             int    `json:"t_xid,omitempty"`
+	TXid             int    `json:"tx_id,omitempty"`
 	Vlan             []int  `json:"vlan,omitempty"`
 
 	NetInfo *NetInfo `json:"net_info,omitempty"`
+}
+
+func (e EveBase) GetField(key string) (interface{}, bool) {
+	switch key {
+	case "timestamp":
+		return e.Timestamp.String(), true
+	case "host":
+		return e.Host, true
+	case "event_type":
+		return e.EventType, true
+	case "proto":
+		return e.Proto, true
+	case "community_id":
+		return e.CommunityID, true
+	case "src_ip":
+		if e.SrcIP != nil {
+			return e.SrcIP.IP.String(), true
+		}
+	case "src_port":
+		return e.DestPort, true
+	case "dest_ip":
+		if e.DestIP != nil {
+			return e.DestIP.IP.String(), true
+		}
+	case "dest_port":
+		return e.DestPort, true
+	case "app_proto":
+		return e.AppProto, true
+	case "payload":
+		return e.Payload, true
+	case "payload_printable":
+		return e.PayloadPrintable, true
+	case "stream":
+		return e.Stream, true
+	case "tx_id":
+		return e.TXid, true
+	case "vlan":
+		return e.Vlan, true
+	}
+	return nil, false
 }
 
 type EveAlert struct {
@@ -87,6 +128,24 @@ type EveAlert struct {
 
 	Source *SrcTargetInfo `json:"source,omitempty"`
 	Target *SrcTargetInfo `json:"target,omitempty"`
+}
+
+func (e EveAlert) GetField(key string) (interface{}, bool) {
+	switch key {
+	case "action":
+		return e.Action, true
+	case "gid":
+		return e.Gid, true
+	case "signature_id":
+		return e.SignatureID, true
+	case "category":
+		return e.Category, true
+	case "severity":
+		return e.Severity, true
+	case "metadata":
+		return e.Metadata, true
+	}
+	return nil, false
 }
 
 type NetInfo struct {

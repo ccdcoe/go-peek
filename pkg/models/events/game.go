@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/ccdcoe/go-peek/pkg/models/atomic"
@@ -37,6 +38,20 @@ type DynamicWinlogbeat struct {
 	Timestamp time.Time `json:"@timestamp"`
 	atomic.DynamicWinlogbeat
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+// GetMessage implements MessageGetter
+func (d DynamicWinlogbeat) GetMessage() []string {
+	m, ok := d.DynamicWinlogbeat["message"].(string)
+	if ok {
+		return []string{m}
+	}
+	return nil
+}
+
+// GetField returns a success status and arbitrary field content if requested map key is present
+func (d DynamicWinlogbeat) GetField(key string) (interface{}, bool) {
+	return getField(key, d.DynamicWinlogbeat)
 }
 
 // Time implements atomic.Event
@@ -87,6 +102,75 @@ type Suricata struct {
 	atomic.StaticSuricataEve
 	Syslog   *atomic.Syslog `json:"syslog,omitempty"`
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+// GetMessage implements MessageGetter
+func (s Suricata) GetMessage() []string {
+	out := []string{s.PayloadPrintable}
+	if s.Alert != nil {
+		out = append(out, []string{s.Alert.Signature, s.Alert.Category}...)
+	}
+	return out
+}
+
+// GetField returns a success status and arbitrary field content if requested map key is present
+func (s Suricata) GetField(key string) (interface{}, bool) {
+	if !strings.Contains(key, ".") {
+		return s.StaticSuricataEve.EveBase.GetField(key)
+	}
+	bits := strings.SplitN(key, ".", 1)
+	if len(bits) == 2 && strings.HasPrefix(bits[0], "alert") && s.Alert != nil {
+		return s.Alert.GetField(bits[1])
+	}
+	switch bits[0] {
+	case "alert":
+		if s.Alert != nil {
+			return s.Alert.GetField(bits[1])
+		}
+	case "ssh":
+		return getField(bits[1], s.SSH)
+	case "tls":
+		return getField(bits[1], s.TLS)
+	case "tcp":
+		return getField(bits[1], s.TCP)
+	case "dns":
+		return getField(bits[1], s.DNS)
+	case "http":
+		return getField(bits[1], s.HTTP)
+	case "rdp":
+		return getField(bits[1], s.RDP)
+	case "smb":
+		return getField(bits[1], s.SMB)
+	case "dhcp":
+		return getField(bits[1], s.DHCP)
+	case "snmp":
+		return getField(bits[1], s.SNMP)
+	case "tftp":
+		return getField(bits[1], s.TFTP)
+	case "sip":
+		return getField(bits[1], s.SIP)
+	case "ftp_data":
+		return getField(bits[1], s.FTPdata)
+	case "packet_info":
+		return getField(bits[1], s.PacketInfo)
+	case "traffic":
+		return getField(bits[1], s.Traffic)
+	case "fileinfo":
+		return getField(bits[1], s.Fileinfo)
+	case "flow":
+		return getField(bits[1], s.Flow)
+	case "krb5":
+		return getField(bits[1], s.Krb5)
+	case "ikev2":
+		return getField(bits[1], s.Ikev2)
+	case "tunnel":
+		return getField(bits[1], s.Tunnel)
+	case "metadata":
+		return getField(bits[1], s.Metadata)
+	case "anomaly":
+		return getField(bits[1], s.Anomaly)
+	}
+	return nil, false
 }
 
 // JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
@@ -157,6 +241,16 @@ type Syslog struct {
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
+// GetMessage implements MessageGetter
+func (s Syslog) GetMessage() []string {
+	return []string{s.Syslog.Message}
+}
+
+// GetField returns a success status and arbitrary field content if requested map key is present
+func (s Syslog) GetField(key string) (interface{}, bool) {
+	return s.Syslog.GetField(key)
+}
+
 // JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
 func (s Syslog) JSONFormat() ([]byte, error) { return json.Marshal(s) }
 
@@ -203,6 +297,55 @@ type Snoopy struct {
 	atomic.Snoopy
 	Syslog   atomic.Syslog  `json:"syslog"`
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+// GetMessage implements MessageGetter
+func (s Snoopy) GetMessage() []string {
+	return []string{s.Cmd}
+}
+
+// GetField returns a success status and arbitrary field content if requested map key is present
+func (s Snoopy) GetField(key string) (interface{}, bool) {
+	switch key {
+	case "cmd":
+		return s.Cmd, true
+	case "filename":
+		return s.Filename, true
+	case "cwd":
+		return s.Cwd, true
+	case "tty":
+		return s.Tty, true
+	case "sid":
+		return s.Sid, true
+	case "gid":
+		return s.Gid, true
+	case "group":
+		return s.Group, true
+	case "uid":
+		return s.UID, true
+	case "username":
+		return s.Username, true
+	case "login":
+		return s.Login, true
+	}
+	if s.SSH != nil && strings.HasPrefix("ssh", key) {
+		bits := strings.SplitN(key, ".", 1)
+		switch bits[1] {
+		case "dst_port", "dest_port", "dport":
+			return s.SSH.DstPort, true
+		case "dst_ip", "dest_ip":
+			if s.SSH.DstIP != nil {
+				return s.SSH.DstIP.IP.String(), true
+			}
+		case "src_port", "sport":
+			return s.SSH.SrcPort, true
+		case "src_ip":
+			if s.SSH.SrcIP != nil {
+				return s.SSH.SrcIP.IP.String(), true
+			}
+		}
+	}
+	return s.Syslog.GetField(key)
 }
 
 // JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
@@ -275,6 +418,16 @@ type Eventlog struct {
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
+// GetMessage implements MessageGetter
+func (e *Eventlog) GetMessage() []string {
+	panic("not implemented") // TODO: Implement
+}
+
+// GetField returns a success status and arbitrary field content if requested map key is present
+func (e *Eventlog) GetField(_ string) (interface{}, bool) {
+	panic("not implemented") // TODO: Implement
+}
+
 // JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
 func (e Eventlog) JSONFormat() ([]byte, error) {
 	data := e.EventLog.DynamicEventLog
@@ -321,6 +474,16 @@ func (e Eventlog) Sender() string { return e.EventLog.Sender() }
 type ZeekCobalt struct {
 	atomic.ZeekCobalt
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+// GetMessage implements MessageGetter
+func (z *ZeekCobalt) GetMessage() []string {
+	panic("not implemented") // TODO: Implement
+}
+
+// GetField returns a success status and arbitrary field content if requested map key is present
+func (z *ZeekCobalt) GetField(_ string) (interface{}, bool) {
+	panic("not implemented") // TODO: Implement
 }
 
 // JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
@@ -374,6 +537,16 @@ func (z ZeekCobalt) Sender() string { return z.ZeekCobalt.Sender() }
 type MazeRunner struct {
 	atomic.MazeRunner
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+// GetMessage implements MessageGetter
+func (m *MazeRunner) GetMessage() []string {
+	panic("not implemented") // TODO: Implement
+}
+
+// GetField returns a success status and arbitrary field content if requested map key is present
+func (m *MazeRunner) GetField(_ string) (interface{}, bool) {
+	panic("not implemented") // TODO: Implement
 }
 
 // JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal

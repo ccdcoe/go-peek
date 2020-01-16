@@ -2,6 +2,7 @@ package events
 
 import (
 	"bytes"
+	"strings"
 	"time"
 )
 
@@ -101,4 +102,20 @@ func TryFixBrokenMessage(data []byte) []byte {
 	data = bytes.ReplaceAll(data, []byte(`\)`), []byte(`)`))
 	data = bytes.ReplaceAll(data, []byte(`\*`), []byte(`*`))
 	return data
+}
+
+func getField(key string, data map[string]interface{}) (interface{}, bool) {
+	if data == nil {
+		return nil, false
+	}
+	bits := strings.SplitN(key, ".", 1)
+	if val, ok := data[bits[0]]; ok {
+		switch res := val.(type) {
+		case map[string]interface{}:
+			return getField(bits[1], res)
+		default:
+			return val, ok
+		}
+	}
+	return nil, false
 }

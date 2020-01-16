@@ -2,6 +2,8 @@ package meta
 
 import (
 	"encoding/json"
+
+	"github.com/markuskont/go-sigma-rule-engine/pkg/sigma"
 )
 
 // AssetGetterSetter is a collection of methods for enritching exercise events with meta information for correlation without explicitly knowing the item type in runtime
@@ -23,7 +25,8 @@ type GameAsset struct {
 	DirectionString string `json:"DirectionString"`
 	Directionality  `json:"Directionality"`
 
-	MitreAttack *MitreAttack `json:"MitreAttack"`
+	MitreAttack  *MitreAttack  `json:"MitreAttack"`
+	SigmaResults sigma.Results `json:"SigmaResults"`
 
 	Source      *Asset `json:"Src"`
 	Destination *Asset `json:"Dest"`

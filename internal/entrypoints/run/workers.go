@@ -14,6 +14,7 @@ import (
 	"github.com/ccdcoe/go-peek/pkg/models/meta"
 	"github.com/ccdcoe/go-peek/pkg/parsers"
 	"github.com/ccdcoe/go-peek/pkg/utils"
+	"github.com/markuskont/go-sigma-rule-engine/pkg/sigma"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -67,6 +68,7 @@ func spawnWorkers(
 			}
 		}
 	}()
+
 	go func() {
 		defer close(tx)
 		defer close(errs.Items)
@@ -99,6 +101,30 @@ func spawnWorkers(
 					logContext.Fatal(err)
 				}
 
+				ruleset, checkRules, quickmatch := func() (*sigma.Ruleset, bool, bool) {
+					if !viper.GetBool("processor.sigma.enabled") {
+						return nil, false, false
+					}
+					ruleset, err := sigma.NewRuleset(&sigma.Config{
+						Directories: viper.GetStringSlice("processor.sigma.dir"),
+					})
+					if err != nil {
+						log.Fatal(err)
+					}
+					for _, unsupp := range ruleset.Unsupported {
+						log.Warnf("%+v", unsupp)
+					}
+					for _, err := range ruleset.Broken {
+						log.Errorf("%+v", err)
+					}
+					log.Infof(
+						"Successfully parsed %d sigma rules. Unsupported %d. Broken %d",
+						ruleset.Total,
+						len(ruleset.Unsupported),
+						len(ruleset.Broken),
+					)
+					return ruleset, true, viper.GetBool("processor.sigma.quickmatch")
+				}()
 			loop:
 				for msg := range rx {
 					atomic.AddUint64(&count, 1)
@@ -170,6 +196,13 @@ func spawnWorkers(
 									ID:   mapping.ID,
 									Name: mapping.Name,
 								})
+							}
+						}
+					}
+					if checkRules {
+						if obj, ok := ev.(sigma.EventChecker); ok {
+							if res, match := ruleset.Rules.Check(obj, evType.String(), quickmatch); match {
+								m.SigmaResults = res
 							}
 						}
 					}

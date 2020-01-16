@@ -41,6 +41,29 @@ func (e ErrSyslogMsgParse) Error() string {
 	return fmt.Sprintf("Cannot parse syslog msg [%s], offset %d. Err: [%s]", e.Buf, e.Offset, e.Err)
 }
 
+func (s Syslog) GetField(key string) (interface{}, bool) {
+	switch key {
+	case "timestamp", "@timestamp", "Time", "time":
+		return s.Timestamp.String(), true
+	case "syslog_host", "host", "Host":
+		return s.Host, true
+	case "syslog_program", "program", "Program":
+		return s.Program, true
+	case "syslog_severity", "severity", "Severity":
+		return s.Severity, true
+	case "syslog_facility", "facility", "Facility":
+		return s.Facility, true
+	case "syslog_message", "message", "Message":
+		return s.Message, true
+	case "syslog_ip", "ip", "IP":
+		if s.IP == nil {
+			return nil, false
+		}
+		return s.IP.IP.String(), true
+	}
+	return nil, false
+}
+
 // ParseSyslog is used to extract known events that are usually packaged in syslog payload
 // unsupported messages will be passed through cleanly
 // expects a type switch on receiving end
