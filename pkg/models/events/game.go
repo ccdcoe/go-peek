@@ -16,6 +16,7 @@ type GameEvent interface {
 	atomic.Event
 	meta.AssetGetterSetter
 	atomic.JSONFormatter
+	meta.EventDataDumper
 }
 
 type ErrEventParse struct {
@@ -38,6 +39,50 @@ type DynamicWinlogbeat struct {
 	Timestamp time.Time `json:"@timestamp"`
 	atomic.DynamicWinlogbeat
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+// DumpEventData implements EventDataDumper
+func (d DynamicWinlogbeat) DumpEventData() *meta.EventData {
+	return &meta.EventData{
+		Key: d.Source(),
+		ID: func() int {
+			if val, ok := getField("winlog.event_id", d.DynamicWinlogbeat); ok {
+				num, ok := val.(float64)
+				if ok {
+					return int(num)
+				}
+			}
+			return 0
+		}(),
+		Fields: func() []string {
+			out := make([]string, 0)
+			if val, ok := getField("process.name", d.DynamicWinlogbeat); ok {
+				s, ok := val.(string)
+				if ok {
+					out = append(out, s)
+				}
+			}
+			if val, ok := getField("winlog.event_data.TargetImage", d.DynamicWinlogbeat); ok {
+				s, ok := val.(string)
+				if ok {
+					out = append(out, s)
+				}
+			}
+			if val, ok := getField("winlog.task", d.DynamicWinlogbeat); ok {
+				s, ok := val.(string)
+				if ok {
+					out = append(out, s)
+				}
+			}
+			if val, ok := getField("winlog.user.name", d.DynamicWinlogbeat); ok {
+				s, ok := val.(string)
+				if ok {
+					out = append(out, s)
+				}
+			}
+			return out
+		}(),
+	}
 }
 
 func (d DynamicWinlogbeat) MitreAttack() *meta.MitreAttack {
@@ -122,6 +167,28 @@ type Suricata struct {
 	atomic.StaticSuricataEve
 	Syslog   *atomic.Syslog `json:"syslog,omitempty"`
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+// DumpEventData implements EventDataDumper
+func (s Suricata) DumpEventData() *meta.EventData {
+	return &meta.EventData{
+		ID: func() int {
+			if s.Alert != nil {
+				return s.Alert.SignatureID
+			}
+			return 0
+		}(),
+		Key: s.EventType,
+		Fields: func() []string {
+			if s.Alert == nil {
+				return nil
+			}
+			return []string{
+				s.Alert.Signature,
+				s.Alert.Category,
+			}
+		}(),
+	}
 }
 
 // GetMessage implements MessageGetter
@@ -261,6 +328,15 @@ type Syslog struct {
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
+// DumpEventData implements EventDataDumper
+func (s Syslog) DumpEventData() *meta.EventData {
+	return &meta.EventData{
+		ID:     0,
+		Key:    s.Syslog.Program,
+		Fields: []string{s.Syslog.Message},
+	}
+}
+
 // GetMessage implements MessageGetter
 func (s Syslog) GetMessage() []string {
 	return []string{s.Syslog.Message}
@@ -317,6 +393,19 @@ type Snoopy struct {
 	atomic.Snoopy
 	Syslog   atomic.Syslog  `json:"syslog"`
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+// DumpEventData implements EventDataDumper
+func (s Snoopy) DumpEventData() *meta.EventData {
+	return &meta.EventData{
+		ID:  0,
+		Key: s.Filename,
+		Fields: []string{
+			s.Cmd,
+			s.Cwd,
+			s.Username,
+		},
+	}
 }
 
 // GetMessage implements MessageGetter
@@ -438,6 +527,11 @@ type Eventlog struct {
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
+// DumpEventData implements EventDataDumper
+func (e *Eventlog) DumpEventData() *meta.EventData {
+	panic("not implemented") // TODO: Implement
+}
+
 // GetMessage implements MessageGetter
 func (e *Eventlog) GetMessage() []string {
 	panic("not implemented") // TODO: Implement
@@ -494,6 +588,11 @@ func (e Eventlog) Sender() string { return e.EventLog.Sender() }
 type ZeekCobalt struct {
 	atomic.ZeekCobalt
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+// DumpEventData implements EventDataDumper
+func (z *ZeekCobalt) DumpEventData() *meta.EventData {
+	panic("not implemented") // TODO: Implement
 }
 
 // GetMessage implements MessageGetter
@@ -557,6 +656,11 @@ func (z ZeekCobalt) Sender() string { return z.ZeekCobalt.Sender() }
 type MazeRunner struct {
 	atomic.MazeRunner
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+// DumpEventData implements EventDataDumper
+func (m *MazeRunner) DumpEventData() *meta.EventData {
+	panic("not implemented") // TODO: Implement
 }
 
 // GetMessage implements MessageGetter

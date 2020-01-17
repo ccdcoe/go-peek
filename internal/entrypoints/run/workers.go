@@ -180,7 +180,7 @@ func spawnWorkers(
 
 					// Asset checking stuff
 					if ip := m.Asset.IP; ip != nil {
-						if val, ok := localAssetCache.GetIP(ip); ok && val.IsAsset {
+						if val, ok := localAssetCache.GetIP(ip.String()); ok && val.IsAsset {
 							m.Asset = *val.Data
 						}
 					} else if host := m.Asset.Host; host != "" {
@@ -190,7 +190,7 @@ func spawnWorkers(
 					}
 					if m.Source != nil {
 						if ip := m.Source.IP; ip != nil {
-							if val, ok := localAssetCache.GetIP(ip); ok && val.IsAsset && val.Data != nil {
+							if val, ok := localAssetCache.GetIP(ip.String()); ok && val.IsAsset && val.Data != nil {
 								m.Source = val.Data
 								m.Source.IP = ip
 							}
@@ -198,7 +198,7 @@ func spawnWorkers(
 					}
 					if m.Destination != nil {
 						if ip := m.Destination.IP; ip != nil {
-							if val, ok := localAssetCache.GetIP(ip); ok && val.IsAsset && val.Data != nil {
+							if val, ok := localAssetCache.GetIP(ip.String()); ok && val.IsAsset && val.Data != nil {
 								m.Destination = val.Data
 								m.Destination.IP = ip
 							}
@@ -232,6 +232,9 @@ func spawnWorkers(
 					if len(m.MitreAttack.Techniques) == 0 {
 						m.MitreAttack = nil
 					}
+					if emit && (m.MitreAttack != nil || m.SigmaResults != nil) {
+						m.EventData = e.DumpEventData()
+					}
 					e.SetAsset(*m.SetDirection())
 
 					modified, err := e.JSONFormat()
@@ -240,7 +243,6 @@ func spawnWorkers(
 						continue loop
 					}
 					msg.Data = modified
-					//if emit && (e.GetAsset().MitreAttack != nil || (e.GetAsset().SigmaResults != nil && len(e.GetAsset().SigmaResults) > 0)) {
 					if emit && (m.MitreAttack != nil || m.SigmaResults != nil) {
 						emitCh <- msg
 					}

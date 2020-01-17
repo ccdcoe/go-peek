@@ -3,7 +3,6 @@ package assetcache
 import (
 	"context"
 	"math/rand"
-	"net"
 	"sync"
 	"time"
 
@@ -89,22 +88,22 @@ func (l LocalCache) GetString(key string) (*Asset, bool) {
 	}
 	return nil, false
 }
-func (l LocalCache) GetIP(key net.IP) (*Asset, bool) {
+func (l LocalCache) GetIP(key string) (*Asset, bool) {
 	if l.assets == nil {
 		return nil, false
 	}
 	l.Lock()
 	defer l.Unlock()
-	if val, ok := l.assets[key.String()]; ok {
+	if val, ok := l.assets[key]; ok {
 		return &val, true
 	}
 	if l.parent != nil {
 
-		if val, ok := l.parent.GetString(key.String()); ok {
-			l.assets[key.String()] = *val
+		if val, ok := l.parent.GetString(key); ok {
+			l.assets[key] = *val
 			return val, true
 		} else if !ok && val != nil {
-			l.assets[key.String()] = *val
+			l.assets[key] = *val
 		}
 
 	}

@@ -28,6 +28,8 @@ type GameAsset struct {
 	MitreAttack  *MitreAttack  `json:"MitreAttack"`
 	SigmaResults sigma.Results `json:"SigmaResults"`
 
+	EventData *EventData `json:"EventData"`
+
 	Source      *Asset `json:"Src"`
 	Destination *Asset `json:"Dest"`
 }
@@ -99,4 +101,18 @@ func (d Directionality) String() string {
 	default:
 		return "Unknown"
 	}
+}
+
+type EventDataDumper interface {
+	// DumpEventData implements EventDataDumper
+	DumpEventData() *EventData
+}
+
+// EventData contains core info fields from event
+// For quickly filtering events in other scripts without having to access event-specific fields
+// For example: Suricata signature ID and name, sysmon/snoopy captured commands, etc
+type EventData struct {
+	ID     int      `json:"ID"`
+	Key    string   `json:"Key"`
+	Fields []string `json:"Fields"`
 }
