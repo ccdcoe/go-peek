@@ -44,13 +44,15 @@ func ParseSyslogGameEvent(data []byte, enum events.Atomic) (interface{}, error) 
 	switch val := payload.(type) {
 	case *atomic.Snoopy:
 		return &events.Snoopy{
-			Syslog: s,
-			Snoopy: *val,
+			Syslog:    s,
+			Snoopy:    *val,
+			Timestamp: s.Time(),
 		}, nil
 	case atomic.Snoopy:
 		return &events.Snoopy{
-			Syslog: s,
-			Snoopy: val,
+			Syslog:    s,
+			Snoopy:    val,
+			Timestamp: s.Time(),
 		}, nil
 	case atomic.Syslog:
 		return &events.Syslog{

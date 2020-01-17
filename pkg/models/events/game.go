@@ -390,6 +390,7 @@ func (s Syslog) Source() string { return s.Syslog.Source() }
 func (s Syslog) Sender() string { return s.Syslog.Sender() }
 
 type Snoopy struct {
+	Timestamp time.Time `json:"@timestamp"`
 	atomic.Snoopy
 	Syslog   atomic.Syslog  `json:"syslog"`
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
