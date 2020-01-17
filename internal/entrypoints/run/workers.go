@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ccdcoe/go-peek/internal/engines/shipper"
 	"github.com/ccdcoe/go-peek/pkg/intel/assetcache"
 	"github.com/ccdcoe/go-peek/pkg/intel/mitremeerkat"
 	"github.com/ccdcoe/go-peek/pkg/intel/wise"
@@ -69,7 +70,22 @@ func spawnWorkers(
 		}
 	}()
 
+	emitCh := make(chan *consumer.Message, 100)
+	emit := true
 	go func() {
+		defer close(emitCh)
+		if err := shipper.Send(emitCh, "emit"); err != nil {
+			switch err.(type) {
+			case shipper.ErrNoOutputs, *shipper.ErrNoOutputs:
+				log.Warn("Emitter has no outputs. Will not be enabled.")
+			default:
+				log.Fatal(err)
+			}
+		}
+		emit = false
+	}()
+
+	go func(emit bool) {
 		defer close(tx)
 		defer close(errs.Items)
 		sourceToEvent := func(topic string) consumer.ParseMapping {
@@ -81,7 +97,7 @@ func spawnWorkers(
 		defer globalAssetCache.Close()
 		for i := 0; i < workers; i++ {
 			wg.Add(1)
-			go func(id int) {
+			go func(id int, emit bool) {
 				defer wg.Done()
 				defer log.Tracef("worker %d done", id)
 				logContext := log.WithFields(log.Fields{
@@ -213,18 +229,26 @@ func spawnWorkers(
 						}
 					}
 
+					if len(m.MitreAttack.Techniques) == 0 {
+						m.MitreAttack = nil
+					}
 					e.SetAsset(*m.SetDirection())
+
 					modified, err := e.JSONFormat()
 					if err != nil {
 						errs.Send(err)
 						continue loop
 					}
 					msg.Data = modified
+					//if emit && (e.GetAsset().MitreAttack != nil || (e.GetAsset().SigmaResults != nil && len(e.GetAsset().SigmaResults) > 0)) {
+					if emit && (m.MitreAttack != nil || m.SigmaResults != nil) {
+						emitCh <- msg
+					}
 					tx <- msg
 				}
-			}(i)
+			}(i, emit)
 		}
 		wg.Wait()
-	}()
+	}(emit)
 	return tx, errs
 }

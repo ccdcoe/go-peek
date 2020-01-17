@@ -150,7 +150,7 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	if err := shipper.Send(play(discoverFiles, *replayInterval)); err != nil {
+	if err := shipper.Send(play(discoverFiles, *replayInterval), "output"); err != nil {
 		log.Fatal(err)
 	}
 

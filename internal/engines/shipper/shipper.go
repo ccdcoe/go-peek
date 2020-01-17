@@ -14,15 +14,24 @@ import (
 	"github.com/spf13/viper"
 )
 
+type ErrNoOutputs struct {
+	Name string
+}
+
+func (e ErrNoOutputs) Error() string {
+	return fmt.Sprintf("No outputs for %s module. See --help.", e.Name)
+}
+
 func Send(
 	msgs <-chan *consumer.Message,
+	module string,
 ) error {
 	// TODO - move code to internal/output or something, wrap for reusability in multiple subcommands
 	var (
-		stdout      = viper.GetBool("output.stdout")
-		fifoPaths   = viper.GetStringSlice("output.fifo.path")
+		stdout      = viper.GetBool(module + ".stdout")
+		fifoPaths   = viper.GetStringSlice(module + ".fifo.path")
 		fifoEnabled = func() bool {
-			if !viper.GetBool("output.fifo.enabled") {
+			if !viper.GetBool(module + ".fifo.enabled") {
 				return false
 			}
 			if fifoPaths == nil || len(fifoPaths) == 0 {
@@ -30,13 +39,13 @@ func Send(
 			}
 			return true
 		}()
-		elaEnabled   = viper.GetBool("output.elastic.enabled")
-		kafkaEnabled = viper.GetBool("output.kafka.enabled")
-		fileEnabled  = viper.GetBool("output.file.enabled")
+		elaEnabled   = viper.GetBool(module + ".elastic.enabled")
+		kafkaEnabled = viper.GetBool(module + ".kafka.enabled")
+		fileEnabled  = viper.GetBool(module + ".file.enabled")
 	)
 
 	if !stdout && !fifoEnabled && !elaEnabled && !kafkaEnabled && !fileEnabled {
-		log.Fatal("No outputs configured. See --help.")
+		return ErrNoOutputs{Name: module}
 	}
 
 	bufsize := 0
@@ -67,12 +76,12 @@ func Send(
 
 	if kafkaEnabled {
 		var fn consumer.TopicMapFn
-		prefix := viper.GetString("output.kafka.prefix")
-		if viper.GetBool("output.kafka.merge") {
+		prefix := viper.GetString(module + ".kafka.prefix")
+		if viper.GetBool(module + ".kafka.merge") {
 			fn = func(msg consumer.Message) string {
 				return prefix
 			}
-		} else if topic := viper.GetString("output.kafka.topic"); topic != "" {
+		} else if topic := viper.GetString(module + ".kafka.topic"); topic != "" {
 			fn = func(msg consumer.Message) string {
 				return topic
 			}
@@ -87,13 +96,13 @@ func Send(
 			}
 		}
 
-		kafkaProducer, err := kafka.NewProducer(&kafka.Config{Brokers: viper.GetStringSlice("output.kafka.host")})
+		kafkaProducer, err := kafka.NewProducer(&kafka.Config{Brokers: viper.GetStringSlice(module + ".kafka.host")})
 		if err != nil {
 			log.WithFields(log.Fields{
-				"hosts": viper.GetStringSlice("output.kafka.host"),
+				"hosts": viper.GetStringSlice(module + ".kafka.host"),
 			}).Fatal(err)
 		}
-		kafkaProducer.Feed(kafkaCh, "replay", context.Background(), fn)
+		kafkaProducer.Feed(kafkaCh, module, context.Background(), fn)
 		// TODO - better producer error handler, but panic is overkill for now
 		go func() {
 			every := time.NewTicker(1 * time.Second)
@@ -110,8 +119,8 @@ func Send(
 
 	if elaEnabled {
 		var fn consumer.TopicMapFn
-		prefix := viper.GetString("output.elastic.prefix")
-		if viper.GetBool("output.elastic.merge") {
+		prefix := viper.GetString(module + ".elastic.prefix")
+		if viper.GetBool(module + ".elastic.merge") {
 			fn = func(msg consumer.Message) string {
 				return fmt.Sprintf(
 					"%s-%s",
@@ -140,22 +149,22 @@ func Send(
 		}
 
 		ela, err := elastic.NewHandle(&elastic.Config{
-			Workers:  viper.GetInt("output.elastic.threads"),
+			Workers:  viper.GetInt(module + ".elastic.threads"),
 			Interval: 5 * time.Second,
-			Hosts:    viper.GetStringSlice("output.elastic.host"),
+			Hosts:    viper.GetStringSlice(module + ".elastic.host"),
 		})
 		if err != nil {
 			log.WithFields(log.Fields{
-				"hosts": viper.GetStringSlice("output.elastic.host"),
+				"hosts": viper.GetStringSlice(module + ".elastic.host"),
 			}).Fatal(err)
 		}
-		ela.Feed(elaCh, "replay", context.Background(), fn)
+		ela.Feed(elaCh, module, context.Background(), fn)
 		go func() {
 			debug := time.NewTicker(3 * time.Second)
 			for {
 				select {
 				case <-debug.C:
-					log.Debugf("%+v", ela.Stats())
+					log.Debugf("%s: %+v", module, ela.Stats())
 				}
 			}
 		}()
@@ -190,12 +199,12 @@ func Send(
 	ctx, cancel := context.WithCancel(context.Background())
 	if fileEnabled {
 		writer, err := filestorage.NewHandle(&filestorage.Config{
-			Dir:            viper.GetString("output.file.dir"),
-			Combined:       viper.GetString("output.file.path"),
-			Gzip:           viper.GetBool("output.file.gzip"),
-			Timestamp:      viper.GetBool("output.file.timestamp"),
-			RotateEnabled:  viper.GetBool("output.file.rotate.enabled"),
-			RotateInterval: viper.GetDuration("output.file.rotate.interval"),
+			Dir:            viper.GetString(module + ".file.dir"),
+			Combined:       viper.GetString(module + ".file.path"),
+			Gzip:           viper.GetBool(module + ".file.gzip"),
+			Timestamp:      viper.GetBool(module + ".file.timestamp"),
+			RotateEnabled:  viper.GetBool(module + ".file.rotate.enabled"),
+			RotateInterval: viper.GetDuration(module + ".file.rotate.interval"),
 			Stream:         fileCh,
 		})
 		if err != nil {

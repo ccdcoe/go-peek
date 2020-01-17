@@ -132,7 +132,7 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		}
 	}(context.TODO())
 
-	if err := shipper.Send(modified); err != nil {
+	if err := shipper.Send(modified, "output"); err != nil {
 		log.Fatal(err)
 	}
 }

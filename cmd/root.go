@@ -66,7 +66,8 @@ func init() {
 	initInputConfig()
 	initProcessorConfig()
 	initStreamConfig()
-	initOutputConfig()
+	initOutputConfig("output")
+	initOutputConfig("emit")
 }
 
 func initStreamConfig() {
@@ -206,95 +207,95 @@ func initProcessorConfig() {
 	viper.BindPFlag("processor.sigma.quickmatch", rootCmd.PersistentFlags().Lookup("processor-sigma-quickmatch"))
 }
 
-func initOutputConfig() {
+func initOutputConfig(prefix string) {
 	// Elastic
-	rootCmd.PersistentFlags().Bool("output-elastic-enabled", false,
+	rootCmd.PersistentFlags().Bool(prefix+"-elastic-enabled", false,
 		`Enable elasticsearch output.`)
-	viper.BindPFlag("output.elastic.enabled", rootCmd.PersistentFlags().Lookup("output-elastic-enabled"))
+	viper.BindPFlag(prefix+".elastic.enabled", rootCmd.PersistentFlags().Lookup(prefix+"-elastic-enabled"))
 
-	rootCmd.PersistentFlags().StringSlice("output-elastic-host", []string{"http://localhost:9200"},
+	rootCmd.PersistentFlags().StringSlice(prefix+"-elastic-host", []string{"http://localhost:9200"},
 		`Elasticsearch http proxy host. Can be specified multiple times to use a cluster.`)
-	viper.BindPFlag("output.elastic.host", rootCmd.PersistentFlags().Lookup("output-elastic-host"))
+	viper.BindPFlag(prefix+".elastic.host", rootCmd.PersistentFlags().Lookup(prefix+"-elastic-host"))
 
-	rootCmd.PersistentFlags().String("output-elastic-prefix", "events",
+	rootCmd.PersistentFlags().String(prefix+"-elastic-prefix", "events",
 		`Prefix for all index patterns. For example Suricata events would follow a pattern <prefix>-suricata-YYYY.MM.DD`)
-	viper.BindPFlag("output.elastic.prefix", rootCmd.PersistentFlags().Lookup("output-elastic-prefix"))
+	viper.BindPFlag(prefix+".elastic.prefix", rootCmd.PersistentFlags().Lookup(prefix+"-elastic-prefix"))
 
-	rootCmd.PersistentFlags().Bool("output-elastic-merge", false,
+	rootCmd.PersistentFlags().Bool(prefix+"-elastic-merge", false,
 		`Send all messages to a single index pattern, as opposed to creating an index per event type.`)
-	viper.BindPFlag("output.elastic.merge", rootCmd.PersistentFlags().Lookup("output-elastic-merge"))
+	viper.BindPFlag(prefix+".elastic.merge", rootCmd.PersistentFlags().Lookup(prefix+"-elastic-merge"))
 
-	rootCmd.PersistentFlags().Bool("output-elastic-hourly", false,
+	rootCmd.PersistentFlags().Bool(prefix+"-elastic-hourly", false,
 		`Hourly index pattern as opposed to daily. In other word, new index would be created every hour. Avoid in production, will explode your shard count.`)
-	viper.BindPFlag("output.elastic.hourly", rootCmd.PersistentFlags().Lookup("output-elastic-hourly"))
+	viper.BindPFlag(prefix+".elastic.hourly", rootCmd.PersistentFlags().Lookup(prefix+"-elastic-hourly"))
 
-	rootCmd.PersistentFlags().Int("output-elastic-threads", viper.GetInt("work.threads"),
+	rootCmd.PersistentFlags().Int(prefix+"-elastic-threads", viper.GetInt("work.threads"),
 		`Number of workers. Can be useful for increasing throughput when elastic cluster has a lot of resources.`)
-	viper.BindPFlag("output.elastic.threads", rootCmd.PersistentFlags().Lookup("output-elastic-threads"))
+	viper.BindPFlag(prefix+".elastic.threads", rootCmd.PersistentFlags().Lookup(prefix+"-elastic-threads"))
 
 	// Kafka
-	rootCmd.PersistentFlags().Bool("output-kafka-enabled", false,
+	rootCmd.PersistentFlags().Bool(prefix+"-kafka-enabled", false,
 		`Enable kafka producer.`)
-	viper.BindPFlag("output.kafka.enabled", rootCmd.PersistentFlags().Lookup("output-kafka-enabled"))
+	viper.BindPFlag(prefix+".kafka.enabled", rootCmd.PersistentFlags().Lookup(prefix+"-kafka-enabled"))
 
-	rootCmd.PersistentFlags().StringSlice("output-kafka-host", []string{"localhost:9092"},
+	rootCmd.PersistentFlags().StringSlice(prefix+"-kafka-host", []string{"localhost:9092"},
 		`Kafka bootstrap broker for producer. Can be specified multiple times to use a cluster.`)
-	viper.BindPFlag("output.kafka.host", rootCmd.PersistentFlags().Lookup("output-kafka-host"))
+	viper.BindPFlag(prefix+".kafka.host", rootCmd.PersistentFlags().Lookup(prefix+"-kafka-host"))
 
-	rootCmd.PersistentFlags().String("output-kafka-prefix", "events",
+	rootCmd.PersistentFlags().String(prefix+"-kafka-prefix", "events",
 		`Prefix for topic names. For example Suricata events would be sent to <prefix>-suricata`)
-	viper.BindPFlag("output.kafka.prefix", rootCmd.PersistentFlags().Lookup("output-kafka-prefix"))
+	viper.BindPFlag(prefix+".kafka.prefix", rootCmd.PersistentFlags().Lookup(prefix+"-kafka-prefix"))
 
-	rootCmd.PersistentFlags().String("output-kafka-topic", "",
+	rootCmd.PersistentFlags().String(prefix+"-kafka-topic", "",
 		`Optional topic name for producing messages. Applies on all streams and overrides --output-kafka-prefix and --output-kafka-merge parameters. Meant for simple scenarios when dynamic stream splitting is not needed.`)
-	viper.BindPFlag("output.kafka.topic", rootCmd.PersistentFlags().Lookup("output-kafka-topic"))
+	viper.BindPFlag(prefix+".kafka.topic", rootCmd.PersistentFlags().Lookup(prefix+"-kafka-topic"))
 
-	rootCmd.PersistentFlags().Bool("output-kafka-merge", false,
+	rootCmd.PersistentFlags().Bool(prefix+"-kafka-merge", false,
 		`Send all messages to a single topic, as opposed to topic per event type.`)
-	viper.BindPFlag("output.kafka.merge", rootCmd.PersistentFlags().Lookup("output-kafka-merge"))
+	viper.BindPFlag(prefix+".kafka.merge", rootCmd.PersistentFlags().Lookup(prefix+"-kafka-merge"))
 
 	// fifo
-	rootCmd.PersistentFlags().StringSlice("output-fifo-path", []string{},
+	rootCmd.PersistentFlags().StringSlice(prefix+"-fifo-path", []string{},
 		`Named pipe, or FIFO, for outputting event messages. Multiple outputs can be specified.`)
-	viper.BindPFlag("output.fifo.path", rootCmd.PersistentFlags().Lookup("output-fifo-path"))
+	viper.BindPFlag(prefix+".fifo.path", rootCmd.PersistentFlags().Lookup(prefix+"-fifo-path"))
 
 	// stdout
-	rootCmd.PersistentFlags().Bool("output-stdout", false,
+	rootCmd.PersistentFlags().Bool(prefix+"-stdout", false,
 		`Print output messages to stdout. Good for simple cli piping and debug.`)
-	viper.BindPFlag("output.stdout", rootCmd.PersistentFlags().Lookup("output-stdout"))
+	viper.BindPFlag(prefix+".stdout", rootCmd.PersistentFlags().Lookup(prefix+"-stdout"))
 
 	// regular file output
-	rootCmd.PersistentFlags().Bool("output-file-enabled", false,
+	rootCmd.PersistentFlags().Bool(prefix+"-file-enabled", false,
 		`Write all messages to single file. Good for creating and archive.`)
-	viper.BindPFlag("output.file.enabled", rootCmd.PersistentFlags().Lookup("output-file-enabled"))
+	viper.BindPFlag(prefix+".file.enabled", rootCmd.PersistentFlags().Lookup(prefix+"-file-enabled"))
 
-	rootCmd.PersistentFlags().String("output-file-path", "",
+	rootCmd.PersistentFlags().String(prefix+"-file-path", "",
 		`Path for output file.`)
-	viper.BindPFlag("output.file.path", rootCmd.PersistentFlags().Lookup("output-file-path"))
+	viper.BindPFlag(prefix+".file.path", rootCmd.PersistentFlags().Lookup(prefix+"-file-path"))
 
-	rootCmd.PersistentFlags().String("output-file-dir", "",
+	rootCmd.PersistentFlags().String(prefix+"-file-dir", "",
 		`Direcotry for sorted output files.`)
-	viper.BindPFlag("output.file.dir", rootCmd.PersistentFlags().Lookup("output-file-dir"))
+	viper.BindPFlag(prefix+".file.dir", rootCmd.PersistentFlags().Lookup(prefix+"-file-dir"))
 
-	rootCmd.PersistentFlags().Bool("output-file-gzip", false,
+	rootCmd.PersistentFlags().Bool(prefix+"-file-gzip", false,
 		`Write directly to gzip file. Reduces disk usage by approximately 90 per cent. Cannot be used together with --output-file-rotate-enabled.`)
-	viper.BindPFlag("output.file.gzip", rootCmd.PersistentFlags().Lookup("output-file-gzip"))
+	viper.BindPFlag(prefix+".file.gzip", rootCmd.PersistentFlags().Lookup(prefix+"-file-gzip"))
 
-	rootCmd.PersistentFlags().Bool("output-file-timestamp", false,
+	rootCmd.PersistentFlags().Bool(prefix+"-file-timestamp", false,
 		`Append timestamp to output file name. Useful for keeping track in case consumer breaks.`)
-	viper.BindPFlag("output.file.timestamp", rootCmd.PersistentFlags().Lookup("output-file-timestamp"))
+	viper.BindPFlag(prefix+".file.timestamp", rootCmd.PersistentFlags().Lookup(prefix+"-file-timestamp"))
 
-	rootCmd.PersistentFlags().Bool("output-file-rotate-enabled", false,
+	rootCmd.PersistentFlags().Bool(prefix+"-file-rotate-enabled", false,
 		`Enable periodic log file rotation.`)
-	viper.BindPFlag("output.file.rotate.enabled", rootCmd.PersistentFlags().Lookup("output-file-rotate-enabled"))
+	viper.BindPFlag(prefix+".file.rotate.enabled", rootCmd.PersistentFlags().Lookup(prefix+"-file-rotate-enabled"))
 
-	rootCmd.PersistentFlags().Bool("output-file-rotate-gzip", false,
+	rootCmd.PersistentFlags().Bool(prefix+"-file-rotate-gzip", false,
 		`Gzip compress log files post-rotation.`)
-	viper.BindPFlag("output.file.rotate.gzip", rootCmd.PersistentFlags().Lookup("output-file-rotate-gzip"))
+	viper.BindPFlag(prefix+".file.rotate.gzip", rootCmd.PersistentFlags().Lookup(prefix+"-file-rotate-gzip"))
 
-	rootCmd.PersistentFlags().Duration("output-file-rotate-interval", 1*time.Hour,
-		`Interval for rotating output files if enabled with --output-file-rotate-enabled.`)
-	viper.BindPFlag("output.file.rotate.interval", rootCmd.PersistentFlags().Lookup("output-file-rotate-interval"))
+	rootCmd.PersistentFlags().Duration(prefix+"-file-rotate-interval", 1*time.Hour,
+		`Interval for rotating output files if enabled.`)
+	viper.BindPFlag(prefix+".file.rotate.interval", rootCmd.PersistentFlags().Lookup(prefix+"-file-rotate-interval"))
 }
 
 func initLogging() {
