@@ -88,7 +88,7 @@ func ParseSnoopy(m string) (*Snoopy, error) {
 	cmd := m[c:]
 	obj := &Snoopy{}
 	if i := strings.Index(cmd, ":"); i != -1 && len(cmd) > 3 {
-		obj.Cmd = cmd[i+1:]
+		obj.Cmd = strings.TrimRight(cmd[i+1:], "\n")
 	}
 
 	//fields := strings.Fields(data)
@@ -140,5 +140,6 @@ func ParseSnoopy(m string) (*Snoopy, error) {
 	default:
 		return nil, ErrParseSnoopy{Msg: m}
 	}
+
 	return obj, nil
 }
