@@ -77,12 +77,13 @@ func spawnWorkers(
 		if err := shipper.Send(emitCh, "emit"); err != nil {
 			switch err.(type) {
 			case shipper.ErrNoOutputs, *shipper.ErrNoOutputs:
+				emit = false
 				log.Warn("Emitter has no outputs. Will not be enabled.")
 			default:
 				log.Fatal(err)
 			}
 		}
-		emit = false
+		emitCh = nil
 	}()
 
 	go func(emit bool) {
@@ -223,12 +224,12 @@ func spawnWorkers(
 									ID:   mapping.ID,
 									Name: mapping.Name,
 								})
-								m.MitreAttack.Set()
+								m.MitreAttack.Set(mitreTechniqueMapper)
 							}
 						}
 					case *events.DynamicWinlogbeat:
 						if res := obj.MitreAttack(); res != nil {
-							res.Set()
+							res.Set(mitreTechniqueMapper)
 							m.MitreAttack = res
 						}
 					}
@@ -257,7 +258,7 @@ func spawnWorkers(
 						continue loop
 					}
 					msg.Data = modified
-					if emit && (m.MitreAttack != nil || m.SigmaResults != nil) {
+					if emitCh != nil && (m.MitreAttack != nil || m.SigmaResults != nil) {
 						emitCh <- msg
 					}
 					tx <- msg

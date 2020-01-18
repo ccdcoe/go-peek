@@ -12,29 +12,29 @@ import (
 
 const src = `https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json`
 
-type Tactic struct {
-	ID   string
-	Name string
-}
-
-/*
-type Technique struct {
-	ID      string
-	Name    string
-	Tactics []Tactic
-}
-*/
-
 type MitreAttack struct {
 	Technique
 	Items      []string
 	Techniques []Technique
 }
 
-func (m *MitreAttack) Set() *MitreAttack {
+func (m *MitreAttack) Set(mapping Techniques) *MitreAttack {
 	if m.Techniques != nil && len(m.Techniques) > 0 {
+		if mapping != nil {
+			for i, t := range m.Techniques {
+				if val, ok := mapping[t.ID]; ok {
+					m.Techniques[i] = Technique{
+						ID:     t.ID,
+						Name:   val.Name,
+						Phases: val.Phases,
+					}
+				}
+			}
+		}
+
 		m.Name = fmt.Sprintf("%s: %s", m.Techniques[0].ID, m.Techniques[0].Name)
 		m.ID = m.Techniques[0].ID
+		m.Phases = m.Techniques[0].Phases
 		m.Items = make([]string, len(m.Techniques))
 		for i, t := range m.Techniques {
 			m.Items[i] = t.Name
@@ -56,11 +56,7 @@ func (m *MitreAttack) ParseSigmaTags(results sigma.Results, mapping Techniques) 
 					if mapping == nil {
 						m.Techniques = append(m.Techniques, Technique{ID: key})
 					} else if val, ok := mapping[key]; ok {
-						m.Techniques = append(m.Techniques, Technique{
-							ID:     key,
-							Name:   val.Name,
-							Phases: val.Phases,
-						})
+						m.Techniques = append(m.Techniques, val)
 					}
 				}
 			}
