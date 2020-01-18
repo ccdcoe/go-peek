@@ -241,14 +241,14 @@ func spawnWorkers(
 						}
 					}
 
-					if len(m.MitreAttack.Techniques) == 0 {
-						m.MitreAttack = nil
-					}
 					if emit && (m.MitreAttack != nil || m.SigmaResults != nil) {
 						m.EventData = e.DumpEventData()
 					}
 					if m.SigmaResults != nil {
 						m.MitreAttack.ParseSigmaTags(m.SigmaResults, mitreTechniqueMapper)
+					}
+					if len(m.MitreAttack.Techniques) == 0 {
+						m.MitreAttack = nil
 					}
 					e.SetAsset(*m.SetDirection())
 
