@@ -116,6 +116,17 @@ func spawnWorkers(
 				if err != nil {
 					logContext.Fatal(err)
 				}
+				mitreTechniqueMapper := func() meta.Techniques {
+					if path := viper.GetString("processor.mitre.technique.json"); path != "" {
+						out, err := meta.NewTechniquesFromJSONfile(path)
+						if err != nil {
+							log.Fatal(err)
+						}
+						log.Infof("worker %d loaded %d mappings from %s", id, len(out), path)
+						return out
+					}
+					return nil
+				}()
 
 				ruleset, checkRules, quickmatch := func() (*sigma.Ruleset, bool, bool) {
 					if !viper.GetBool("processor.sigma.enabled") {
@@ -234,6 +245,9 @@ func spawnWorkers(
 					}
 					if emit && (m.MitreAttack != nil || m.SigmaResults != nil) {
 						m.EventData = e.DumpEventData()
+					}
+					if m.SigmaResults != nil {
+						m.MitreAttack.ParseSigmaTags(m.SigmaResults, mitreTechniqueMapper)
 					}
 					e.SetAsset(*m.SetDirection())
 

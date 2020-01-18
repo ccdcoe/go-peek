@@ -119,3 +119,5 @@ func getField(key string, data map[string]interface{}) (interface{}, bool) {
 	}
 	return nil, false
 }
+
+type EventMapFn func(string) Atomic

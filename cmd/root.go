@@ -205,6 +205,10 @@ func initProcessorConfig() {
 		`Stop matching on event upon first positive result. `+
 			`Otherwise whole rule group will be checked for each event belonging to that group.`)
 	viper.BindPFlag("processor.sigma.quickmatch", rootCmd.PersistentFlags().Lookup("processor-sigma-quickmatch"))
+
+	rootCmd.PersistentFlags().String("processor-mitre-technique-json", "",
+		`JSON file containing MITRE att&ck ID to technique and phase mapping.`)
+	viper.BindPFlag("processor.mitre.technique.json", rootCmd.PersistentFlags().Lookup("processor-mitre-technique-json"))
 }
 
 func initOutputConfig(prefix string) {
