@@ -91,6 +91,8 @@ func ParseSnoopy(m string) (*Snoopy, error) {
 		obj.Cmd = strings.TrimRight(cmd[i+1:], "\n")
 	}
 
+	// TODO - nasty hack for one particular case
+	data = strings.Replace(data, "group:domain users", "group:domain_users", 1)
 	//fields := strings.Fields(data)
 	items := strings.FieldsFunc(data, f)
 	switch len(items) {
