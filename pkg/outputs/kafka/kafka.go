@@ -107,6 +107,7 @@ func (p Producer) Feed(
 	go func(ctx context.Context) {
 		debug := time.NewTicker(3 * time.Second)
 		var count uint64
+		start := time.Now()
 		defer p.feeders.Done()
 	loop:
 		for p.active {
@@ -123,7 +124,11 @@ func (p Producer) Feed(
 				}
 				count++
 			case <-debug.C:
-				log.Infof("Sent %d events to kafka producer", count)
+				log.Infof(
+					"Sent %d events to kafka producer %d events per second",
+					count,
+					count/uint64(time.Since(start).Seconds()),
+				)
 			case <-ctx.Done():
 				break loop
 			}

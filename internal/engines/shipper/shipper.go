@@ -120,6 +120,12 @@ func Send(
 	if elaEnabled {
 		var fn consumer.TopicMapFn
 		prefix := viper.GetString(module + ".elastic.prefix")
+		timeFmt := func() string {
+			if viper.GetBool(module + ".elastic.hourly") {
+				return "2006.01.02.15"
+			}
+			return elastic.TimeFmt
+		}()
 		if viper.GetBool(module + ".elastic.merge") {
 			fn = func(msg consumer.Message) string {
 				return fmt.Sprintf(
@@ -129,7 +135,7 @@ func Send(
 							return time.Now()
 						}
 						return msg.Time
-					}().Format(elastic.TimeFmt))
+					}().Format(timeFmt))
 			}
 		} else {
 			fn = func(msg consumer.Message) string {
@@ -144,7 +150,7 @@ func Send(
 							return time.Now()
 						}
 						return msg.Time
-					}().Format(elastic.TimeFmt))
+					}().Format(timeFmt))
 			}
 		}
 

@@ -216,6 +216,18 @@ func spawnWorkers(
 							}
 						}
 					}
+
+					if checkRules {
+						if obj, ok := ev.(sigma.EventChecker); ok {
+							if res, match := ruleset.Rules.Check(obj, evType.String(), quickmatch); match {
+								m.SigmaResults = res
+							}
+						}
+						if m.SigmaResults != nil {
+							m.MitreAttack.ParseSigmaTags(m.SigmaResults, mitreTechniqueMapper)
+						}
+					}
+
 					switch obj := ev.(type) {
 					case *events.Suricata:
 						if obj.Alert != nil && obj.Alert.SignatureID > 0 {
@@ -233,23 +245,14 @@ func spawnWorkers(
 							m.MitreAttack = res
 						}
 					}
-					if checkRules {
-						if obj, ok := ev.(sigma.EventChecker); ok {
-							if res, match := ruleset.Rules.Check(obj, evType.String(), quickmatch); match {
-								m.SigmaResults = res
-							}
-						}
-					}
 
-					if emit && (m.MitreAttack != nil || m.SigmaResults != nil) {
-						m.EventData = e.DumpEventData()
-					}
-					if m.SigmaResults != nil {
-						m.MitreAttack.ParseSigmaTags(m.SigmaResults, mitreTechniqueMapper)
-					}
 					if len(m.MitreAttack.Techniques) == 0 {
 						m.MitreAttack = nil
 					}
+					if emitCh != nil && (m.MitreAttack != nil || m.SigmaResults != nil) {
+						m.EventData = e.DumpEventData()
+					}
+					m.EventType = evType.String()
 					e.SetAsset(*m.SetDirection())
 
 					modified, err := e.JSONFormat()

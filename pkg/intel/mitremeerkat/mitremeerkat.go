@@ -81,11 +81,6 @@ func (m *Mapper) GetSid(sid int) (RedisMap, bool) {
 		m.hits++
 		return val, ok
 	}
-	/*
-		if m.missing[sid] == true {
-			return RedisMap{}, false
-		}
-	*/
 	raw, err := m.handle.Get(strconv.Itoa(sid)).Bytes()
 	if err == redis.Nil {
 		m.missing[sid] = true
@@ -98,6 +93,9 @@ func (m *Mapper) GetSid(sid int) (RedisMap, bool) {
 			return RedisMap{}, false
 		}
 		m.results[sid] = obj
+		if _, ok := m.missing[sid]; ok {
+			delete(m.missing, sid)
+		}
 		return obj, true
 	}
 }

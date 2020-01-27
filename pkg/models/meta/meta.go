@@ -22,6 +22,8 @@ type AssetGetterSetter interface {
 type GameAsset struct {
 	Asset
 
+	EventType string `json:"EventType"`
+
 	DirectionString string `json:"DirectionString"`
 	Directionality  `json:"Directionality"`
 
