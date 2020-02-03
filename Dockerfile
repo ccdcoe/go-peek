@@ -1,15 +1,15 @@
 # build stage
 FROM golang AS Builder
 
-RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 RUN apt-get update && apt-get install -y gcc git
 RUN mkdir -p /go/src/github.com/ccdcoe/
 
 COPY . /go/src/github.com/ccdcoe/go-peek/
 WORKDIR /go/src/github.com/ccdcoe/go-peek
+ENV GO111MODULE "on"
+ENV CGO_ENABLED 0
 
-RUN dep ensure
-RUN CGO_ENABLED=0 go build -o /tmp/peek .
+RUN go build -o /tmp/peek .
 
 # final stage
 FROM alpine
