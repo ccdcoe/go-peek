@@ -1,6 +1,7 @@
 package run
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -33,6 +34,13 @@ func spawnWorkers(
 	noparse := func() bool {
 		if !viper.GetBool("processor.enabled") {
 			log.Debug("all procesor plugins disabled globally")
+			return true
+		}
+		return false
+	}()
+	logstashCompat := func() bool {
+		if viper.GetBool("processor.compat.logstash") {
+			log.Debug("Enabling @timestamp fix.")
 			return true
 		}
 		return false
@@ -164,6 +172,20 @@ func spawnWorkers(
 
 					if noparse {
 						msg.Time = time.Now()
+						tx <- msg
+						continue loop
+					}
+					if logstashCompat {
+						var obj map[string]interface{}
+						if err := json.Unmarshal(msg.Data, &obj); err != nil {
+							errs.Send(err)
+						}
+						obj["@timestamp"] = time.Now()
+						data, err := json.Marshal(obj)
+						if err != nil {
+							errs.Send(err)
+						}
+						msg.Data = data
 						tx <- msg
 						continue loop
 					}

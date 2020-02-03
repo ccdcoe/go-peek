@@ -168,6 +168,10 @@ func initProcessorConfig() {
 		`Enable or disable all processor plugins globally.`)
 	viper.BindPFlag("processor.enabled", rootCmd.PersistentFlags().Lookup("processor-enabled"))
 
+	rootCmd.PersistentFlags().Bool("processor-compat-logstash", false,
+		`Decodes raw json messages and adds @timestamp entry to the map. No more processing will take place.`)
+	viper.BindPFlag("processor.compat.logstash", rootCmd.PersistentFlags().Lookup("processor-compat-logstash"))
+
 	rootCmd.PersistentFlags().Bool("processor-anonymize", false,
 		`Anonymize messages. Simple method by replacing host names with aliases`)
 	viper.BindPFlag("processor.anonymize", rootCmd.PersistentFlags().Lookup("processor-anonymize"))
