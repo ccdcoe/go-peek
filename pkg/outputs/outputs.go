@@ -3,7 +3,7 @@ package outputs
 import (
 	"context"
 
-	"github.com/ccdcoe/go-peek/pkg/models/consumer"
+	"go-peek/pkg/models/consumer"
 )
 
 // Feeder is an interface for feeding a single async producer with multiple parallel event streams

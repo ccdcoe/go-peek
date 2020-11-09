@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ccdcoe/go-peek/internal/engines/inputs"
-	"github.com/ccdcoe/go-peek/internal/engines/shipper"
-	"github.com/ccdcoe/go-peek/pkg/models/consumer"
-	"github.com/ccdcoe/go-peek/pkg/models/events"
-	"github.com/ccdcoe/go-peek/pkg/utils"
+	"go-peek/internal/engines/inputs"
+	"go-peek/internal/engines/shipper"
+	"go-peek/pkg/models/consumer"
+	"go-peek/pkg/models/events"
+	"go-peek/pkg/utils"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

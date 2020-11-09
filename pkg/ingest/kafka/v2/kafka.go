@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	"github.com/Shopify/sarama"
-	"github.com/ccdcoe/go-peek/pkg/models/consumer"
-	"github.com/ccdcoe/go-peek/pkg/utils"
+	"go-peek/pkg/models/consumer"
+	"go-peek/pkg/utils"
 )
 
 type Consumer struct {

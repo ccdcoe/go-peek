@@ -4,7 +4,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/ccdcoe/go-peek/pkg/utils"
+	"go-peek/pkg/utils"
 )
 
 // TimeBin implements timeseries binning

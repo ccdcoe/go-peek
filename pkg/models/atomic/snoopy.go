@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ccdcoe/go-peek/pkg/models/fields"
+	"go-peek/pkg/models/fields"
 )
 
 type Snoopy struct {

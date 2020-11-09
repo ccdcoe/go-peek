@@ -12,11 +12,11 @@ import (
 
 	stdLibAtomic "sync/atomic"
 
-	"github.com/ccdcoe/go-peek/internal/engines/shipper"
-	"github.com/ccdcoe/go-peek/pkg/models/atomic"
-	"github.com/ccdcoe/go-peek/pkg/models/consumer"
-	"github.com/ccdcoe/go-peek/pkg/models/fields"
-	"github.com/ccdcoe/go-peek/pkg/utils"
+	"go-peek/internal/engines/shipper"
+	"go-peek/pkg/models/atomic"
+	"go-peek/pkg/models/consumer"
+	"go-peek/pkg/models/fields"
+	"go-peek/pkg/utils"
 	"github.com/influxdata/go-syslog/rfc5424"
 	log "github.com/sirupsen/logrus"
 

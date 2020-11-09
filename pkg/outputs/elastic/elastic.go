@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ccdcoe/go-peek/pkg/models/consumer"
+	"go-peek/pkg/models/consumer"
 	olivere "github.com/olivere/elastic/v7"
 	log "github.com/sirupsen/logrus"
 )

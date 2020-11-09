@@ -10,7 +10,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/ccdcoe/go-peek/pkg/models/events"
+	"go-peek/pkg/models/events"
 )
 
 type Source int

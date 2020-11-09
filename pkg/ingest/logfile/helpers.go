@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ccdcoe/go-peek/pkg/utils"
+	"go-peek/pkg/utils"
 )
 
 var lineSep = []byte{'\n'}

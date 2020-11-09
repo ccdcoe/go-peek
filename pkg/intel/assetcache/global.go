@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ccdcoe/go-peek/pkg/intel/wise"
-	"github.com/ccdcoe/go-peek/pkg/utils"
+	"go-peek/pkg/intel/wise"
+	"go-peek/pkg/utils"
 	log "github.com/sirupsen/logrus"
 )
 

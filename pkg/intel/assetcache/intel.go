@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/ccdcoe/go-peek/pkg/intel/wise"
-	"github.com/ccdcoe/go-peek/pkg/models/meta"
+	"go-peek/pkg/intel/wise"
+	"go-peek/pkg/models/meta"
 )
 
 var FieldPrefix = "target"

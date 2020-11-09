@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ccdcoe/go-peek/pkg/ingest"
-	"github.com/ccdcoe/go-peek/pkg/ingest/logfile"
-	"github.com/ccdcoe/go-peek/pkg/models/events"
-	"github.com/ccdcoe/go-peek/pkg/utils"
+	"go-peek/pkg/ingest"
+	"go-peek/pkg/ingest/logfile"
+	"go-peek/pkg/models/events"
+	"go-peek/pkg/utils"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"

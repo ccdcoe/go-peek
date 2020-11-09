@@ -16,7 +16,7 @@ limitations under the License.
 package cmd
 
 import (
-	"github.com/ccdcoe/go-peek/internal/entrypoints/run"
+	"go-peek/internal/entrypoints/run"
 	"github.com/spf13/cobra"
 )
 

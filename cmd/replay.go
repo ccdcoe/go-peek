@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ccdcoe/go-peek/internal/entrypoints/replay"
-	events "github.com/ccdcoe/go-peek/pkg/models/events"
+	"go-peek/internal/entrypoints/replay"
+	events "go-peek/pkg/models/events"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

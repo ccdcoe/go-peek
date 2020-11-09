@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/ccdcoe/go-peek/pkg/utils"
+	"go-peek/pkg/utils"
 	"github.com/markuskont/go-sigma-rule-engine/pkg/sigma"
 )
 

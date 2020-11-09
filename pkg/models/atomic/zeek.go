@@ -3,7 +3,7 @@ package atomic
 import (
 	"time"
 
-	"github.com/ccdcoe/go-peek/pkg/models/fields"
+	"go-peek/pkg/models/fields"
 )
 
 // ZeekCobalt is a custom event from zeeky

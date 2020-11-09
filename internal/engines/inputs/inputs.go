@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ccdcoe/go-peek/internal/helpers"
-	kafka "github.com/ccdcoe/go-peek/pkg/ingest/kafka/v2"
-	"github.com/ccdcoe/go-peek/pkg/ingest/logfile"
-	"github.com/ccdcoe/go-peek/pkg/ingest/uxsock"
-	"github.com/ccdcoe/go-peek/pkg/models/consumer"
-	"github.com/ccdcoe/go-peek/pkg/models/events"
+	"go-peek/internal/helpers"
+	kafka "go-peek/pkg/ingest/kafka/v2"
+	"go-peek/pkg/ingest/logfile"
+	"go-peek/pkg/ingest/uxsock"
+	"go-peek/pkg/models/consumer"
+	"go-peek/pkg/models/events"
 	"github.com/spf13/viper"
 
 	log "github.com/sirupsen/logrus"

@@ -5,10 +5,10 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/ccdcoe/go-peek/internal/engines/directory"
-	"github.com/ccdcoe/go-peek/internal/engines/shipper"
-	"github.com/ccdcoe/go-peek/pkg/models/events"
-	"github.com/ccdcoe/go-peek/pkg/utils"
+	"go-peek/internal/engines/directory"
+	"go-peek/internal/engines/shipper"
+	"go-peek/pkg/models/events"
+	"go-peek/pkg/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

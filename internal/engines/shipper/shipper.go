@@ -6,10 +6,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/ccdcoe/go-peek/pkg/models/consumer"
-	"github.com/ccdcoe/go-peek/pkg/outputs/elastic"
-	"github.com/ccdcoe/go-peek/pkg/outputs/filestorage"
-	"github.com/ccdcoe/go-peek/pkg/outputs/kafka"
+	"go-peek/pkg/models/consumer"
+	"go-peek/pkg/outputs/elastic"
+	"go-peek/pkg/outputs/filestorage"
+	"go-peek/pkg/outputs/kafka"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )

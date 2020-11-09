@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ccdcoe/go-peek/pkg/models/atomic"
-	"github.com/ccdcoe/go-peek/pkg/models/fields"
-	"github.com/ccdcoe/go-peek/pkg/models/meta"
+	"go-peek/pkg/models/atomic"
+	"go-peek/pkg/models/fields"
+	"go-peek/pkg/models/meta"
 )
 
 type GameEvent interface {

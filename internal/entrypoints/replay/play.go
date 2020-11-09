@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ccdcoe/go-peek/internal/engines/directory"
-	"github.com/ccdcoe/go-peek/pkg/ingest/logfile"
-	"github.com/ccdcoe/go-peek/pkg/models/consumer"
-	"github.com/ccdcoe/go-peek/pkg/utils"
+	"go-peek/internal/engines/directory"
+	"go-peek/pkg/ingest/logfile"
+	"go-peek/pkg/models/consumer"
+	"go-peek/pkg/utils"
 	log "github.com/sirupsen/logrus"
 )
 

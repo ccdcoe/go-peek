@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ccdcoe/go-peek/internal/helpers"
-	"github.com/ccdcoe/go-peek/pkg/ingest/logfile"
+	"go-peek/internal/helpers"
+	"go-peek/pkg/ingest/logfile"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

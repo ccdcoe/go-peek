@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	"github.com/ccdcoe/go-peek/pkg/models/consumer"
+	"go-peek/pkg/models/consumer"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -16,7 +16,7 @@ limitations under the License.
 package cmd
 
 import (
-	"github.com/ccdcoe/go-peek/internal/entrypoints/syslog"
+	"go-peek/internal/entrypoints/syslog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

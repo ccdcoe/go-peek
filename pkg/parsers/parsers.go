@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ccdcoe/go-peek/pkg/models/atomic"
-	"github.com/ccdcoe/go-peek/pkg/models/consumer"
-	"github.com/ccdcoe/go-peek/pkg/models/events"
+	"go-peek/pkg/models/atomic"
+	"go-peek/pkg/models/consumer"
+	"go-peek/pkg/models/events"
 	"github.com/influxdata/go-syslog/rfc5424"
 )
 

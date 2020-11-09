@@ -8,8 +8,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/ccdcoe/go-peek/pkg/models/meta"
-	"github.com/ccdcoe/go-peek/pkg/utils"
+	"go-peek/pkg/models/meta"
+	"go-peek/pkg/utils"
 )
 
 var FieldPrefix = "peek"

@@ -3,8 +3,8 @@ package replay
 import (
 	"encoding/json"
 
-	"github.com/ccdcoe/go-peek/pkg/models/events"
-	"github.com/ccdcoe/go-peek/pkg/utils"
+	"go-peek/pkg/models/events"
+	"go-peek/pkg/utils"
 )
 
 // ParseJSONTime implements utils.StatFileIntervalFunc

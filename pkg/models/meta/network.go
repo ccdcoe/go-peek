@@ -3,7 +3,7 @@ package meta
 import (
 	"net"
 
-	"github.com/ccdcoe/go-peek/pkg/models/fields"
+	"go-peek/pkg/models/fields"
 )
 
 // NetworkPandasExport is for loading network table as exported from pandas to_json() method
