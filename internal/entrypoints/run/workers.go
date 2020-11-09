@@ -79,20 +79,20 @@ func spawnWorkers(
 		}
 	}()
 
-	emitCh := make(chan *consumer.Message, 100)
-	emit := true
-	go func() {
-		defer close(emitCh)
+	emitCh, emit := func() (chan *consumer.Message, bool) {
+		// FIXME - this is a hack
+		emitCh := make(chan *consumer.Message, 100)
+		emit := true
 		if err := shipper.Send(emitCh, "emit"); err != nil {
 			switch err.(type) {
 			case shipper.ErrNoOutputs, *shipper.ErrNoOutputs:
-				emit = false
 				log.Warn("Emitter has no outputs. Will not be enabled.")
+				return nil, false
 			default:
 				log.Fatal(err)
 			}
 		}
-		emitCh = nil
+		return emitCh, emit
 	}()
 
 	go func(emit bool) {
