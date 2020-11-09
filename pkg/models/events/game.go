@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"go-peek/pkg/models/atomic"
-	"go-peek/pkg/models/fields"
 	"go-peek/pkg/models/meta"
 )
 
@@ -86,7 +85,7 @@ func (d DynamicWinlogbeat) DumpEventData() *meta.EventData {
 }
 
 func (d DynamicWinlogbeat) MitreAttack() *meta.MitreAttack {
-	if val, ok := d.GetField("winlog.event_data.RuleName"); ok {
+	if val, ok := d.Select("winlog.event_data.RuleName"); ok {
 		if s, ok := val.(string); ok {
 			if bits := strings.Split(s, ","); len(bits) == 2 {
 				technique := &meta.Technique{}
@@ -108,17 +107,17 @@ func (d DynamicWinlogbeat) MitreAttack() *meta.MitreAttack {
 	return nil
 }
 
-// GetMessage implements MessageGetter
-func (d DynamicWinlogbeat) GetMessage() []string {
+// Keywords implements Keyworder
+func (d DynamicWinlogbeat) Keywords() ([]string, bool) {
 	m, ok := d.DynamicWinlogbeat["message"].(string)
 	if ok {
-		return []string{m}
+		return []string{m}, true
 	}
-	return nil
+	return nil, false
 }
 
-// GetField returns a success status and arbitrary field content if requested map key is present
-func (d DynamicWinlogbeat) GetField(key string) (interface{}, bool) {
+// Select returns a success status and arbitrary field content if requested map key is present
+func (d DynamicWinlogbeat) Select(key string) (interface{}, bool) {
 	return getField(key, d.DynamicWinlogbeat)
 }
 
@@ -194,17 +193,17 @@ func (s Suricata) DumpEventData() *meta.EventData {
 	}
 }
 
-// GetMessage implements MessageGetter
-func (s Suricata) GetMessage() []string {
+// Keywords implements Keyworder
+func (s Suricata) Keywords() ([]string, bool) {
 	out := []string{s.PayloadPrintable}
 	if s.Alert != nil {
 		out = append(out, []string{s.Alert.Signature, s.Alert.Category}...)
 	}
-	return out
+	return out, true
 }
 
-// GetField returns a success status and arbitrary field content if requested map key is present
-func (s Suricata) GetField(key string) (interface{}, bool) {
+// Select returns a success status and arbitrary field content if requested map key is present
+func (s Suricata) Select(key string) (interface{}, bool) {
 	if !strings.Contains(key, ".") {
 		return s.StaticSuricataEve.EveBase.GetField(key)
 	}
@@ -340,13 +339,13 @@ func (s Syslog) DumpEventData() *meta.EventData {
 	}
 }
 
-// GetMessage implements MessageGetter
-func (s Syslog) GetMessage() []string {
-	return []string{s.Syslog.Message}
+// Keywords implements Keyworder
+func (s Syslog) Keywords() ([]string, bool) {
+	return []string{s.Syslog.Message}, true
 }
 
-// GetField returns a success status and arbitrary field content if requested map key is present
-func (s Syslog) GetField(key string) (interface{}, bool) {
+// Select returns a success status and arbitrary field content if requested map key is present
+func (s Syslog) Select(key string) (interface{}, bool) {
 	return s.Syslog.GetField(key)
 }
 
@@ -412,13 +411,13 @@ func (s Snoopy) DumpEventData() *meta.EventData {
 	}
 }
 
-// GetMessage implements MessageGetter
-func (s Snoopy) GetMessage() []string {
-	return []string{s.Cmd}
+// Keywords implements Keyworder
+func (s Snoopy) Keywords() ([]string, bool) {
+	return []string{s.Cmd}, true
 }
 
-// GetField returns a success status and arbitrary field content if requested map key is present
-func (s Snoopy) GetField(key string) (interface{}, bool) {
+// Select returns a success status and arbitrary field content if requested map key is present
+func (s Snoopy) Select(key string) (interface{}, bool) {
 	switch key {
 	case "cmd":
 		return s.Cmd, true
@@ -525,195 +524,3 @@ func (s Snoopy) Source() string { return s.Snoopy.Source() }
 // Sender implements atomic.Event
 // Sender of message, usually a host
 func (s Snoopy) Sender() string { return s.Syslog.Sender() }
-
-type Eventlog struct {
-	atomic.EventLog
-	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
-}
-
-// DumpEventData implements EventDataDumper
-func (e *Eventlog) DumpEventData() *meta.EventData {
-	panic("not implemented") // TODO: Implement
-}
-
-// GetMessage implements MessageGetter
-func (e *Eventlog) GetMessage() []string {
-	panic("not implemented") // TODO: Implement
-}
-
-// GetField returns a success status and arbitrary field content if requested map key is present
-func (e *Eventlog) GetField(_ string) (interface{}, bool) {
-	panic("not implemented") // TODO: Implement
-}
-
-// JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
-func (e Eventlog) JSONFormat() ([]byte, error) {
-	data := e.EventLog.DynamicEventLog
-	if data == nil {
-		return json.Marshal(e)
-	}
-	data["GameMeta"] = e.GameMeta
-	return json.Marshal(data)
-}
-
-// GetAsset is a getter for receiving event source and target information
-// For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters
-// Should provide needed information for doing external asset table lookups
-func (e Eventlog) GetAsset() *meta.GameAsset {
-	return &meta.GameAsset{
-		Asset: meta.Asset{
-			Host: e.Sender(),
-			IP:   e.SenderIP(),
-		},
-		MitreAttack: &meta.MitreAttack{
-			Techniques: make([]meta.Technique, 0),
-		},
-	}
-}
-
-// SetAsset is a setter for setting meta to object without knowing the object type
-// all asset lookups and field discoveries should be done before using this method to maintain readability
-func (e *Eventlog) SetAsset(data meta.GameAsset) {
-	e.GameMeta = data
-}
-
-// Time implements atomic.Event
-// Timestamp in event, should default to time.Time{} so time.IsZero() could be used to verify success
-func (e Eventlog) Time() time.Time { return e.EventLog.Time() }
-
-// Source implements atomic.Event
-// Source of message, usually emitting program
-func (e Eventlog) Source() string { return e.EventLog.Source() }
-
-// Sender implements atomic.Event
-// Sender of message, usually a host
-func (e Eventlog) Sender() string { return e.EventLog.Sender() }
-
-type ZeekCobalt struct {
-	atomic.ZeekCobalt
-	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
-}
-
-// DumpEventData implements EventDataDumper
-func (z *ZeekCobalt) DumpEventData() *meta.EventData {
-	panic("not implemented") // TODO: Implement
-}
-
-// GetMessage implements MessageGetter
-func (z *ZeekCobalt) GetMessage() []string {
-	panic("not implemented") // TODO: Implement
-}
-
-// GetField returns a success status and arbitrary field content if requested map key is present
-func (z *ZeekCobalt) GetField(_ string) (interface{}, bool) {
-	panic("not implemented") // TODO: Implement
-}
-
-// JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
-func (z ZeekCobalt) JSONFormat() ([]byte, error) { return json.Marshal(z) }
-
-// GetAsset is a getter for receiving event source and target information
-// For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters
-// Should provide needed information for doing external asset table lookups
-func (z ZeekCobalt) GetAsset() *meta.GameAsset {
-	ipFn := func(ip *fields.StringIP) net.IP {
-		if ip != nil {
-			return ip.IP
-		}
-		return nil
-	}
-	src := ipFn(z.IDOrigH)
-	srcFn := func(ip net.IP) *meta.Asset {
-		if ip != nil {
-			return &meta.Asset{IP: ip}
-		}
-		return nil
-	}
-	return &meta.GameAsset{
-		Asset: meta.Asset{IP: src},
-		MitreAttack: &meta.MitreAttack{
-			Techniques: make([]meta.Technique, 0),
-		},
-		Source:      srcFn(src),
-		Destination: srcFn(ipFn(z.IDRespH)),
-	}
-}
-
-// SetAsset is a setter for setting meta to object without knowing the object type
-// all asset lookups and field discoveries should be done before using this method to maintain readability
-func (z *ZeekCobalt) SetAsset(data meta.GameAsset) {
-	z.GameMeta = data
-}
-
-// Time implements atomic.Event
-// Timestamp in event, should default to time.Time{} so time.IsZero() could be used to verify success
-func (z ZeekCobalt) Time() time.Time { return z.ZeekCobalt.Time() }
-
-// Source implements atomic.Event
-// Source of message, usually emitting program
-func (z ZeekCobalt) Source() string { return z.ZeekCobalt.Source() }
-
-// Sender implements atomic.Event
-// Sender of message, usually a host
-func (z ZeekCobalt) Sender() string { return z.ZeekCobalt.Sender() }
-
-type MazeRunner struct {
-	atomic.MazeRunner
-	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
-}
-
-// DumpEventData implements EventDataDumper
-func (m *MazeRunner) DumpEventData() *meta.EventData {
-	panic("not implemented") // TODO: Implement
-}
-
-// GetMessage implements MessageGetter
-func (m *MazeRunner) GetMessage() []string {
-	panic("not implemented") // TODO: Implement
-}
-
-// GetField returns a success status and arbitrary field content if requested map key is present
-func (m *MazeRunner) GetField(_ string) (interface{}, bool) {
-	panic("not implemented") // TODO: Implement
-}
-
-// JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
-func (m MazeRunner) JSONFormat() ([]byte, error) { return json.Marshal(m) }
-
-// GetAsset is a getter for receiving event source and target information
-// For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters
-// Should provide needed information for doing external asset table lookups
-func (m MazeRunner) GetAsset() *meta.GameAsset {
-	srcFn := func(ip net.IP) *meta.Asset {
-		if ip != nil {
-			return &meta.Asset{IP: ip}
-		}
-		return nil
-	}
-	return &meta.GameAsset{
-		Asset: meta.Asset{Host: m.MazeRunner.Sender()},
-		MitreAttack: &meta.MitreAttack{
-			Techniques: make([]meta.Technique, 0),
-		},
-		Source:      srcFn(m.MazeRunner.GetSrcIP()),
-		Destination: srcFn(m.MazeRunner.GetDstIP()),
-	}
-}
-
-// SetAsset is a setter for setting meta to object without knowing the object type
-// all asset lookups and field discoveries should be done before using this method to maintain readability
-func (m *MazeRunner) SetAsset(data meta.GameAsset) {
-	m.GameMeta = data
-}
-
-// Time implements atomic.Event
-// Timestamp in event, should default to time.Time{} so time.IsZero() could be used to verify success
-func (m MazeRunner) Time() time.Time { return m.MazeRunner.Time() }
-
-// Source implements atomic.Event
-// Source of message, usually emitting program
-func (m MazeRunner) Source() string { return m.MazeRunner.Source() }
-
-// Sender implements atomic.Event
-// Sender of message, usually a host
-func (m MazeRunner) Sender() string { return m.MazeRunner.Sender() }
