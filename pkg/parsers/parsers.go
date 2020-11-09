@@ -2,12 +2,15 @@ package parsers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"time"
 
 	"go-peek/pkg/models/atomic"
 	"go-peek/pkg/models/consumer"
 	"go-peek/pkg/models/events"
-	"github.com/influxdata/go-syslog/rfc5424"
+
+	"github.com/influxdata/go-syslog/v3/rfc5424"
 )
 
 func Parse(data []byte, enum events.Atomic, p consumer.Parser) (interface{}, error) {
@@ -21,20 +24,58 @@ func Parse(data []byte, enum events.Atomic, p consumer.Parser) (interface{}, err
 }
 
 func ParseSyslogGameEvent(data []byte, enum events.Atomic) (interface{}, error) {
-	bestEffort := true
-	msg, err := rfc5424.NewParser().Parse(data, &bestEffort)
+	machine := rfc5424.NewParser(rfc5424.WithBestEffort())
+	msg, err := machine.Parse(data)
 	if err != nil {
 		return nil, err
 	}
+	strictMsg, ok := msg.(*rfc5424.SyslogMessage)
+	if !ok {
+		// Should never hit this, but I don't like leaving it without a check
+		return nil, errors.New("Syslog message did not parse as rfc5424")
+	}
+
 	s := atomic.Syslog{
-		Timestamp: *msg.Timestamp(),
-		Message:   *msg.Message(),
-		Host:      *msg.Hostname(),
-		Program:   *msg.Appname(),
+		Timestamp: func() time.Time {
+			if tx := strictMsg.Timestamp; tx != nil {
+				return *tx
+			}
+			return time.Now()
+		}(),
+		Message: func() string {
+			if tx := strictMsg.Message; tx != nil {
+				return *tx
+			}
+			return ""
+		}(),
+		Host: func() string {
+			if tx := strictMsg.Hostname; tx != nil {
+				return *tx
+			}
+			return ""
+		}(),
+		Facility: func() string {
+			if tx := strictMsg.FacilityLevel(); tx != nil {
+				return *tx
+			}
+			return ""
+		}(),
+		Severity: func() string {
+			if tx := strictMsg.SeverityLevel(); tx != nil {
+				return *tx
+			}
+			return ""
+		}(),
+		Program: func() string {
+			if tx := strictMsg.Message; tx != nil {
+				return *tx
+			}
+			return ""
+		}(),
 	}
 	switch enum {
 	case events.EventLogE, events.SysmonE, events.SuricataE:
-		return UnmarshalStructuredEvent([]byte(*msg.Message()), enum)
+		return UnmarshalStructuredEvent([]byte(*strictMsg.Message), enum)
 	}
 
 	payload, err := atomic.ParseSyslogMessage(s)

@@ -12,6 +12,7 @@ require (
 	github.com/google/go-cmp v0.4.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
 	github.com/influxdata/go-syslog v1.0.1
+	github.com/influxdata/go-syslog/v3 v3.0.0
 	github.com/jcmturner/gofork v1.0.0 // indirect
 	github.com/markuskont/go-sigma-rule-engine v0.0.0-20200116105311-99e54e68feec
 	github.com/mitchellh/go-homedir v1.1.0
