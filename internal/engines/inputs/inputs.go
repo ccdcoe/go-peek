@@ -5,11 +5,12 @@ import (
 	"fmt"
 
 	"go-peek/internal/helpers"
-	kafka "go-peek/pkg/ingest/kafka/v2"
+	"go-peek/pkg/ingest/kafka"
 	"go-peek/pkg/ingest/logfile"
 	"go-peek/pkg/ingest/uxsock"
 	"go-peek/pkg/models/consumer"
 	"go-peek/pkg/models/events"
+
 	"github.com/spf13/viper"
 
 	log "github.com/sirupsen/logrus"
