@@ -16,7 +16,8 @@ import (
 	"go-peek/pkg/models/meta"
 	"go-peek/pkg/parsers"
 	"go-peek/pkg/utils"
-	"github.com/markuskont/go-sigma-rule-engine/pkg/sigma"
+
+	sigma "github.com/markuskont/go-sigma-rule-engine/pkg/sigma/v2"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -109,9 +110,7 @@ func spawnWorkers(
 			go func(id int, emit bool) {
 				defer wg.Done()
 				defer log.Tracef("worker %d done", id)
-				logContext := log.WithFields(log.Fields{
-					"id": id,
-				})
+				logContext := log.WithFields(log.Fields{"id": id})
 
 				log.Tracef("Spawning worker %d", id)
 				localAssetCache := assetcache.NewLocalCache(globalAssetCache, id)
@@ -137,44 +136,34 @@ func spawnWorkers(
 					return nil
 				}()
 
-				ruleset, checkRules, quickmatch := func() (*sigma.Ruleset, bool, bool) {
+				ruleset, sigmaMatch := func() (*sigma.Ruleset, bool) {
 					if !viper.GetBool("processor.sigma.enabled") {
-						return nil, false, false
+						return nil, false
 					}
-					ruleset, err := sigma.NewRuleset(&sigma.Config{
-						Directories: viper.GetStringSlice("processor.sigma.dir"),
+					ruleset, err := sigma.NewRuleset(sigma.Config{
+						Directory: viper.GetStringSlice("processor.sigma.dir"),
 					})
 					if err != nil {
 						log.Fatal(err)
 					}
-					for _, unsupp := range ruleset.Unsupported {
-						log.Warnf("%+v", unsupp)
-					}
-					for _, err := range ruleset.Broken {
-						log.Errorf("%+v", err)
-					}
-					log.Infof(
-						"Successfully parsed %d sigma rules. Unsupported %d. Broken %d",
-						ruleset.Total,
-						len(ruleset.Unsupported),
-						len(ruleset.Broken),
-					)
-					return ruleset, true, viper.GetBool("processor.sigma.quickmatch")
+					log.Debugf("SIGMA: Worker %d Found %d files, %d ok, %d failed, %d unsupported",
+						id, ruleset.Total, ruleset.Ok, ruleset.Failed, ruleset.Unsupported)
+					return ruleset, true
 				}()
+
 			loop:
 				for msg := range rx {
 					atomic.AddUint64(&count, 1)
 
 					evInfo := sourceToEvent(msg.Source)
-					evType := evInfo.Atomic
-					evParse := evInfo.Parser
-					msg.Event = evType
+					msg.Event = evInfo.Atomic
 
 					if noparse {
 						msg.Time = time.Now()
 						tx <- msg
 						continue loop
 					}
+					// TODO - refactor to separate subcommand
 					if logstashCompat {
 						var obj map[string]interface{}
 						if err := json.Unmarshal(msg.Data, &obj); err != nil {
@@ -190,7 +179,7 @@ func spawnWorkers(
 						continue loop
 					}
 
-					ev, err := parsers.Parse(msg.Data, evType, evParse)
+					ev, err := parsers.Parse(msg.Data, evInfo.Atomic, evInfo.Parser)
 					if err != nil {
 						errs.Send(err)
 						continue loop
@@ -201,7 +190,7 @@ func spawnWorkers(
 						continue loop
 					}
 					msg.Time = e.Time()
-					msg.Key = evType.String()
+					msg.Key = evInfo.Atomic.String()
 
 					m := e.GetAsset()
 					if m == nil {
@@ -213,6 +202,7 @@ func spawnWorkers(
 					}
 
 					// Asset checking stuff
+					// TODO - refactor
 					if ip := m.Asset.IP; ip != nil {
 						if val, ok := localAssetCache.GetIP(ip.String()); ok && val.IsAsset {
 							m.Asset = *val.Data
@@ -239,14 +229,18 @@ func spawnWorkers(
 						}
 					}
 
-					if checkRules {
-						if obj, ok := ev.(sigma.EventChecker); ok {
-							if res, match := ruleset.Rules.Check(obj, evType.String(), quickmatch); match {
-								m.SigmaResults = res
+					if sigmaMatch {
+						if sigmaEvent, ok := ev.(sigma.Event); ok {
+							if results, match := ruleset.EvalAll(sigmaEvent); match {
+								m.SigmaResults = results
+								m.MitreAttack.ParseSigmaTags(results, mitreTechniqueMapper)
 							}
-						}
-						if m.SigmaResults != nil {
-							m.MitreAttack.ParseSigmaTags(m.SigmaResults, mitreTechniqueMapper)
+						} else {
+							errs.Send(fmt.Errorf(
+								"Event type %s does not satisfy sigma.Event",
+								evInfo.Atomic.String(),
+							))
+							continue loop
 						}
 					}
 
@@ -271,10 +265,12 @@ func spawnWorkers(
 					if len(m.MitreAttack.Techniques) == 0 {
 						m.MitreAttack = nil
 					}
-					if emitCh != nil && (m.MitreAttack != nil || m.SigmaResults != nil) {
-						m.EventData = e.DumpEventData()
+					if emitCh != nil {
+						if m.MitreAttack != nil && m.SigmaResults != nil {
+							m.EventData = e.DumpEventData()
+						}
 					}
-					m.EventType = evType.String()
+					m.EventType = evInfo.Atomic.String()
 					e.SetAsset(*m.SetDirection())
 
 					modified, err := e.JSONFormat()
@@ -283,8 +279,10 @@ func spawnWorkers(
 						continue loop
 					}
 					msg.Data = modified
-					if emitCh != nil && (m.MitreAttack != nil || m.SigmaResults != nil) {
-						emitCh <- msg
+					if emitCh != nil {
+						if m.MitreAttack != nil || m.SigmaResults != nil {
+							emitCh <- msg
+						}
 					}
 					tx <- msg
 				}

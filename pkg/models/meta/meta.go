@@ -3,7 +3,7 @@ package meta
 import (
 	"encoding/json"
 
-	"github.com/markuskont/go-sigma-rule-engine/pkg/sigma"
+	sigma "github.com/markuskont/go-sigma-rule-engine/pkg/sigma/v2"
 )
 
 // AssetGetterSetter is a collection of methods for enritching exercise events with meta information for correlation without explicitly knowing the item type in runtime

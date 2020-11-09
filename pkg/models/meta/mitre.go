@@ -7,7 +7,8 @@ import (
 	"strings"
 
 	"go-peek/pkg/utils"
-	"github.com/markuskont/go-sigma-rule-engine/pkg/sigma"
+
+	sigma "github.com/markuskont/go-sigma-rule-engine/pkg/sigma/v2"
 )
 
 const src = `https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json`
