@@ -67,7 +67,7 @@ func ParseSyslogGameEvent(data []byte, enum events.Atomic) (interface{}, error) 
 			return ""
 		}(),
 		Program: func() string {
-			if tx := strictMsg.Message; tx != nil {
+			if tx := strictMsg.Appname; tx != nil {
 				return *tx
 			}
 			return ""
