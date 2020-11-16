@@ -326,7 +326,7 @@ func (s Suricata) Source() string { return s.StaticSuricataEve.Source() }
 func (s Suricata) Sender() string { return s.StaticSuricataEve.Sender() }
 
 type Syslog struct {
-	Syslog   atomic.Syslog  `json:"syslog"`
+	atomic.Syslog
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
@@ -392,9 +392,8 @@ func (s Syslog) Source() string { return s.Syslog.Source() }
 func (s Syslog) Sender() string { return s.Syslog.Sender() }
 
 type Snoopy struct {
-	Timestamp time.Time `json:"@timestamp"`
 	atomic.Snoopy
-	Syslog   atomic.Syslog  `json:"syslog"`
+	atomic.Syslog
 	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
