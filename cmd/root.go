@@ -205,6 +205,33 @@ func initProcessorConfig() {
 	rootCmd.PersistentFlags().String("processor-mitre-technique-json", "",
 		`JSON file containing MITRE att&ck ID to technique and phase mapping.`)
 	viper.BindPFlag("processor.mitre.technique.json", rootCmd.PersistentFlags().Lookup("processor-mitre-technique-json"))
+
+	rootCmd.PersistentFlags().Bool("processor-assets-enabled", false,
+		`Enable asset tracking.`)
+	viper.BindPFlag("processor.assets.enabled", rootCmd.PersistentFlags().Lookup("processor-assets-enabled"))
+
+	rootCmd.PersistentFlags().String("processor-assets-kafka-topic", "assets",
+		`Kafka topic for asset data.`)
+	viper.BindPFlag("processor.assets.kafka.topic", rootCmd.PersistentFlags().Lookup("processor-assets-kafka-topic"))
+
+	rootCmd.PersistentFlags().StringSlice("processor-assets-kafka-host", []string{"localhost:9092"},
+		`Kafka bootstrap broker for consumer. Can be specified multiple times to use a cluster.`)
+	viper.BindPFlag("processor.assets.kafka.host", rootCmd.PersistentFlags().Lookup("processor-assets-kafka-host"))
+
+	rootCmd.PersistentFlags().String("processor-assets-kafka-group", "peek",
+		"Kafka consumer group for maintaining offsets.")
+	viper.BindPFlag("processor.assets.kafka.group", rootCmd.PersistentFlags().Lookup("processor-assets-kafka-group"))
+
+	rootCmd.PersistentFlags().Bool("processor-assets-kafka-commit", true,
+		`Commit offsets under to the broker. To continue from last commit in case consumer is stopped.`)
+	viper.BindPFlag("processor.assets.kafka.commit", rootCmd.PersistentFlags().Lookup("processor-assets-kafka-commit"))
+
+	rootCmd.PersistentFlags().String("processor-assets-kafka-mode", "follow",
+		`Where to begin consuming. Valid options:
+		follow - continue from last committed offset for consumer group
+		beginning - start from first available message in topic
+		latest - start from most recent message in topic`)
+	viper.BindPFlag("processor.assets.kafka.mode", rootCmd.PersistentFlags().Lookup("processor-assets-kafka-mode"))
 }
 
 func initOutputConfig(prefix string) {
