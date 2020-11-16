@@ -84,7 +84,7 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		return out
 	}()
 
-	modified, errs := spawnWorkers(
+	channels, errs := spawnWorkers(
 		func() <-chan *consumer.Message {
 			if len(inputs) == 1 {
 				return inputs[0].Messages()
@@ -132,7 +132,25 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		}
 	}(context.TODO())
 
-	if err := shipper.Send(modified, "output"); err != nil {
-		log.Fatal(err)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func(ch <-chan *consumer.Message, wg *sync.WaitGroup) {
+		defer wg.Done()
+		if err := shipper.Send(ch, "output"); err != nil {
+			log.Fatal(err)
+		}
+		log.Info("Main channel done")
+	}(channels.main, &wg)
+	if channels.emit != nil {
+		wg.Add(1)
+		go func(ch <-chan *consumer.Message, wg *sync.WaitGroup) {
+			defer wg.Done()
+			if err := shipper.Send(ch, "output"); err != nil {
+				log.Fatal(err)
+			}
+			log.Info("Emitter done")
+		}(channels.emit, &wg)
 	}
+	wg.Wait()
+	log.Info("All done!")
 }

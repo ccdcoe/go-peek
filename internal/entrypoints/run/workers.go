@@ -6,7 +6,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"go-peek/internal/engines/shipper"
 	"go-peek/pkg/intel/assetcache"
 	"go-peek/pkg/intel/mitremeerkat"
 	"go-peek/pkg/intel/wise"
@@ -22,13 +21,25 @@ import (
 	"github.com/spf13/viper"
 )
 
+type shipperChannels struct {
+	main <-chan *consumer.Message
+	emit <-chan *consumer.Message
+}
+
 func spawnWorkers(
 	rx <-chan *consumer.Message,
 	workers int,
 	spooldir string,
 	mapping consumer.ParseMap,
-) (<-chan *consumer.Message, *utils.ErrChan) {
+) (*shipperChannels, *utils.ErrChan) {
 	tx := make(chan *consumer.Message, 0)
+	var emitCh chan *consumer.Message
+	if viper.GetBool("emit.elastic.enabled") ||
+		viper.GetBool("emit.kafka.enabled") ||
+		viper.GetBool("emit.file.enabled") {
+		emitCh = make(chan *consumer.Message, 0)
+		log.Info("Enabling emitter.")
+	}
 	errs := utils.NewErrChan(100, "Event parse worker runtime errors")
 	var wg sync.WaitGroup
 	noparse := func() bool {
@@ -71,24 +82,15 @@ func spawnWorkers(
 		}
 	}()
 
-	emitCh, emit := func() (chan *consumer.Message, bool) {
-		emitCh := make(chan *consumer.Message, 100)
-		emit := true
-		if err := shipper.Send(emitCh, "emit"); err != nil {
-			switch err.(type) {
-			case shipper.ErrNoOutputs, *shipper.ErrNoOutputs:
-				log.Warn("Emitter has no outputs. Will not be enabled.")
-				return nil, false
-			default:
-				log.Fatal(err)
-			}
-		}
-		return emitCh, emit
-	}()
-
-	go func(emit bool) {
+	go func() {
 		defer close(tx)
 		defer close(errs.Items)
+		if emitCh != nil {
+			defer func() {
+				log.Trace("Closing emitter")
+				close(emitCh)
+			}()
+		}
 		sourceToEvent := func(topic string) consumer.ParseMapping {
 			if val, ok := mapping[topic]; ok {
 				return val
@@ -98,7 +100,7 @@ func spawnWorkers(
 		defer globalAssetCache.Close()
 		for i := 0; i < workers; i++ {
 			wg.Add(1)
-			go func(id int, emit bool) {
+			go func(id int) {
 				defer wg.Done()
 				defer log.Tracef("worker %d done", id)
 				logContext := log.WithFields(log.Fields{"id": id})
@@ -262,9 +264,9 @@ func spawnWorkers(
 					}
 					tx <- msg
 				}
-			}(i, emit)
+			}(i)
 		}
 		wg.Wait()
-	}(emit)
-	return tx, errs
+	}()
+	return &shipperChannels{main: tx, emit: emitCh}, errs
 }
