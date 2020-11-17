@@ -22,13 +22,14 @@ type Asset struct {
 type Handle struct {
 	consumer *kafka.Consumer
 
-	msgs    chan *consumer.Message
-	assetCh chan *Asset
+	msgs chan *consumer.Message
 
 	errs *utils.ErrChan
 
-	data *sync.Map
-	wg   *sync.WaitGroup
+	dataByIP   *sync.Map
+	dataByHost *sync.Map
+
+	wg *sync.WaitGroup
 }
 
 func NewHandle(c Config) (*Handle, error) {
@@ -37,10 +38,11 @@ func NewHandle(c Config) (*Handle, error) {
 		return nil, err
 	}
 	h := &Handle{
-		consumer: consumer,
-		wg:       &sync.WaitGroup{},
-		errs:     utils.NewErrChan(100, "asset json parse errors"),
-		assetCh:  make(chan *Asset, 0),
+		consumer:   consumer,
+		wg:         &sync.WaitGroup{},
+		errs:       utils.NewErrChan(100, "asset json parse errors"),
+		dataByIP:   &sync.Map{},
+		dataByHost: &sync.Map{},
 	}
 	return h, nil
 }
@@ -60,10 +62,15 @@ func (h *Handle) consume() *Handle {
 				h.errs.Send(err)
 				continue loop
 			}
-			h.assetCh <- &Asset{
+			a := obj.Asset().Copy()
+			h.dataByIP.Store(a.IP.String(), Asset{
 				Updated: time.Now(),
-				Asset:   obj.Asset().Copy(),
-			}
+				Asset:   a.Copy(),
+			})
+			h.dataByHost.Store(a.Host, Asset{
+				Updated: time.Now(),
+				Asset:   a.Copy(),
+			})
 		}
 	}()
 	return h
