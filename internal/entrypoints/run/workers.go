@@ -6,9 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"go-peek/pkg/intel/assetcache"
+	"go-peek/pkg/intel/assets"
 	"go-peek/pkg/intel/mitremeerkat"
-	"go-peek/pkg/intel/wise"
 	"go-peek/pkg/models/consumer"
 	"go-peek/pkg/models/events"
 	"go-peek/pkg/models/meta"
@@ -31,6 +30,7 @@ func spawnWorkers(
 	workers int,
 	spooldir string,
 	mapping consumer.ParseMap,
+	assetCache *assets.Handle,
 ) (*shipperChannels, *utils.ErrChan) {
 	tx := make(chan *consumer.Message, 0)
 	var emitCh chan *consumer.Message
@@ -53,26 +53,6 @@ func spawnWorkers(
 		every = time.NewTicker(3 * time.Second)
 		count uint64
 	)
-	globalAssetCache, err := assetcache.NewGlobalCache(&assetcache.Config{
-		Wise: func() *wise.Config {
-			if viper.GetBool("processor.inputs.wise.enabled") {
-				wh := viper.GetString("processor.inputs.wise.host")
-				log.Debugf("wise enabled, configuring for host %s", wh)
-				return &wise.Config{Host: wh}
-			}
-			return nil
-		}(),
-		Prune: true,
-	})
-	logContext := log.WithFields(log.Fields{
-		"action": "init global cache",
-		"thread": "main spawn",
-	})
-	if err != nil && !noparse {
-		logContext.Fatal(err)
-	} else if err != nil && noparse {
-		logContext.Warn(err)
-	}
 	go func() {
 		for {
 			select {
@@ -97,7 +77,6 @@ func spawnWorkers(
 			}
 			return consumer.ParseMapping{}
 		}
-		defer globalAssetCache.Close()
 		for i := 0; i < workers; i++ {
 			wg.Add(1)
 			go func(id int) {
@@ -106,8 +85,6 @@ func spawnWorkers(
 				logContext := log.WithFields(log.Fields{"id": id})
 
 				log.Tracef("Spawning worker %d", id)
-				localAssetCache := assetcache.NewLocalCache(globalAssetCache, id)
-				defer localAssetCache.Close()
 
 				mitreSignatureConverter, err := mitremeerkat.NewMapper(&mitremeerkat.Config{
 					Host: viper.GetString("processor.inputs.redis.host"),
@@ -179,30 +156,28 @@ func spawnWorkers(
 						continue loop
 					}
 
-					// Asset checking stuff
-					// TODO - refactor
-					if ip := m.Asset.IP; ip != nil {
-						if val, ok := localAssetCache.GetIP(ip.String()); ok && val.IsAsset {
-							m.Asset = *val.Data
-						}
-					} else if host := m.Asset.Host; host != "" {
-						if val, ok := localAssetCache.GetString(host); ok && val.IsAsset {
-							m.Asset = *val.Data
-						}
-					}
-					if m.Source != nil {
-						if ip := m.Source.IP; ip != nil {
-							if val, ok := localAssetCache.GetIP(ip.String()); ok && val.IsAsset && val.Data != nil {
-								m.Source = val.Data
-								m.Source.IP = ip
+					if assetCache != nil {
+						if host := m.Asset.Host; host != "" {
+							if val, ok := assetCache.GetHost(host); ok {
+								m.Asset = val.Copy()
+							}
+						} else if ip := m.Asset.IP; ip != nil {
+							if val, ok := assetCache.GetIP(ip.String()); ok {
+								m.Asset = val.Copy()
 							}
 						}
-					}
-					if m.Destination != nil {
-						if ip := m.Destination.IP; ip != nil {
-							if val, ok := localAssetCache.GetIP(ip.String()); ok && val.IsAsset && val.Data != nil {
-								m.Destination = val.Data
-								m.Destination.IP = ip
+						if m.Source != nil && m.Source.IP != nil {
+							ip := m.Source.IP
+							if val, ok := assetCache.GetIP(ip.String()); ok {
+								m.Source = val
+								m.IP = ip
+							}
+						}
+						if m.Destination != nil && m.Destination.IP != nil {
+							ip := m.Destination.IP
+							if val, ok := assetCache.GetIP(ip.String()); ok {
+								m.Destination = val
+								m.IP = ip
 							}
 						}
 					}

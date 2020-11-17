@@ -138,10 +138,6 @@ func initInputConfig() {
 		"Kafka consumer group for maintaining offsets.")
 	viper.BindPFlag("input.kafka.group", rootCmd.PersistentFlags().Lookup("input-kafka-group"))
 
-	rootCmd.PersistentFlags().Bool("input-kafka-commit", true,
-		`Commit offsets under to the broker. To continue from last commit in case consumer is stopped.`)
-	viper.BindPFlag("input.kafka.commit", rootCmd.PersistentFlags().Lookup("input-kafka-commit"))
-
 	rootCmd.PersistentFlags().String("input-kafka-mode", "follow",
 		`Where to begin consuming. Valid options:
 		follow - continue from last committed offset for consumer group
@@ -173,26 +169,6 @@ func initProcessorConfig() {
 		`Anonymize messages. Simple method by replacing host names with aliases`)
 	viper.BindPFlag("processor.anonymize", rootCmd.PersistentFlags().Lookup("processor-anonymize"))
 
-	rootCmd.PersistentFlags().Bool("processor-inputs-wise-enabled", false,
-		`Enable or disable WISE asset lookups.`)
-	viper.BindPFlag("processor.inputs.wise.enabled", rootCmd.PersistentFlags().Lookup("processor-inputs-wise-enabled"))
-
-	rootCmd.PersistentFlags().String("processor-inputs-wise-host", "http://localhost:8081",
-		`Remote Moloch WISE host that holds asset and IOC information.`)
-	viper.BindPFlag("processor.inputs.wise.host", rootCmd.PersistentFlags().Lookup("processor-inputs-wise-host"))
-
-	rootCmd.PersistentFlags().String("processor-inputs-redis-host", "localhost",
-		`Redis host for collecting asset and threat intel.`)
-	viper.BindPFlag("processor.inputs.redis.host", rootCmd.PersistentFlags().Lookup("processor-inputs-redis-host"))
-
-	rootCmd.PersistentFlags().Int("processor-inputs-redis-port", 6379,
-		`Redis port for collecting asset and threat intel.`)
-	viper.BindPFlag("processor.inputs.redis.port", rootCmd.PersistentFlags().Lookup("processor-inputs-redis-port"))
-
-	rootCmd.PersistentFlags().Int("processor-inputs-redis-db", 0,
-		`Redis database for collecting asset and threat intel.`)
-	viper.BindPFlag("processor.inputs.redis.db", rootCmd.PersistentFlags().Lookup("processor-inputs-redis-db"))
-
 	rootCmd.PersistentFlags().Bool("processor-sigma-enabled", false,
 		`Enable sigma rule engine.`)
 	viper.BindPFlag("processor.sigma.enabled", rootCmd.PersistentFlags().Lookup("processor-sigma-enabled"))
@@ -221,10 +197,6 @@ func initProcessorConfig() {
 	rootCmd.PersistentFlags().String("processor-assets-kafka-group", "peek",
 		"Kafka consumer group for maintaining offsets.")
 	viper.BindPFlag("processor.assets.kafka.group", rootCmd.PersistentFlags().Lookup("processor-assets-kafka-group"))
-
-	rootCmd.PersistentFlags().Bool("processor-assets-kafka-commit", true,
-		`Commit offsets under to the broker. To continue from last commit in case consumer is stopped.`)
-	viper.BindPFlag("processor.assets.kafka.commit", rootCmd.PersistentFlags().Lookup("processor-assets-kafka-commit"))
 
 	rootCmd.PersistentFlags().String("processor-assets-kafka-mode", "follow",
 		`Where to begin consuming. Valid options:

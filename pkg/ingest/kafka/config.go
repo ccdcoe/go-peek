@@ -10,7 +10,6 @@ type Config struct {
 	Topics        []string
 	Ctx           context.Context
 	OffsetMode    OffsetMode
-	NoCommit      bool
 }
 
 func NewDefaultConfig() *Config {

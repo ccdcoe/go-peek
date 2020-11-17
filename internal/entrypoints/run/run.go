@@ -10,6 +10,8 @@ import (
 
 	"go-peek/internal/engines/inputs"
 	"go-peek/internal/engines/shipper"
+	"go-peek/pkg/ingest/kafka"
+	"go-peek/pkg/intel/assets"
 	"go-peek/pkg/models/consumer"
 	"go-peek/pkg/models/events"
 	"go-peek/pkg/utils"
@@ -84,6 +86,43 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		return out
 	}()
 
+	assetCache := func() *assets.Handle {
+		if !viper.GetBool("processor.assets.enabled") {
+			return nil
+		}
+		log.Info("spawning asset cache")
+		cache, err := assets.NewHandle(assets.Config{
+			Kafka: kafka.Config{
+				Brokers:       viper.GetStringSlice("processor.assets.kafka.host"),
+				ConsumerGroup: viper.GetString("processor.assets.kafka.group"),
+				Topics:        []string{viper.GetString("processor.assets.kafka.topic")},
+				Ctx:           context.TODO(),
+				OffsetMode:    kafka.TranslateOffsetMode(viper.GetString("processor.assets.kafka.mode")),
+			},
+		})
+		if err != nil {
+			log.Fatalf("asset cache spawn: %s", err)
+		}
+		go func(ctx context.Context) {
+			tick := time.NewTicker(30 * time.Second)
+		loop:
+			for {
+				select {
+				case <-tick.C:
+					missingHosts := cache.GetMissingHosts()
+					if len(missingHosts) > 0 {
+						for _, host := range missingHosts {
+							log.Warnf("Seen following host in logs missing in asset cache -> %s", host)
+						}
+					}
+				case <-ctx.Done():
+					break loop
+				}
+			}
+		}(context.TODO())
+		return cache
+	}()
+
 	channels, errs := spawnWorkers(
 		func() <-chan *consumer.Message {
 			if len(inputs) == 1 {
@@ -109,7 +148,11 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		Workers,
 		spooldir,
 		mapping,
+		assetCache,
 	)
+	if assetCache != nil {
+		assetCache.SetErrs(errs)
+	}
 
 	go func(ctx context.Context) {
 		if l := log.GetLevel(); l > log.DebugLevel {

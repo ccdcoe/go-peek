@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/Shopify/sarama"
 	"go-peek/pkg/models/consumer"
 	"go-peek/pkg/utils"
+
+	"github.com/Shopify/sarama"
 )
+
+var Version = "2.6.0"
 
 type Consumer struct {
 	group  sarama.ConsumerGroup
@@ -40,7 +43,7 @@ func NewConsumer(c *Config) (*Consumer, error) {
 		)),
 	}
 	// TODO - make configurable
-	obj.config.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRange
+	// obj.config.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRange
 	switch c.OffsetMode {
 	case OffsetEarliest:
 		obj.config.Consumer.Offsets.Initial = sarama.OffsetOldest
@@ -48,7 +51,7 @@ func NewConsumer(c *Config) (*Consumer, error) {
 		obj.config.Consumer.Offsets.Initial = sarama.OffsetNewest
 	default:
 	}
-	version, err := sarama.ParseKafkaVersion("2.1.1")
+	version, err := sarama.ParseKafkaVersion(Version)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +65,6 @@ func NewConsumer(c *Config) (*Consumer, error) {
 	obj.wg.Add(1)
 	go func() {
 		defer obj.wg.Done()
-		//defer obj.group.Close()
 	loop:
 		for {
 			select {
@@ -77,7 +79,6 @@ func NewConsumer(c *Config) (*Consumer, error) {
 	}()
 	go func() {
 		obj.wg.Wait()
-		//obj.group.Close()
 		close(obj.handle.messages)
 	}()
 	return obj, nil
@@ -122,17 +123,9 @@ func (c *handle) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.
 			Key:       string(msg.Key),
 			Type:      consumer.Kafka,
 		}
-		// TODO - autocommit?
-		session.MarkMessage(msg, "")
+		// // TODO - autocommit?
+		// session.MarkMessage(msg, "")
 	}
 
 	return nil
 }
-
-type OffsetMode int
-
-const (
-	OffsetLastCommit OffsetMode = iota
-	OffsetEarliest
-	OffsetLatest
-)

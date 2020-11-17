@@ -99,16 +99,7 @@ func Create(workers int, spooldir string) ([]consumer.Messager, []context.Cancel
 				}
 				return topics
 			}(),
-			OffsetMode: func() kafka.OffsetMode {
-				switch viper.GetString("input.kafka.mode") {
-				case "beginning":
-					return kafka.OffsetEarliest
-				case "latest":
-					return kafka.OffsetLatest
-				default:
-					return kafka.OffsetLastCommit
-				}
-			}(),
+			OffsetMode: kafka.TranslateOffsetMode(viper.GetString("input.kafka.mode")),
 		})
 		if err != nil {
 			log.WithFields(log.Fields{
