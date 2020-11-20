@@ -9,6 +9,8 @@ import (
 	"go-peek/pkg/utils"
 	"sync"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 type Config struct {
@@ -102,28 +104,39 @@ func (h *Handle) consume(ctx context.Context) *Handle {
 	h.wg.Add(1)
 	go func() {
 		defer h.wg.Done()
+		report := time.NewTicker(5 * time.Second)
+		var count int64
 	loop:
-		for msg := range h.consumer.Messages() {
-			var obj meta.RawAsset
-			if err := json.Unmarshal(msg.Data, &obj); err != nil {
-				h.errs.Send(err)
-				continue loop
+		for {
+			select {
+			case msg, ok := <-h.consumer.Messages():
+				if !ok {
+					break loop
+				}
+				var obj meta.RawAsset
+				if err := json.Unmarshal(msg.Data, &obj); err != nil {
+					h.errs.Send(err)
+					continue loop
+				}
+				a := obj.Asset().Copy()
+				h.dataByIP.Store(a.IP.String(), Asset{
+					Updated: time.Now(),
+					Asset:   a.Copy(),
+				})
+				var fqdn string
+				if a.Domain != "" {
+					fqdn = fmt.Sprintf("%s.%s", a.Host, a.Domain)
+				} else {
+					fqdn = a.Host
+				}
+				h.dataByHost.Store(fqdn, Asset{
+					Updated: time.Now(),
+					Asset:   a.Copy(),
+				})
+				count++
+			case <-report.C:
+				logrus.Tracef("Asset consumer picked up %d items", count)
 			}
-			a := obj.Asset().Copy()
-			h.dataByIP.Store(a.IP.String(), Asset{
-				Updated: time.Now(),
-				Asset:   a.Copy(),
-			})
-			var fqdn string
-			if a.Domain != "" {
-				fqdn = fmt.Sprintf("%s.%s", a.Host, a.Domain)
-			} else {
-				fqdn = a.Host
-			}
-			h.dataByHost.Store(fqdn, Asset{
-				Updated: time.Now(),
-				Asset:   a.Copy(),
-			})
 		}
 	}()
 	return h
