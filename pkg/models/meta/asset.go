@@ -51,14 +51,15 @@ type RawAsset struct {
 
 func (r RawAsset) Asset() Asset {
 	return Asset{
-		Host:   r.HostName,
-		Alias:  r.Pretty,
-		Role:   r.Role,
-		OS:     r.OS,
-		IP:     net.ParseIP(r.IP.String()),
-		Zone:   r.Zone,
-		Team:   r.Team,
-		Domain: r.Domain,
-		VM:     r.VM,
+		Host:       r.HostName,
+		Alias:      r.Pretty,
+		Role:       r.Role,
+		OS:         r.OS,
+		IP:         net.ParseIP(r.IP.String()),
+		Zone:       r.Zone,
+		Team:       r.Team,
+		Domain:     r.Domain,
+		VM:         r.VM,
+		Indicators: Indicators{IsAsset: true},
 	}
 }
