@@ -188,7 +188,7 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 		wg.Add(1)
 		go func(ch <-chan *consumer.Message, wg *sync.WaitGroup) {
 			defer wg.Done()
-			if err := shipper.Send(ch, "output"); err != nil {
+			if err := shipper.Send(ch, "emit"); err != nil {
 				log.Fatal(err)
 			}
 			log.Info("Emitter done")

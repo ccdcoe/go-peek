@@ -10,6 +10,7 @@ import (
 	"go-peek/pkg/outputs/elastic"
 	"go-peek/pkg/outputs/filestorage"
 	"go-peek/pkg/outputs/kafka"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -96,7 +97,9 @@ func Send(
 			}
 		}
 
-		kafkaProducer, err := kafka.NewProducer(&kafka.Config{Brokers: viper.GetStringSlice(module + ".kafka.host")})
+		kafkaProducer, err := kafka.NewProducer(
+			&kafka.Config{Brokers: viper.GetStringSlice(module + ".kafka.host")},
+		)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"hosts": viper.GetStringSlice(module + ".kafka.host"),
@@ -205,6 +208,7 @@ func Send(
 	ctx, cancel := context.WithCancel(context.Background())
 	if fileEnabled {
 		writer, err := filestorage.NewHandle(&filestorage.Config{
+			Name:           module,
 			Dir:            viper.GetString(module + ".file.dir"),
 			Combined:       viper.GetString(module + ".file.path"),
 			Gzip:           viper.GetBool(module + ".file.gzip"),

@@ -13,6 +13,7 @@ import (
 
 	"go-peek/pkg/models/consumer"
 	"go-peek/pkg/utils"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -21,6 +22,7 @@ var (
 )
 
 type Config struct {
+	Name      string
 	Dir       string
 	Combined  string
 	Gzip      bool
@@ -60,6 +62,8 @@ type logFile struct {
 }
 
 type Handle struct {
+	name string
+
 	errs *utils.ErrChan
 	rx   <-chan consumer.Message
 
@@ -86,6 +90,7 @@ func NewHandle(c *Config) (*Handle, error) {
 		return nil, err
 	}
 	return &Handle{
+		name:      c.Name,
 		errs:      utils.NewErrChan(100, "filestorage handle"),
 		rx:        c.Stream,
 		timestamp: c.Timestamp,
@@ -175,7 +180,7 @@ func (h *Handle) Do(ctx context.Context) error {
 						h.filterChannels[key] = obj
 						h.mu.Unlock()
 
-						log.Tracef("creating new log file %s", path)
+						log.Tracef("%s creating new log file %s", h.name, path)
 						if err := writeSingleFile(
 							*obj,
 							*h.errs,
@@ -196,17 +201,17 @@ func (h *Handle) Do(ctx context.Context) error {
 					old := v
 					close(v.rx)
 					delete(h.filterChannels, k)
-					log.Tracef("rotated event %s", k)
+					log.Tracef("%s rotated event %s", h.name, k)
 
 					go func(source string, done chan bool) {
 						h.wg.Add(1)
 						defer h.wg.Done()
 						<-done
-						log.Tracef("compressing %s", old.path)
+						log.Tracef("%s compressing %s", h.name, old.path)
 						if err := utils.GzipCompress(source, fmt.Sprintf("%s.gz", source)); err != nil {
 							h.errs.Send(err)
 						}
-						log.Tracef("done compressing %s", old.path)
+						log.Tracef("%s done compressing %s", h.name, old.path)
 						if err := os.Remove(source); err != nil {
 							h.errs.Send(err)
 						}
@@ -215,11 +220,12 @@ func (h *Handle) Do(ctx context.Context) error {
 				h.mu.Unlock()
 			}
 		}
-		log.Trace("filestorage filter loop good exit")
+		log.Tracef("%s filestorage filter loop good exit", h.name)
 	}()
 
 	if h.combinedEnabled {
 		now := time.Now()
+		log.Tracef("%s writing combined logs to %s", h.name, filenameFunc(now, h.combined))
 		if err := writeSingleFile(
 			logFile{
 				path: filenameFunc(now, h.combined),
