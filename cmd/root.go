@@ -227,6 +227,10 @@ func initProcessorConfig() {
 		latest - start from most recent message in topic`)
 	viper.BindPFlag("processor.assets.kafka.mode", pFlags.Lookup("processor-assets-kafka-mode"))
 
+	pFlags.Bool("processor-assets-redis-enabled", false,
+		`Enable asset tracking.`)
+	viper.BindPFlag("processor.assets.redis.enabled", pFlags.Lookup("processor-assets-redis-enabled"))
+
 	pFlags.String("processor-assets-redis-host", "localhost", `Redis host for asset mappings.`)
 	viper.BindPFlag("processor.mitre.meerkat.redis.host", pFlags.Lookup("processor-assets-redis-host"))
 
