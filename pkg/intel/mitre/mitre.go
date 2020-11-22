@@ -52,6 +52,7 @@ func NewMapper(c Config) (*Mapper, error) {
 		raw = response.Body
 		defer response.Body.Close()
 	} else {
+		logrus.Tracef("Loading %s", c.EnterpriseDump)
 		f, err := os.Open(c.EnterpriseDump)
 		if err != nil {
 			return nil, err
