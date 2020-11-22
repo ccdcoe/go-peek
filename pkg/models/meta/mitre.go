@@ -1,12 +1,7 @@
 package meta
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"strings"
-
-	"go-peek/pkg/utils"
 
 	sigma "github.com/markuskont/go-sigma-rule-engine/pkg/sigma/v2"
 )
@@ -45,7 +40,6 @@ func (m *MitreAttack) Set(mapping Techniques) *MitreAttack {
 	if mapping != nil {
 		for i, t := range m.Techniques {
 			if val, ok := mapping[t.ID]; ok {
-				fmt.Println("got", val)
 				m.Techniques[i] = Technique{
 					ID:     t.ID,
 					Name:   val.Name,
@@ -88,19 +82,3 @@ type Technique struct {
 }
 
 type Techniques map[string]Technique
-
-func NewTechniquesFromJSONfile(path string) (Techniques, error) {
-	path, err := utils.ExpandHome(path)
-	if err != nil {
-		return nil, err
-	}
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		fmt.Print(err)
-	}
-	var t Techniques
-	if err := json.Unmarshal(data, &t); err != nil {
-		return nil, err
-	}
-	return t, nil
-}

@@ -9,10 +9,8 @@ import (
 
 	"go-peek/pkg/intel/assets"
 	"go-peek/pkg/intel/mitre"
-	"go-peek/pkg/intel/mitremeerkat"
 	"go-peek/pkg/models/consumer"
 	"go-peek/pkg/models/events"
-	"go-peek/pkg/models/meta"
 	"go-peek/pkg/parsers"
 	"go-peek/pkg/utils"
 
@@ -88,14 +86,14 @@ func spawnWorkers(
 
 				log.Tracef("Spawning worker %d", id)
 
-				mitreSignatureConverter, err := mitremeerkat.NewMapper(&mitremeerkat.Config{
-					Host: viper.GetString("processor.inputs.redis.host"),
-					Port: viper.GetInt("processor.inputs.redis.port"),
-					DB:   viper.GetInt("processor.inputs.redis.db"),
-				})
-				if err != nil {
-					logContext.Fatal(err)
-				}
+				// mitreSignatureConverter, err := mitremeerkat.NewMapper(&mitremeerkat.Config{
+				// 	Host: viper.GetString("processor.inputs.redis.host"),
+				// 	Port: viper.GetInt("processor.inputs.redis.port"),
+				// 	DB:   viper.GetInt("processor.inputs.redis.db"),
+				// })
+				// if err != nil {
+				// 	logContext.Fatal(err)
+				// }
 
 				mitreEnterpriseMapper := func() *mitre.Mapper {
 					if !viper.GetBool("processor.mitre.enabled") {
@@ -220,13 +218,13 @@ func spawnWorkers(
 					switch obj := ev.(type) {
 					case *events.Suricata:
 						if obj.Alert != nil && obj.Alert.SignatureID > 0 {
-							if mapping, ok := mitreSignatureConverter.GetSid(obj.Alert.SignatureID); ok {
-								m.MitreAttack.Techniques = append(m.MitreAttack.Techniques, meta.Technique{
-									ID:   mapping.ID,
-									Name: mapping.Name,
-								})
-								// m.MitreAttack.Set(mitreTechniqueMapper)
-							}
+							// if mapping, ok := mitreSignatureConverter.GetSid(obj.Alert.SignatureID); ok {
+							// 	m.MitreAttack.Techniques = append(m.MitreAttack.Techniques, meta.Technique{
+							// 		ID:   mapping.ID,
+							// 		Name: mapping.Name,
+							// 	})
+							// m.MitreAttack.Set(mitreTechniqueMapper)
+							// }
 						}
 					case *events.DynamicWinlogbeat:
 						if res := obj.MitreAttack(); res != nil {
