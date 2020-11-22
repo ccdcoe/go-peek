@@ -9,8 +9,10 @@ import (
 
 	"go-peek/pkg/intel/assets"
 	"go-peek/pkg/intel/mitre"
+	"go-peek/pkg/intel/mitremeerkat"
 	"go-peek/pkg/models/consumer"
 	"go-peek/pkg/models/events"
+	"go-peek/pkg/models/meta"
 	"go-peek/pkg/parsers"
 	"go-peek/pkg/utils"
 
@@ -83,17 +85,7 @@ func spawnWorkers(
 				defer wg.Done()
 				defer log.Tracef("worker %d done", id)
 				logContext := log.WithFields(log.Fields{"id": id})
-
 				log.Tracef("Spawning worker %d", id)
-
-				// mitreSignatureConverter, err := mitremeerkat.NewMapper(&mitremeerkat.Config{
-				// 	Host: viper.GetString("processor.inputs.redis.host"),
-				// 	Port: viper.GetInt("processor.inputs.redis.port"),
-				// 	DB:   viper.GetInt("processor.inputs.redis.db"),
-				// })
-				// if err != nil {
-				// 	logContext.Fatal(err)
-				// }
 
 				mitreEnterpriseMapper := func() *mitre.Mapper {
 					if !viper.GetBool("processor.mitre.enabled") {
@@ -122,6 +114,25 @@ func spawnWorkers(
 					return mitreEnterpriseMapper
 				}()
 				logContext.Infof("Got %d MITRE technique mappings", len(mitreEnterpriseMapper.Mappings))
+
+				mitreSignatureConverter := func() *mitremeerkat.Mapper {
+					if !viper.GetBool("processor.mitre.enabled") ||
+						!viper.GetBool("processor.mitre.meerkat.enabled") {
+						logContext.Warn("Suricata SID MITRE mapper disabled.")
+						return nil
+					}
+					host := viper.GetString("processor.mitre.meerkat.redis.host")
+					port := viper.GetInt("processor.mitre.meerkat.redis.port")
+					db := viper.GetInt("processor.mitre.meerkat.redis.db")
+					logContext.Infof("Suricata SID MITRE mapper connecting to %s:%d DB %d", host, port, db)
+					mitreSignatureConverter, err := mitremeerkat.NewMapper(
+						&mitremeerkat.Config{Host: host, Port: port, DB: db},
+					)
+					if err != nil {
+						logContext.Fatal(err)
+					}
+					return mitreSignatureConverter
+				}()
 
 				ruleset, sigmaMatch := func() (*sigma.Ruleset, bool) {
 					if !viper.GetBool("processor.sigma.enabled") {
@@ -218,13 +229,13 @@ func spawnWorkers(
 					switch obj := ev.(type) {
 					case *events.Suricata:
 						if obj.Alert != nil && obj.Alert.SignatureID > 0 {
-							// if mapping, ok := mitreSignatureConverter.GetSid(obj.Alert.SignatureID); ok {
-							// 	m.MitreAttack.Techniques = append(m.MitreAttack.Techniques, meta.Technique{
-							// 		ID:   mapping.ID,
-							// 		Name: mapping.Name,
-							// 	})
-							// m.MitreAttack.Set(mitreTechniqueMapper)
-							// }
+							if mapping, ok := mitreSignatureConverter.GetSid(obj.Alert.SignatureID); ok {
+								m.MitreAttack.Techniques = append(m.MitreAttack.Techniques, meta.Technique{
+									ID:   mapping.ID,
+									Name: mapping.Name,
+								})
+								m.MitreAttack.Set(mitreEnterpriseMapper.Mappings)
+							}
 						}
 					case *events.DynamicWinlogbeat:
 						if res := obj.MitreAttack(); res != nil {
