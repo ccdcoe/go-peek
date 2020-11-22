@@ -216,6 +216,7 @@ func spawnWorkers(
 						}
 					}
 
+					// MITRE ATT&CK enrichment FROM MESSAGE
 					switch obj := ev.(type) {
 					case *events.Suricata:
 						if obj.Alert != nil && obj.Alert.SignatureID > 0 {
@@ -229,8 +230,10 @@ func spawnWorkers(
 						}
 					case *events.DynamicWinlogbeat:
 						if res := obj.MitreAttack(); res != nil {
-							// res.Set(mitreTechniqueMapper)
 							m.MitreAttack = res
+							if mitreEnterpriseMapper != nil {
+								res.Set(mitreEnterpriseMapper.Mappings)
+							}
 						}
 					}
 
