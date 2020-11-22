@@ -123,7 +123,7 @@ func spawnWorkers(
 					}
 					return mitreEnterpriseMapper
 				}()
-				logContext.Info(mitreEnterpriseMapper)
+				logContext.Infof("Got %d MITRE technique mappings", len(mitreEnterpriseMapper.Mappings))
 
 				ruleset, sigmaMatch := func() (*sigma.Ruleset, bool) {
 					if !viper.GetBool("processor.sigma.enabled") {
