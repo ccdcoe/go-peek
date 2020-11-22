@@ -11,8 +11,6 @@ import (
 	sigma "github.com/markuskont/go-sigma-rule-engine/pkg/sigma/v2"
 )
 
-const src = `https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json`
-
 type MitreAttack struct {
 	Technique
 	Items      []string
@@ -69,6 +67,7 @@ func (m *MitreAttack) ParseSigmaTags(results sigma.Results, mapping Techniques) 
 type Technique struct {
 	ID     string
 	Name   string
+	URL    string
 	Phases []string
 }
 
