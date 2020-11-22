@@ -178,9 +178,18 @@ func initProcessorConfig() {
 			`Each directory will be scored recursively for files with "yml" suffix.`)
 	viper.BindPFlag("processor.sigma.dir", rootCmd.PersistentFlags().Lookup("processor-sigma-dir"))
 
-	rootCmd.PersistentFlags().String("processor-mitre-technique-json", "",
+	rootCmd.PersistentFlags().Bool("processor-mitre-enabled", false,
 		`JSON file containing MITRE att&ck ID to technique and phase mapping.`)
-	viper.BindPFlag("processor.mitre.technique.json", rootCmd.PersistentFlags().Lookup("processor-mitre-technique-json"))
+	viper.BindPFlag(
+		"processor.mitre.enabled",
+		rootCmd.PersistentFlags().Lookup("processor-mitre-enabled"),
+	)
+	rootCmd.PersistentFlags().String("processor-mitre-json-enterprise", "",
+		`JSON file containing MITRE att&ck ID to technique and phase mapping.`)
+	viper.BindPFlag(
+		"processor.mitre.json.enterprise",
+		rootCmd.PersistentFlags().Lookup("processor-mitre-json-enterprise"),
+	)
 
 	rootCmd.PersistentFlags().Bool("processor-assets-enabled", false,
 		`Enable asset tracking.`)

@@ -2,11 +2,13 @@ package run
 
 import (
 	"fmt"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"go-peek/pkg/intel/assets"
+	"go-peek/pkg/intel/mitre"
 	"go-peek/pkg/intel/mitremeerkat"
 	"go-peek/pkg/models/consumer"
 	"go-peek/pkg/models/events"
@@ -94,17 +96,34 @@ func spawnWorkers(
 				if err != nil {
 					logContext.Fatal(err)
 				}
-				mitreTechniqueMapper := func() meta.Techniques {
-					if path := viper.GetString("processor.mitre.technique.json"); path != "" {
-						out, err := meta.NewTechniquesFromJSONfile(path)
-						if err != nil {
-							log.Fatal(err)
-						}
-						log.Infof("worker %d loaded %d mappings from %s", id, len(out), path)
-						return out
+
+				mitreEnterpriseMapper := func() *mitre.Mapper {
+					if !viper.GetBool("processor.mitre.enabled") {
+						logContext.Warn("Mitre id to technique name / tactic mapper disabled!")
+						return nil
 					}
-					return nil
+					logContext.Info("Reading MITRE ID and tactic mappings.")
+					mitreEnterpriseMapper, err := mitre.NewMapper(mitre.Config{
+						EnterpriseDump: func() string {
+							if p := viper.GetString("processor.mitre.enterprise.json"); p != "" {
+								expanded, err := utils.ExpandHome(p)
+								if err != nil {
+									logContext.Fatal(err)
+								}
+								logContext.Debugf("Using %s as mitre dump file", expanded)
+								return expanded
+							}
+							dump := filepath.Join(viper.GetString("work.dir"), "mitre-enterprise.json")
+							logContext.Debugf("Using %s as mitre dump file", dump)
+							return dump
+						}(),
+					})
+					if err != nil {
+						logContext.Fatal(err)
+					}
+					return mitreEnterpriseMapper
 				}()
+				logContext.Info(mitreEnterpriseMapper)
 
 				ruleset, sigmaMatch := func() (*sigma.Ruleset, bool) {
 					if !viper.GetBool("processor.sigma.enabled") {
@@ -186,7 +205,7 @@ func spawnWorkers(
 						if sigmaEvent, ok := ev.(sigma.Event); ok {
 							if results, match := ruleset.EvalAll(sigmaEvent); match {
 								m.SigmaResults = results
-								m.MitreAttack.ParseSigmaTags(results, mitreTechniqueMapper)
+								// m.MitreAttack.ParseSigmaTags(results, mitreTechniqueMapper)
 							}
 						} else {
 							errs.Send(fmt.Errorf(
@@ -205,12 +224,12 @@ func spawnWorkers(
 									ID:   mapping.ID,
 									Name: mapping.Name,
 								})
-								m.MitreAttack.Set(mitreTechniqueMapper)
+								// m.MitreAttack.Set(mitreTechniqueMapper)
 							}
 						}
 					case *events.DynamicWinlogbeat:
 						if res := obj.MitreAttack(); res != nil {
-							res.Set(mitreTechniqueMapper)
+							// res.Set(mitreTechniqueMapper)
 							m.MitreAttack = res
 						}
 					}
