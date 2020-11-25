@@ -5,6 +5,7 @@ import (
 )
 
 type Config struct {
+	Name          string
 	Brokers       []string
 	ConsumerGroup string
 	Topics        []string
@@ -24,6 +25,9 @@ func NewDefaultConfig() *Config {
 func (c *Config) Validate() error {
 	if c == nil {
 		c = NewDefaultConfig()
+	}
+	if c.Name == "" {
+		c.Name = "default-consumer"
 	}
 	if c.Brokers == nil || len(c.Brokers) == 0 {
 		c.Brokers = []string{"localhost:9092"}
