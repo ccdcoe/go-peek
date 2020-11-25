@@ -111,9 +111,9 @@ func spawnWorkers(
 					if err != nil {
 						logContext.Fatal(err)
 					}
+					logContext.Infof("Got %d MITRE technique mappings", len(mitreEnterpriseMapper.Mappings))
 					return mitreEnterpriseMapper
 				}()
-				logContext.Infof("Got %d MITRE technique mappings", len(mitreEnterpriseMapper.Mappings))
 
 				mitreSignatureConverter := func() *mitremeerkat.Mapper {
 					if !viper.GetBool("processor.mitre.enabled") ||
