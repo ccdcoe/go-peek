@@ -163,10 +163,6 @@ func initProcessorConfig() {
 		`Enable or disable all processor plugins globally.`)
 	viper.BindPFlag("processor.enabled", pFlags.Lookup("processor-enabled"))
 
-	pFlags.Bool("processor-anonymize", false,
-		`Anonymize messages. Simple method by replacing host names with aliases`)
-	viper.BindPFlag("processor.anonymize", pFlags.Lookup("processor-anonymize"))
-
 	pFlags.Bool("processor-sigma-enabled", false,
 		`Enable sigma rule engine.`)
 	viper.BindPFlag("processor.sigma.enabled", pFlags.Lookup("processor-sigma-enabled"))
