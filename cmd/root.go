@@ -32,7 +32,6 @@ var rootCmd = &cobra.Command{
 	Long: `Examples:
 
 		TODO`,
-	//Run: doRun,
 }
 
 var pFlags = rootCmd.PersistentFlags()
@@ -44,9 +43,6 @@ func Execute() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-}
-func doRun(cmd *cobra.Command, args []string) {
-	log.Info("Starting peek")
 }
 
 func init() {
