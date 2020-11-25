@@ -228,13 +228,15 @@ func spawnWorkers(
 					// MITRE ATT&CK enrichment FROM MESSAGE
 					switch obj := ev.(type) {
 					case *events.Suricata:
-						if obj.Alert != nil && obj.Alert.SignatureID > 0 {
-							if mapping, ok := mitreSignatureConverter.GetSid(obj.Alert.SignatureID); ok {
-								m.MitreAttack.Techniques = append(m.MitreAttack.Techniques, meta.Technique{
-									ID:   mapping.ID,
-									Name: mapping.Name,
-								})
-								m.MitreAttack.Set(mitreEnterpriseMapper.Mappings)
+						if mitreSignatureConverter != nil {
+							if obj.Alert != nil && obj.Alert.SignatureID > 0 {
+								if mapping, ok := mitreSignatureConverter.GetSid(obj.Alert.SignatureID); ok {
+									m.MitreAttack.Techniques = append(m.MitreAttack.Techniques, meta.Technique{
+										ID:   mapping.ID,
+										Name: mapping.Name,
+									})
+									m.MitreAttack.Set(mitreEnterpriseMapper.Mappings)
+								}
 							}
 						}
 					case *events.DynamicWinlogbeat:
