@@ -224,13 +224,13 @@ func initProcessorConfig() {
 	viper.BindPFlag("processor.assets.redis.enabled", pFlags.Lookup("processor-assets-redis-enabled"))
 
 	pFlags.String("processor-assets-redis-host", "localhost", `Redis host for asset mappings.`)
-	viper.BindPFlag("processor.mitre.meerkat.redis.host", pFlags.Lookup("processor-assets-redis-host"))
+	viper.BindPFlag("processor.assets.redis.host", pFlags.Lookup("processor-assets-redis-host"))
 
 	pFlags.Int("processor-assets-redis-port", 6379, `Redis port for asset mappings.`)
-	viper.BindPFlag("processor.mitre.meerkat.redis.port", pFlags.Lookup("processor-assets-redis-port"))
+	viper.BindPFlag("processor.assets.redis.port", pFlags.Lookup("processor-assets-redis-port"))
 
 	pFlags.Int("processor-assets-redis-db", 0, `Redis db for asset mappings.`)
-	viper.BindPFlag("processor.mitre.meerkat.redis.db", pFlags.Lookup("processor-assets-redis-db"))
+	viper.BindPFlag("processor.assets.redis.db", pFlags.Lookup("processor-assets-redis-db"))
 }
 
 func initOutputConfig(prefix string) {

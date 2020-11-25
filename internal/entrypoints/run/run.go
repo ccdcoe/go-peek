@@ -16,6 +16,7 @@ import (
 	"go-peek/pkg/models/events"
 	"go-peek/pkg/utils"
 
+	"github.com/go-redis/redis"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -99,6 +100,20 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 				Ctx:           context.TODO(),
 				OffsetMode:    kafka.TranslateOffsetMode(viper.GetString("processor.assets.kafka.mode")),
 			},
+			Redis: func() *redis.Options {
+				if !viper.GetBool("processor.assets.redis.enabled") {
+					return nil
+				}
+				return &redis.Options{
+					Addr: fmt.Sprintf(
+						"%s:%d",
+						viper.GetString("processor.assets.redis.host"),
+						viper.GetInt("processor.assets.redis.port"),
+					),
+					DB:       viper.GetInt("processor.assets.redis.db"),
+					Password: "",
+				}
+			}(),
 		})
 		if err != nil {
 			log.Fatalf("asset cache spawn: %s", err)

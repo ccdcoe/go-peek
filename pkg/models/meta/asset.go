@@ -1,6 +1,9 @@
 package meta
 
-import "net"
+import (
+	"fmt"
+	"net"
+)
 
 type Indicators struct {
 	IsAsset bool `json:"is_asset"`
@@ -35,6 +38,13 @@ func (a Asset) Copy() Asset {
 			IsAsset: a.Indicators.IsAsset,
 		},
 	}
+}
+
+func (a Asset) FQDN() string {
+	if a.Domain != "" {
+		return fmt.Sprintf("%s.%s", a.Host, a.Domain)
+	}
+	return a.Host
 }
 
 type RawAsset struct {
