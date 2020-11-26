@@ -134,9 +134,9 @@ func spawnWorkers(
 					return mitreSignatureConverter
 				}()
 
-				ruleset, sigmaMatch := func() (*sigma.Ruleset, bool) {
+				ruleset := func() *sigma.Ruleset {
 					if !viper.GetBool("processor.sigma.enabled") {
-						return nil, false
+						return nil
 					}
 					ruleset, err := sigma.NewRuleset(sigma.Config{
 						Directory: viper.GetStringSlice("processor.sigma.dir"),
@@ -146,7 +146,7 @@ func spawnWorkers(
 					}
 					log.Debugf("SIGMA: Worker %d Found %d files, %d ok, %d failed, %d unsupported",
 						id, ruleset.Total, ruleset.Ok, ruleset.Failed, ruleset.Unsupported)
-					return ruleset, true
+					return ruleset
 				}()
 
 			loop:
@@ -210,7 +210,7 @@ func spawnWorkers(
 						}
 					}
 
-					if sigmaMatch {
+					if ruleset != nil {
 						if sigmaEvent, ok := ev.(sigma.Event); ok {
 							if results, match := ruleset.EvalAll(sigmaEvent); match {
 								m.SigmaResults = results
