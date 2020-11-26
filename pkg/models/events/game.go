@@ -85,7 +85,7 @@ func (d DynamicWinlogbeat) DumpEventData() *meta.EventData {
 }
 
 func (d DynamicWinlogbeat) MitreAttack() *meta.MitreAttack {
-	if val, ok := d.Select("winlog.event_data.RuleName"); ok {
+	if val, ok := d.Select("rule.name"); ok {
 		if s, ok := val.(string); ok {
 			if bits := strings.Split(s, ","); len(bits) == 2 {
 				technique := &meta.Technique{}
