@@ -38,7 +38,7 @@ type GameAsset struct {
 
 func (g *GameAsset) SetDirection() *GameAsset {
 	if g.Source != nil && g.Destination != nil {
-		if g.Source.Team != "team_blue" && g.Destination.Team != "team_blue" {
+		if g.Source.Team == "team_blue" && g.Destination.Team != "team_blue" {
 			g.SetOutbound()
 		}
 		if g.Destination.Team == "team_blue" && g.Source.Team != "team_blue" {
