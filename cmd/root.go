@@ -78,9 +78,7 @@ func initStreamConfig() {
 		)
 		viper.BindPFlag(
 			fmt.Sprintf("stream.%s.dir", stream),
-			pFlags.Lookup(
-				fmt.Sprintf("stream-%s-dir", stream),
-			),
+			pFlags.Lookup(fmt.Sprintf("stream-%s-dir", stream)),
 		)
 
 		pFlags.StringSlice(
@@ -90,9 +88,7 @@ func initStreamConfig() {
 		)
 		viper.BindPFlag(
 			fmt.Sprintf("stream.%s.uxsock", stream),
-			pFlags.Lookup(
-				fmt.Sprintf("stream-%s-uxsock", stream),
-			),
+			pFlags.Lookup(fmt.Sprintf("stream-%s-uxsock", stream)),
 		)
 
 		pFlags.StringSlice(
@@ -102,23 +98,40 @@ func initStreamConfig() {
 		)
 		viper.BindPFlag(
 			fmt.Sprintf("stream.%s.kafka.topic", stream),
-			pFlags.Lookup(
-				fmt.Sprintf("stream-%s-kafka-topic", stream),
-			),
+			pFlags.Lookup(fmt.Sprintf("stream-%s-kafka-topic", stream)),
 		)
 
 		pFlags.String(
 			fmt.Sprintf("stream-%s-parser", stream),
 			"rfc5424",
-			fmt.Sprintf("Parser for event type %s. Supported options are rfc5424 for IETF syslog formatted messages, json-raw for structured events, and json-game for meta-enritched events.", stream),
+			fmt.Sprintf(`Parser for event type %s. `+
+				`Supported options are rfc5424 for IETF syslog formatted messages, `+
+				`json-raw for structured events, `+
+				`and json-game for meta-enritched events.`, stream),
 		)
 		viper.BindPFlag(
 			fmt.Sprintf("stream.%s.parser", stream),
-			pFlags.Lookup(
-				fmt.Sprintf("stream-%s-parser", stream),
-			),
+			pFlags.Lookup(fmt.Sprintf("stream-%s-parser", stream)),
 		)
 
+		pFlags.Bool(
+			fmt.Sprintf("stream-%s-sigma-enabled", stream), false,
+			fmt.Sprintf("Enable SIGMA rule matching for %s event stream", stream),
+		)
+		viper.BindPFlag(
+			fmt.Sprintf("stream.%s.sigma.enabled", stream),
+			pFlags.Lookup(fmt.Sprintf("stream-%s-sigma-enabled", stream)),
+		)
+		pFlags.StringSlice(
+			fmt.Sprintf("stream-%s-sigma-dir", stream),
+			[]string{},
+			`Directories that contains sigma rules. Multiple directories can be defined. `+
+				`Each directory will be scored recursively for files with "yml" suffix.`,
+		)
+		viper.BindPFlag(
+			fmt.Sprintf("stream.%s.sigma.dir", stream),
+			pFlags.Lookup(fmt.Sprintf("stream-%s-sigma-dir", stream)),
+		)
 	}
 }
 
@@ -163,14 +176,9 @@ func initProcessorConfig() {
 		`Enable or disable all processor plugins globally.`)
 	viper.BindPFlag("processor.enabled", pFlags.Lookup("processor-enabled"))
 
-	pFlags.Bool("processor-sigma-enabled", false,
-		`Enable sigma rule engine.`)
+	pFlags.Bool("processor-sigma-enabled", true,
+		`Enable or disable sigma rule engine globally.`)
 	viper.BindPFlag("processor.sigma.enabled", pFlags.Lookup("processor-sigma-enabled"))
-
-	pFlags.StringSlice("processor-sigma-dir", []string{},
-		`Directories that contains sigma rules. Multiple directories can be defined. `+
-			`Each directory will be scored recursively for files with "yml" suffix.`)
-	viper.BindPFlag("processor.sigma.dir", pFlags.Lookup("processor-sigma-dir"))
 
 	pFlags.Bool("processor-mitre-enabled", false,
 		`JSON file containing MITRE att&ck ID to technique and phase mapping.`)

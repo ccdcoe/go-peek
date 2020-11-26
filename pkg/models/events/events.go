@@ -81,14 +81,11 @@ const (
 )
 
 var Atomics = []Atomic{
-	SimpleE,
 	SuricataE,
 	SyslogE,
 	SnoopyE,
 	EventLogE,
 	SysmonE,
-	ZeekE,
-	MazeRunnerE,
 }
 
 // Functions

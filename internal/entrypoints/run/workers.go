@@ -18,6 +18,7 @@ import (
 
 	sigma "github.com/markuskont/go-sigma-rule-engine/pkg/sigma/v2"
 
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -134,19 +135,34 @@ func spawnWorkers(
 					return mitreSignatureConverter
 				}()
 
-				ruleset := func() *sigma.Ruleset {
+				rulesets := func() map[events.Atomic]*sigma.Ruleset {
 					if !viper.GetBool("processor.sigma.enabled") {
 						return nil
 					}
-					ruleset, err := sigma.NewRuleset(sigma.Config{
-						Directory: viper.GetStringSlice("processor.sigma.dir"),
-					})
-					if err != nil {
-						log.Fatal(err)
+					ruleMapping := make(map[events.Atomic]*sigma.Ruleset)
+					for _, stream := range events.Atomics {
+						viper.GetBool("stream.suricata.sigma.enabled")
+						if viper.GetBool(fmt.Sprintf("stream.%s.sigma.enabled", stream)) {
+							ruleset, err := sigma.NewRuleset(sigma.Config{
+								Directory: viper.GetStringSlice(fmt.Sprintf("stream.%s.sigma.dir", stream)),
+							})
+							if err != nil {
+								logrus.Fatalf("SIGMA: %s", err)
+							}
+							log.Debugf(
+								"SIGMA: Worker %d Found %d files, %d ok, %d failed, %d unsupported",
+								id,
+								ruleset.Total,
+								ruleset.Ok,
+								ruleset.Failed,
+								ruleset.Unsupported,
+							)
+							ruleMapping[stream] = ruleset
+						} else {
+							logrus.Warnf("SIGMA disabled for stream %s", stream)
+						}
 					}
-					log.Debugf("SIGMA: Worker %d Found %d files, %d ok, %d failed, %d unsupported",
-						id, ruleset.Total, ruleset.Ok, ruleset.Failed, ruleset.Unsupported)
-					return ruleset
+					return ruleMapping
 				}()
 
 			loop:
@@ -210,19 +226,30 @@ func spawnWorkers(
 						}
 					}
 
-					if ruleset != nil {
-						if sigmaEvent, ok := ev.(sigma.Event); ok {
-							if results, match := ruleset.EvalAll(sigmaEvent); match {
-								m.SigmaResults = results
-								// m.MitreAttack.ParseSigmaTags(results, mitreTechniqueMapper)
-							}
-						} else {
+					m.SigmaResults = func() sigma.Results {
+						if rulesets == nil || len(rulesets) == 0 {
+							return nil
+						}
+						sigmaEvent, ok := ev.(sigma.Event)
+						if !ok {
 							errs.Send(fmt.Errorf(
 								"Event type %s does not satisfy sigma.Event",
 								evInfo.Atomic.String(),
 							))
-							continue loop
+							return nil
 						}
+						rules, ok := rulesets[evInfo.Atomic]
+						if !ok {
+							return nil
+						}
+						results, match := rules.EvalAll(sigmaEvent)
+						if !match {
+							return nil
+						}
+						return results
+					}()
+					if m.SigmaResults != nil && len(m.SigmaResults) > 0 {
+						m.MitreAttack.ParseSigmaTags(m.SigmaResults, mitreEnterpriseMapper.Mappings)
 					}
 
 					// MITRE ATT&CK enrichment FROM MESSAGE
@@ -230,10 +257,9 @@ func spawnWorkers(
 					case *events.Suricata:
 						if mitreSignatureConverter != nil {
 							if obj.Alert != nil && obj.Alert.SignatureID > 0 {
-								if mapping, ok := mitreSignatureConverter.GetSid(obj.Alert.SignatureID); ok {
+								if suriSidMap, ok := mitreSignatureConverter.GetSid(obj.Alert.SignatureID); ok {
 									m.MitreAttack.Techniques = append(m.MitreAttack.Techniques, meta.Technique{
-										ID:   mapping.ID,
-										Name: mapping.Name,
+										ID: suriSidMap.ID, Name: suriSidMap.Name,
 									})
 									m.MitreAttack.Set(mitreEnterpriseMapper.Mappings)
 								}

@@ -62,23 +62,17 @@ func Entrypoint(cmd *cobra.Command, args []string) {
 				Atomic: event,
 				Parser: consumer.NewParser(p),
 			}
-			if src := viper.GetStringSlice(
-				fmt.Sprintf("stream.%s.kafka.topic", event.String()),
-			); len(src) > 0 {
+			if src := viper.GetStringSlice(fmt.Sprintf("stream.%s.kafka.topic", event.String())); len(src) > 0 {
 				for _, item := range src {
 					out[item] = m
 				}
 			}
-			if src := viper.GetStringSlice(
-				fmt.Sprintf("stream.%s.dir", event.String()),
-			); len(src) > 0 {
+			if src := viper.GetStringSlice(fmt.Sprintf("stream.%s.dir", event.String())); len(src) > 0 {
 				for _, item := range src {
 					out[item] = m
 				}
 			}
-			if src := viper.GetStringSlice(
-				fmt.Sprintf("stream.%s.uxsock", event.String()),
-			); len(src) > 0 {
+			if src := viper.GetStringSlice(fmt.Sprintf("stream.%s.uxsock", event.String())); len(src) > 0 {
 				for _, item := range src {
 					out[item] = m
 				}
