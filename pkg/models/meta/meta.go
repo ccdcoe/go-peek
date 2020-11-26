@@ -38,13 +38,14 @@ type GameAsset struct {
 
 func (g *GameAsset) SetDirection() *GameAsset {
 	if g.Source != nil && g.Destination != nil {
-		if g.Source.IsAsset && !g.Destination.IsAsset {
+		if g.Source.Team != "team_blue" && g.Destination.Team != "team_blue" {
 			g.SetOutbound()
 		}
-		if !g.Source.IsAsset && g.Destination.IsAsset {
+		if g.Destination.Team == "team_blue" && g.Source.Team != "team_blue" {
 			g.SetInbound()
 		}
-		if g.Source.IsAsset && g.Destination.IsAsset {
+		if g.Source.Team == "team_blue" && g.Destination.Team == "team_blue" &&
+			g.Source.Zone == g.Destination.Zone {
 			g.SetLateral()
 		}
 	}
@@ -55,6 +56,10 @@ func (g *GameAsset) SetDirection() *GameAsset {
 	return g
 }
 
+func (g *GameAsset) SetNetPivot() *GameAsset {
+	g.Directionality = DirNetPivot
+	return g
+}
 func (g *GameAsset) SetLateral() *GameAsset {
 	g.Directionality = DirLateral
 	return g
@@ -88,6 +93,7 @@ const (
 	DirLateral
 	DirInbound
 	DirOutbound
+	DirNetPivot
 )
 
 func (d Directionality) String() string {
@@ -100,6 +106,8 @@ func (d Directionality) String() string {
 		return "Inbound"
 	case DirOutbound:
 		return "Outbound"
+	case DirNetPivot:
+		return "Network Pivot"
 	default:
 		return "Unknown"
 	}
