@@ -141,7 +141,6 @@ func spawnWorkers(
 					}
 					ruleMapping := make(map[events.Atomic]*sigma.Ruleset)
 					for _, stream := range events.Atomics {
-						viper.GetBool("stream.suricata.sigma.enabled")
 						if viper.GetBool(fmt.Sprintf("stream.%s.sigma.enabled", stream)) {
 							ruleset, err := sigma.NewRuleset(sigma.Config{
 								Directory: viper.GetStringSlice(fmt.Sprintf("stream.%s.sigma.dir", stream)),
