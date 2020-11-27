@@ -8,11 +8,11 @@ require (
 	github.com/golang/snappy v0.0.2 // indirect
 	github.com/influxdata/go-syslog v1.0.1
 	github.com/influxdata/go-syslog/v3 v3.0.0
-	github.com/klauspost/compress v1.11.2 // indirect
+	github.com/klauspost/compress v1.11.3 // indirect
 	github.com/magiconair/properties v1.8.4 // indirect
-	github.com/markuskont/go-sigma-rule-engine v0.0.0-20201109160701-b902e485bfb0
+	github.com/markuskont/go-sigma-rule-engine v0.0.0-20201126233950-acfcf8ba12be
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/mitchellh/mapstructure v1.3.3 // indirect
+	github.com/mitchellh/mapstructure v1.4.0 // indirect
 	github.com/olivere/elastic/v7 v7.0.22
 	github.com/onsi/ginkgo v1.11.0 // indirect
 	github.com/onsi/gomega v1.8.1 // indirect
@@ -22,9 +22,12 @@ require (
 	github.com/spf13/afero v1.4.1 // indirect
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.7.1
-	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897 // indirect
-	golang.org/x/net v0.0.0-20201109172640-a11eb1b685be // indirect
-	golang.org/x/sys v0.0.0-20201109165425-215b40eba54c // indirect
+	golang.org/x/crypto v0.0.0-20201124201722-c8d3bf9c5392 // indirect
+	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b // indirect
+	golang.org/x/sys v0.0.0-20201126233918-771906719818 // indirect
 	golang.org/x/text v0.3.4 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
+
+// replace github.com/markuskont/go-sigma-rule-engine => /home/markus/Projects/Personal/go-sigma-rule-engine/
