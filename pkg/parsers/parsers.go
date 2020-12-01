@@ -114,6 +114,7 @@ func UnmarshalStructuredEvent(data []byte, enum events.Atomic) (interface{}, err
 		}
 		return &events.Suricata{
 			StaticSuricataEve: obj,
+			Timestamp:         obj.Time(),
 		}, nil
 	case events.EventLogE, events.SysmonE:
 		var obj atomic.DynamicWinlogbeat

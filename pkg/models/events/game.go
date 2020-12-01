@@ -167,8 +167,9 @@ func (d DynamicWinlogbeat) JSONFormat() ([]byte, error) {
 
 type Suricata struct {
 	atomic.StaticSuricataEve
-	Syslog   *atomic.Syslog `json:"syslog,omitempty"`
-	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+	Timestamp time.Time      `json:"@timestamp"`
+	Syslog    *atomic.Syslog `json:"syslog,omitempty"`
+	GameMeta  meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
 // DumpEventData implements EventDataDumper
