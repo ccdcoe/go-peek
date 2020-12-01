@@ -276,11 +276,7 @@ func spawnWorkers(
 					if len(m.MitreAttack.Techniques) == 0 {
 						m.MitreAttack = nil
 					}
-					if emitCh != nil {
-						if m.MitreAttack != nil && m.SigmaResults != nil {
-							m.EventData = e.DumpEventData()
-						}
-					}
+					m.EventData = e.DumpEventData()
 					m.EventType = evInfo.Atomic.String()
 					e.SetAsset(*m.SetDirection())
 
