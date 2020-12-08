@@ -103,6 +103,11 @@ func (h Handle) GetHost(hostname string) (*meta.Asset, bool) {
 		h.missingHostnames.Delete(hostname)
 		return &a, true
 	}
+	if val, ok := h.dataByHost.Load(hostname); ok {
+		a := val.(Asset).Asset.Copy()
+		h.missingHostnames.Delete(hostname)
+		return &a, true
+	}
 	h.missingHostnames.Store(hostname, true)
 	return nil, false
 }
