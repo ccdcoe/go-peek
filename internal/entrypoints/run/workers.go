@@ -261,6 +261,12 @@ func spawnWorkers(
 										ID: suriSidMap.ID, Name: suriSidMap.Name,
 									})
 									m.MitreAttack.Set(mitreEnterpriseMapper.Mappings)
+								} else {
+									logrus.Warnf(
+										"Missing MITRE mapping for SID: %d MSG: %s",
+										obj.Alert.SignatureID,
+										obj.Alert.Signature,
+									)
 								}
 							}
 						}
