@@ -1,0 +1,6 @@
+providentia:
+  interval: 5m0s
+  token: ""
+  url: ""
+work:
+  dir: /home/markus/.local/peek
