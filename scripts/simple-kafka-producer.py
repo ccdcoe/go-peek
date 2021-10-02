@@ -11,15 +11,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--brokers",
-            dest="brokers",
-            nargs = "+",
-            default=["localhost:9092"],
-            help="Kafka broker. Multiple can be defained separated by whitespace. Note that this option is only used for bootstrapping, so a single broker in cluster is enough.")
+                        dest="brokers",
+                        nargs="+",
+                        default=["localhost:9092"],
+                        help="Kafka broker. Multiple can be defained separated by whitespace. Note that this option is only used for bootstrapping, so a single broker in cluster is enough.")
 
     parser.add_argument("--topic",
-            dest="topic",
-            default="test123",
-            help="topic to send messages to")
+                        dest="topic",
+                        default="test123",
+                        help="topic to send messages to")
 
     args = parser.parse_args()
 
@@ -27,14 +27,17 @@ if __name__ == "__main__":
 
     i = 0
     while True:
+        print("sending ", i)
         msg = {
-                "syslog_message":   "message {}".format(i),
-                "syslog_host":      "sycamore",
-                "syslog_program":   "mytestprog",
-                "syslog_ip":        "192.168.56.174",
-                "@timestamp":       str(datetime.utcnow().astimezone().isoformat()),
-                }
-        resp = producer.send(args.topic, bytes(json.dumps(msg), encoding='utf-8'))
+            "syslog_message":   "message {}".format(i),
+            "syslog_host":      "sycamore",
+            "syslog_program":   "mytestprog",
+            "syslog_ip":        "192.168.56.174",
+            "@timestamp":       str(datetime.utcnow().astimezone().isoformat())
+        }
+        resp = producer.send(args.topic,
+                             bytes(json.dumps(msg), encoding='utf-8'))
+        print(resp)
         i += 1
         time.sleep(1)
 
