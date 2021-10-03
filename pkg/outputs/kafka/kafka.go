@@ -91,6 +91,7 @@ func (p Producer) Feed(
 	name string,
 	ctx context.Context,
 	fn consumer.TopicMapFn,
+	wg *sync.WaitGroup,
 ) error {
 	if !p.active {
 		return fmt.Errorf(
@@ -111,11 +112,17 @@ func (p Producer) Feed(
 	}
 
 	p.feeders.Add(1)
+	if wg != nil {
+		wg.Add(1)
+	}
 	go func(ctx context.Context) {
 		debug := time.NewTicker(3 * time.Second)
 		var count uint64
 		start := time.Now()
 		defer p.feeders.Done()
+		if wg != nil {
+			defer wg.Done()
+		}
 	loop:
 		for p.active {
 			select {
