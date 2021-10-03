@@ -6,9 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Shopify/sarama"
 	"go-peek/pkg/models/consumer"
-	log "github.com/sirupsen/logrus"
+
+	"github.com/Shopify/sarama"
+	"github.com/sirupsen/logrus"
 )
 
 // Config is used as parameter when instanciating new Producer instance
@@ -17,6 +18,7 @@ type Config struct {
 	SaramaConfig *sarama.Config
 	// TODO - automatically close producer if all feeders exit
 	AutoClose bool
+	Logger    *logrus.Logger
 }
 
 func NewDefaultConfig() *Config {
@@ -44,6 +46,7 @@ type Producer struct {
 	active   bool
 	feeders  *sync.WaitGroup
 	errCount int
+	logger   *logrus.Logger
 }
 
 func NewProducer(c *Config) (*Producer, error) {
@@ -53,7 +56,11 @@ func NewProducer(c *Config) (*Producer, error) {
 	if err := c.Validate(); err != nil {
 		return nil, err
 	}
-	h := &Producer{config: c.SaramaConfig, feeders: &sync.WaitGroup{}}
+	h := &Producer{
+		config:  c.SaramaConfig,
+		feeders: &sync.WaitGroup{},
+		logger:  c.Logger,
+	}
 	if producer, err := sarama.NewAsyncProducer(c.Brokers, c.SaramaConfig); err != nil {
 		return nil, err
 	} else {
@@ -124,11 +131,13 @@ func (p Producer) Feed(
 				}
 				count++
 			case <-debug.C:
-				log.Infof(
-					"Sent %d events to kafka producer %d events per second",
-					count,
-					count/uint64(time.Since(start).Seconds()),
-				)
+				if p.logger != nil {
+					p.logger.Debugf(
+						"Sent %d events to kafka producer %d events per second",
+						count,
+						count/uint64(time.Since(start).Seconds()),
+					)
+				}
 			case <-ctx.Done():
 				break loop
 			}
