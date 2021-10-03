@@ -1,8 +1,13 @@
 package cmd
 
 import (
+	"context"
+	"encoding/json"
 	"go-peek/internal/app"
+	"go-peek/pkg/models/consumer"
+	"go-peek/pkg/outputs/kafka"
 	"go-peek/pkg/providentia"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -24,6 +29,24 @@ var providentiaCmd = &cobra.Command{
 		ticker := time.NewTicker(viper.GetDuration("providentia.interval"))
 		defer ticker.Stop()
 
+		var wg sync.WaitGroup
+		defer wg.Wait()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		tx := make(chan consumer.Message, 10)
+		if viper.GetBool("providentia.output.kafka.enabled") {
+			producer, err := kafka.NewProducer(&kafka.Config{
+				Brokers: viper.GetStringSlice("providentia.output.kafka.brokers"),
+				Logger:  logger,
+			})
+			app.Throw("Sarama producer init", err)
+			topic := viper.GetString("providentia.output.kafka.topic")
+			producer.Feed(tx, "Providentia producer", ctx, func(m consumer.Message) string {
+				return topic
+			}, &wg)
+		}
+
 		fn := func() {
 			if items, err := providentia.Pull(providentia.Params{
 				URL:    viper.GetString("providentia.url"),
@@ -32,10 +55,22 @@ var providentiaCmd = &cobra.Command{
 			}); err != nil {
 				logger.WithFields(logrus.Fields{}).Error(err)
 			} else {
+				ts := time.Now()
 				logger.WithFields(logrus.Fields{
 					"results": len(items),
 					"url":     viper.GetString("providentia.url"),
 				}).Debug("API call done")
+				for _, item := range items {
+					encoded, err := json.Marshal(item)
+					app.Throw("Output JSON encode", err)
+					if viper.GetBool("providentia.output.kafka.enabled") {
+						tx <- consumer.Message{
+							Data: encoded,
+							Time: ts,
+							Key:  "providentia",
+						}
+					}
+				}
 			}
 		}
 
@@ -60,4 +95,6 @@ func init() {
 
 	providentiaCmd.PersistentFlags().Duration("interval", 5*time.Minute, "Sleep between API calls")
 	viper.BindPFlag("providentia.interval", providentiaCmd.PersistentFlags().Lookup("interval"))
+
+	app.RegisterOutputKafka("providentia", providentiaCmd.PersistentFlags())
 }
