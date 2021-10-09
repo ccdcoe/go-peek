@@ -27,8 +27,6 @@ func (e ErrRespDecode) Error() string {
 
 type Params struct {
 	URL, Token string
-	Logger     *logrus.Logger
-	Anonymizer *anonymizer.Mapper
 }
 
 type network struct {
@@ -40,7 +38,14 @@ type network struct {
 	IPv6 string `json:"ipv6"`
 }
 
-type target struct {
+type Targets []Target
+
+type MappedTarget struct {
+	Target Target
+	Alias  string
+}
+
+type Target struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
 	Owner string `json:"owner"`
@@ -55,18 +60,13 @@ type target struct {
 	} `json:"vars"`
 }
 
-func (t target) extract(logger *logrus.Logger, anon *anonymizer.Mapper) []Record {
-	var pretty string
-	if anon != nil {
-		pretty = anon.CheckAndUpdate(t.Name)
-	}
+func (t Target) extract(logger *logrus.Logger) []Record {
 	tx := make([]Record, 0)
 	for _, nw := range t.Vars.Networks {
 		if nw.IPv4 != "" {
 			if addr, _, err := net.ParseCIDR(nw.IPv4); err == nil {
 				tx = append(tx, Record{
 					Name:    t.Name,
-					Pretty:  pretty,
 					Domain:  nw.Domain,
 					Updated: time.Now(),
 					Addr:    addr,
@@ -83,7 +83,6 @@ func (t target) extract(logger *logrus.Logger, anon *anonymizer.Mapper) []Record
 			if addr, _, err := net.ParseCIDR(nw.IPv6); err == nil {
 				tx = append(tx, Record{
 					Name:    t.Name,
-					Pretty:  pretty,
 					Domain:  nw.Domain,
 					Updated: time.Now(),
 					Addr:    addr,
@@ -100,16 +99,8 @@ func (t target) extract(logger *logrus.Logger, anon *anonymizer.Mapper) []Record
 	return tx
 }
 
-type response struct {
-	Hosts []target `json:"hosts"`
-}
-
-func (r response) extract(logger *logrus.Logger, anon *anonymizer.Mapper) Records {
-	tx := make([]Record, 0)
-	for _, host := range r.Hosts {
-		tx = append(tx, host.extract(logger, anon)...)
-	}
-	return tx
+type Response struct {
+	Hosts []Target `json:"hosts"`
 }
 
 type Record struct {
@@ -123,7 +114,7 @@ type Record struct {
 
 type Records []Record
 
-func Pull(p Params) (Records, error) {
+func Pull(p Params) (Targets, error) {
 	if p.URL == "" {
 		return nil, ErrMissingURL
 	}
@@ -147,10 +138,29 @@ func Pull(p Params) (Records, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	var obj response
+	var obj Response
 	decoder := json.NewDecoder(resp.Body)
 	if err := decoder.Decode(&obj); err != nil {
 		return nil, ErrRespDecode{Decode: err}
 	}
-	return obj.extract(p.Logger, p.Anonymizer), nil
+	return obj.Hosts, nil
+}
+
+func ExtractAddrs(targets []MappedTarget, logger *logrus.Logger) Records {
+	tx := make(Records, 0)
+	for _, target := range targets {
+		tx = append(tx, target.Target.extract(logger)...)
+	}
+	return tx
+}
+
+func MapTargets(targets Targets, anon *anonymizer.Mapper) []MappedTarget {
+	tx := make([]MappedTarget, len(targets))
+	for i, tgt := range targets {
+		tx[i] = MappedTarget{
+			Target: tgt,
+			Alias:  anon.CheckAndUpdate(tgt.Name),
+		}
+	}
+	return tx
 }

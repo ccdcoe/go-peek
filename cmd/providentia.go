@@ -70,28 +70,38 @@ var providentiaCmd = &cobra.Command{
 		signal.Notify(chTerminate, os.Interrupt, syscall.SIGTERM)
 
 		fn := func() {
-			if items, err := providentia.Pull(providentia.Params{
-				URL:        viper.GetString("providentia.url"),
-				Token:      viper.GetString("providentia.token"),
-				Logger:     logger,
-				Anonymizer: m,
-			}); err != nil {
+			targets, err := providentia.Pull(providentia.Params{
+				URL:   viper.GetString("providentia.url"),
+				Token: viper.GetString("providentia.token"),
+			})
+			if err != nil {
 				logger.WithFields(logrus.Fields{}).Error(err)
-			} else {
-				ts := time.Now()
-				logger.WithFields(logrus.Fields{
-					"results": len(items),
-					"url":     viper.GetString("providentia.url"),
-				}).Debug("API call done")
-				for _, item := range items {
-					encoded, err := json.Marshal(item)
-					app.Throw("Output JSON encode", err)
-					if viper.GetBool("providentia.output.kafka.enabled") {
-						tx <- consumer.Message{
-							Data: encoded,
-							Time: ts,
-							Key:  "providentia",
-						}
+				return
+			}
+			logger.WithFields(logrus.Fields{
+				"results":  len(targets),
+				"url":      viper.GetString("providentia.url"),
+				"endpoint": "targets",
+			}).Info("API call done")
+
+			mapped := providentia.MapTargets(targets, m)
+			assets := providentia.ExtractAddrs(mapped, logger)
+
+			logger.WithFields(logrus.Fields{
+				"addrs":             len(assets),
+				"rename_new":        m.Misses,
+				"rename_cache_hits": m.Hits,
+			}).Info("Assets extracted")
+
+			now := time.Now()
+			for _, item := range assets {
+				encoded, err := json.Marshal(item)
+				app.Throw("Output JSON encode", err)
+				if viper.GetBool("providentia.output.kafka.enabled") {
+					tx <- consumer.Message{
+						Data: encoded,
+						Time: now,
+						Key:  "providentia",
 					}
 				}
 			}
