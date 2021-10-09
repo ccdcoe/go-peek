@@ -7,7 +7,9 @@ import (
 	"go-peek/pkg/anonymizer"
 	"go-peek/pkg/models/consumer"
 	"go-peek/pkg/outputs/kafka"
+	"go-peek/pkg/persist"
 	"go-peek/pkg/providentia"
+	"path"
 	"sync"
 	"time"
 
@@ -48,7 +50,16 @@ var providentiaCmd = &cobra.Command{
 			}, &wg)
 		}
 
-		m, err := anonymizer.NewMapper()
+		persist, err := persist.NewBadger(persist.Config{
+			Directory:     path.Join(viper.GetString("work.dir"), "providentia", "badger"),
+			IntervalGC:    1 * time.Minute,
+			RunValueLogGC: true,
+			WaitGroup:     &wg,
+			Ctx:           context.TODO(),
+			Logger:        logger,
+		})
+
+		m, err := anonymizer.NewMapper(anonymizer.Config{Persist: persist})
 		app.Throw("Anonymizer creation", err)
 
 		fn := func() {
