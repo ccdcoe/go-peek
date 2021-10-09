@@ -9,8 +9,11 @@ import (
 	"go-peek/pkg/outputs/kafka"
 	"go-peek/pkg/persist"
 	"go-peek/pkg/providentia"
+	"os"
+	"os/signal"
 	"path"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -33,7 +36,7 @@ var providentiaCmd = &cobra.Command{
 		defer ticker.Stop()
 
 		var wg sync.WaitGroup
-		defer wg.Wait()
+		// defer wg.Wait()
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
@@ -58,9 +61,13 @@ var providentiaCmd = &cobra.Command{
 			Ctx:           context.TODO(),
 			Logger:        logger,
 		})
+		defer persist.Close()
 
 		m, err := anonymizer.NewMapper(anonymizer.Config{Persist: persist})
 		app.Throw("Anonymizer creation", err)
+
+		chTerminate := make(chan os.Signal, 1)
+		signal.Notify(chTerminate, os.Interrupt, syscall.SIGTERM)
 
 		fn := func() {
 			if items, err := providentia.Pull(providentia.Params{
@@ -91,10 +98,13 @@ var providentiaCmd = &cobra.Command{
 		}
 
 		fn()
+	loop:
 		for {
 			select {
 			case <-ticker.C:
 				fn()
+			case <-chTerminate:
+				break loop
 			}
 		}
 	},
