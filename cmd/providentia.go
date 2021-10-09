@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"go-peek/internal/app"
+	"go-peek/pkg/anonymizer"
 	"go-peek/pkg/models/consumer"
 	"go-peek/pkg/outputs/kafka"
 	"go-peek/pkg/providentia"
@@ -47,11 +48,15 @@ var providentiaCmd = &cobra.Command{
 			}, &wg)
 		}
 
+		m, err := anonymizer.NewMapper()
+		app.Throw("Anonymizer creation", err)
+
 		fn := func() {
 			if items, err := providentia.Pull(providentia.Params{
-				URL:    viper.GetString("providentia.url"),
-				Token:  viper.GetString("providentia.token"),
-				Logger: logger,
+				URL:        viper.GetString("providentia.url"),
+				Token:      viper.GetString("providentia.token"),
+				Logger:     logger,
+				Anonymizer: m,
 			}); err != nil {
 				logger.WithFields(logrus.Fields{}).Error(err)
 			} else {
