@@ -1,6 +1,9 @@
 package anonymizer
 
 import (
+	"bytes"
+	"encoding/gob"
+	"go-peek/pkg/persist"
 	"math/rand"
 	"strings"
 	"time"
@@ -8,8 +11,16 @@ import (
 	_ "embed"
 )
 
+const (
+	PersistKeyPrefix = "pretty"
+)
+
 //go:embed name_pool.txt
 var pool []byte
+
+type Config struct {
+	Persist *persist.Badger
+}
 
 type Pretty struct {
 	Name   string
@@ -20,15 +31,20 @@ type Pretty struct {
 }
 
 type Mapper struct {
-	Data map[string]*Pretty
-	Pool []string
+	Data    map[string]*Pretty
+	Pool    []string
+	Persist *persist.Badger
+
+	Hits, Misses int
 }
 
 func (m *Mapper) CheckAndUpdate(name string) string {
 	if val, ok := m.Data[name]; ok && val.Rename != "" {
+		m.Hits++
 		val.LastSeen = time.Now()
 		return val.Rename
 	}
+	m.Misses++
 	idx := rand.Intn(len(m.Pool))
 
 	pretty := &Pretty{
@@ -38,25 +54,37 @@ func (m *Mapper) CheckAndUpdate(name string) string {
 		LastSeen:  time.Now(),
 	}
 
-	m.Data[name] = pretty
+	m.Data[pretty.Name] = pretty
 	m.Data[pretty.Rename] = pretty
+
+	m.Persist.Set(PersistKeyPrefix, persist.GenericValue{Key: pretty.Name, Data: pretty})
+	m.Persist.Set(PersistKeyPrefix, persist.GenericValue{Key: pretty.Rename, Data: pretty})
 
 	m.Pool = append(m.Pool[:idx], m.Pool[idx+1:]...)
 	return pretty.Rename
 }
 
-func NewMapper() (*Mapper, error) {
+func NewMapper(c Config) (*Mapper, error) {
 	m := &Mapper{
-		Pool: make([]string, 0),
-		Data: make(map[string]*Pretty),
+		Pool:    make([]string, 0),
+		Data:    make(map[string]*Pretty),
+		Persist: c.Persist,
 	}
 
-	// TODO - load persitence here
-	// TODO - badgerdb handler for persitence
+	records := m.Persist.Scan(PersistKeyPrefix)
+	for record := range records {
+		var pretty Pretty
+		buf := bytes.NewBuffer(record.Data)
+		err := gob.NewDecoder(buf).Decode(&pretty)
+		if err != nil {
+			return nil, err
+		}
+		m.Data[pretty.Name] = &pretty
+		m.Data[pretty.Rename] = &pretty
+	}
 	names := strings.Split(string(pool), "\n")
 	for _, name := range names {
 		// only load names that have not been used
-		// both original and rename must be indexed
 		if _, ok := m.Data[name]; !ok {
 			m.Pool = append(m.Pool, name)
 		}
