@@ -106,3 +106,14 @@ func GzipCompress(source, target string) error {
 	_, err = io.Copy(archiver, reader)
 	return err
 }
+
+func ErrSendLossy(err error, ch chan<- error) bool {
+	if err == nil || ch == nil {
+		return false
+	}
+	select {
+	case ch <- err:
+	default:
+	}
+	return true
+}
