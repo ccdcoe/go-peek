@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"go-peek/internal/app"
+	"go-peek/pkg/archive"
 	"go-peek/pkg/ingest/kafka"
 	"go-peek/pkg/models/consumer"
-	"go-peek/pkg/outputs/filestorage"
 	"os"
 	"os/signal"
 	"sync"
@@ -38,7 +38,7 @@ var archiveCmd = &cobra.Command{
 
 		var wg sync.WaitGroup
 
-		logrus.Info("Creating kafka consumer")
+		logger.Info("Creating kafka consumer")
 		input, err := kafka.NewConsumer(&kafka.Config{
 			Name:          "archive consumer",
 			ConsumerGroup: "peek",
@@ -49,33 +49,28 @@ var archiveCmd = &cobra.Command{
 		})
 		app.Throw("archive consumer", err)
 
-		logrus.Debug("creating channels")
+		logger.Debug("creating channels")
 		rx := input.Messages()
 		tx := make(chan consumer.Message, 0)
 		defer close(tx)
 
 		logrus.Info("creating writer")
-		w, err := filestorage.NewHandle(&filestorage.Config{
-			Name:           "archive writer",
+		arch, err := archive.NewHandle(archive.Config{
+			Directory:      viper.GetString("archive.output.folder"),
+			RotateInterval: viper.GetDuration("archive.output.rotate.interval"),
 			Stream:         tx,
-			Dir:            folder,
-			RotateEnabled:  true,
-			RotateGzip:     true,
-			RotateInterval: 5 * time.Minute,
-			Timestamp:      true,
+			Logger:         logger,
 		})
 		app.Throw("logfile output creation", err)
 
+		logrus.Debug("starting up writer")
 		ctxWriter, cancelWriter := context.WithCancel(context.Background())
-
-		logrus.Debug("Creating writer workers")
-		app.Throw("writer routine create", w.Do(ctxWriter))
-		wg.Add(1)
+		app.Throw("writer routine create", arch.Do(ctxWriter, &wg))
 
 		chTerminate := make(chan os.Signal, 1)
 		signal.Notify(chTerminate, os.Interrupt, syscall.SIGTERM)
 
-		logrus.Info("Starting main loop")
+		logger.Info("Starting main loop")
 	loop:
 		for {
 			select {
@@ -86,10 +81,13 @@ var archiveCmd = &cobra.Command{
 				tx <- *msg
 			case <-chTerminate:
 				break loop
+			case err := <-arch.Errors:
+				app.Throw("writer error", err)
 			}
 		}
 		cancelReader()
 		cancelWriter()
+		wg.Wait()
 	},
 }
 
@@ -98,6 +96,9 @@ func init() {
 
 	archiveCmd.PersistentFlags().String("output-folder", "", "Output folder for archive")
 	viper.BindPFlag("archive.output.folder", archiveCmd.PersistentFlags().Lookup("output-folder"))
+
+	archiveCmd.PersistentFlags().Duration("output-rotate-interval", 1*time.Hour, "Interval between file rotations")
+	viper.BindPFlag("archive.output.rotate.interval", archiveCmd.PersistentFlags().Lookup("output-rotate-interval"))
 
 	app.RegisterInputKafkaGenericSimple("archive", archiveCmd.PersistentFlags())
 }
