@@ -6,13 +6,19 @@ import (
 )
 
 const (
+	// Kafka Input
+	FlagInKafkaEnabled = "input-kafka-enabled"
+	FlagInKafkaTopics  = "input-kafka-topics"
+	FlagInKafkaBrokers = "input-kafka-brokers"
+
+	// Kafka Output
 	FlagOutKafkaEnabled = "output-kafka-enabled"
 	FlagOutKafkaTopic   = "output-kafka-topic"
 	FlagOutKafkaBrokers = "output-kafka-brokers"
 )
 
 func RegisterOutputKafka(prefix string, pFlags *pflag.FlagSet) {
-	pFlags.Bool(FlagOutKafkaEnabled, false, "Kafka output topic")
+	pFlags.Bool(FlagOutKafkaEnabled, false, "Enable kafka output")
 	viper.BindPFlag(prefix+".output.kafka.enabled", pFlags.Lookup(FlagOutKafkaEnabled))
 
 	pFlags.String(FlagOutKafkaTopic, "peek", "Kafka output topic")
@@ -20,4 +26,12 @@ func RegisterOutputKafka(prefix string, pFlags *pflag.FlagSet) {
 
 	pFlags.StringSlice(FlagOutKafkaBrokers, []string{"localhost:9092"}, "Kafka output broker list")
 	viper.BindPFlag(prefix+".output.kafka.brokers", pFlags.Lookup(FlagOutKafkaBrokers))
+}
+
+func RegisterInputKafkaGenericSimple(prefix string, pFlags *pflag.FlagSet) {
+	pFlags.StringSlice(FlagInKafkaTopics, []string{}, "List of input topics")
+	viper.BindPFlag(prefix+".input.kafka.topics", pFlags.Lookup(FlagInKafkaTopics))
+
+	pFlags.StringSlice(FlagInKafkaBrokers, []string{"localhost:9092"}, "List of input brokers")
+	viper.BindPFlag(prefix+".input.kafka.brokers", pFlags.Lookup(FlagInKafkaBrokers))
 }
