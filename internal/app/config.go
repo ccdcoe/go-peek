@@ -15,6 +15,10 @@ const (
 	FlagOutKafkaEnabled = "output-kafka-enabled"
 	FlagOutKafkaTopic   = "output-kafka-topic"
 	FlagOutKafkaBrokers = "output-kafka-brokers"
+
+	// Elastic Output
+	FlagOutElasticHosts  = "output-elastic-hosts"
+	FlagOutElasticPrefix = "output-elastic-prefix"
 )
 
 func RegisterOutputKafka(prefix string, pFlags *pflag.FlagSet) {
@@ -26,6 +30,14 @@ func RegisterOutputKafka(prefix string, pFlags *pflag.FlagSet) {
 
 	pFlags.StringSlice(FlagOutKafkaBrokers, []string{"localhost:9092"}, "Kafka output broker list")
 	viper.BindPFlag(prefix+".output.kafka.brokers", pFlags.Lookup(FlagOutKafkaBrokers))
+}
+
+func RegisterOutputElastic(prefix string, pFlags *pflag.FlagSet) {
+	pFlags.StringSlice(FlagOutElasticHosts, []string{"http://localhost:9200"}, "List of elastic hosts. Needs http:// prefix.")
+	viper.BindPFlag(prefix+".output.elasticsearch.hosts", pFlags.Lookup(FlagOutElasticHosts))
+
+	pFlags.String(FlagOutElasticPrefix, "peek", "Prefix to be prepended to dynamically generated elastic index")
+	viper.BindPFlag(prefix+".output.elasticsearch.prefix", pFlags.Lookup(FlagOutElasticPrefix))
 }
 
 func RegisterInputKafkaGenericSimple(prefix string, pFlags *pflag.FlagSet) {

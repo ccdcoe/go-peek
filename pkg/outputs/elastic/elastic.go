@@ -3,13 +3,15 @@ package elastic
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"go-peek/pkg/models/consumer"
+
 	olivere "github.com/olivere/elastic/v7"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -17,11 +19,19 @@ var (
 	TimeFmt                  = "2006.01.02"
 )
 
+var (
+	ErrMissingStream = errors.New("Missing input stream")
+	ErrMissingMapFn  = errors.New("Missing index name mapping function")
+)
+
 type Config struct {
 	Workers  int
 	Interval time.Duration
 	Hosts    []string
 	Debug    bool
+	Stream   <-chan consumer.Message
+	Logger   *logrus.Logger
+	Fn       consumer.TopicMapFn
 }
 
 func NewDefaultConfig() *Config {
@@ -62,14 +72,18 @@ type Handle struct {
 	client  *olivere.Client
 	active  bool
 	feeders *sync.WaitGroup
+	RX      <-chan consumer.Message
+	Fn      consumer.TopicMapFn
+	Logger  *logrus.Logger
 }
 
 func NewHandle(c *Config) (*Handle, error) {
-	// TODO: may be redundant
 	if c == nil {
 		c = NewDefaultConfig()
 	}
-	log.Tracef("Elastic libary version %s", olivere.Version)
+	if c.Logger != nil {
+		c.Logger.Tracef("Elastic libary version %s", olivere.Version)
+	}
 	client, err := olivere.NewClient(
 		olivere.SetURL(c.Hosts...),
 		olivere.SetSniff(false),
@@ -79,7 +93,6 @@ func NewHandle(c *Config) (*Handle, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Trace(client)
 	h := &Handle{
 		client:  client,
 		feeders: &sync.WaitGroup{},
@@ -98,6 +111,9 @@ func NewHandle(c *Config) (*Handle, error) {
 
 	h.indexer = b
 	h.active = true
+	h.RX = c.Stream
+	h.Logger = c.Logger
+	h.Fn = c.Fn
 
 	return h, nil
 }
@@ -108,6 +124,42 @@ func (h Handle) add(item []byte, idx string) {
 			Index(idx).
 			Doc(json.RawMessage(item)),
 	)
+}
+
+func (h Handle) Do(ctx context.Context, wg *sync.WaitGroup) error {
+	if h.RX == nil {
+		return ErrMissingStream
+	}
+	if h.Fn == nil {
+		return ErrMissingMapFn
+	}
+	if wg != nil {
+		wg.Add(1)
+	}
+	go func() {
+		if wg != nil {
+			defer wg.Done()
+		}
+		defer func() {
+			h.indexer.Flush()
+			if h.Logger != nil {
+				h.Logger.Trace("elastic producer good exit")
+			}
+		}()
+	loop:
+		for h.active {
+			select {
+			case msg, ok := <-h.RX:
+				if !ok {
+					break loop
+				}
+				h.add(msg.Data, h.Fn(msg))
+			case <-ctx.Done():
+				break loop
+			}
+		}
+	}()
+	return nil
 }
 
 // Feed implements outputs.Feeder
@@ -157,10 +209,6 @@ func (h Handle) Feed(
 		}
 		// TODO: might be better handled elsewhere
 		h.indexer.Flush()
-		log.Tracef(
-			"%s elastic bulk feeder exited properly",
-			name,
-		)
 	}(func() context.Context {
 		if ctx == nil {
 			return context.Background()
