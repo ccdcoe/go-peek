@@ -23,3 +23,17 @@ services:
       KAFKA_BROKERCONNECT: "kafka:9092"
       JVM_OPTS: "-Xms32M -Xmx64M"
       SERVER_SERVLET_CONTEXTPATH: /
+  elastic:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.15.1
+    ports:
+    - "9200:9200"
+    environment:
+      - node.name=elastic-peek
+      - cluster.name=elastic-peek
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
