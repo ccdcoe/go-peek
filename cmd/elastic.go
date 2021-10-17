@@ -37,7 +37,7 @@ var elasticCmd = &cobra.Command{
 		logger.Info("Creating kafka consumer")
 		input, err := kafka.NewConsumer(&kafka.Config{
 			Name:          "elastic consumer",
-			ConsumerGroup: "peek",
+			ConsumerGroup: viper.GetString("elastic.input.kafka.consumer_group"),
 			Brokers:       viper.GetStringSlice("elastic.input.kafka.brokers"),
 			Topics:        viper.GetStringSlice("elastic.input.kafka.topics"),
 			Ctx:           ctxReader,

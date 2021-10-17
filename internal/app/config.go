@@ -7,9 +7,10 @@ import (
 
 const (
 	// Kafka Input
-	FlagInKafkaEnabled = "input-kafka-enabled"
-	FlagInKafkaTopics  = "input-kafka-topics"
-	FlagInKafkaBrokers = "input-kafka-brokers"
+	FlagInKafkaEnabled       = "input-kafka-enabled"
+	FlagInKafkaTopics        = "input-kafka-topics"
+	FlagInKafkaBrokers       = "input-kafka-brokers"
+	FlagInKafkaConsumerGroup = "input-kafka-consumer-group"
 
 	// Kafka Output
 	FlagOutKafkaEnabled = "output-kafka-enabled"
@@ -44,6 +45,13 @@ func RegisterInputKafkaGenericSimple(prefix string, pFlags *pflag.FlagSet) {
 	pFlags.StringSlice(FlagInKafkaTopics, []string{}, "List of input topics")
 	viper.BindPFlag(prefix+".input.kafka.topics", pFlags.Lookup(FlagInKafkaTopics))
 
+	RegisterInputKafkaCore(prefix, pFlags)
+}
+
+func RegisterInputKafkaCore(prefix string, pFlags *pflag.FlagSet) {
 	pFlags.StringSlice(FlagInKafkaBrokers, []string{"localhost:9092"}, "List of input brokers")
 	viper.BindPFlag(prefix+".input.kafka.brokers", pFlags.Lookup(FlagInKafkaBrokers))
+
+	pFlags.String(FlagInKafkaConsumerGroup, "peek", "Kafka consumer group")
+	viper.BindPFlag(prefix+".input.kafka.consumer_group", pFlags.Lookup(FlagInKafkaConsumerGroup))
 }
