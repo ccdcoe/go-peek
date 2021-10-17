@@ -10,6 +10,7 @@ import (
 	"go-peek/pkg/models/consumer"
 	"go-peek/pkg/models/events"
 	"go-peek/pkg/utils"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -123,7 +124,9 @@ func GetLine(h Handle, num int64) ([]byte, error) {
 	var count int64
 	for scanner.Scan() {
 		if count == num {
-			return utils.DeepCopyBytes(scanner.Bytes()), nil
+			slc := make([]byte, len(scanner.Bytes()))
+			copy(slc, scanner.Bytes())
+			return slc, nil
 		}
 		count++
 	}
@@ -168,8 +171,10 @@ func DrainTo(h Handle, ctx context.Context, tx chan<- *consumer.Message, done *s
 				continue loop
 			}
 
+			slc := make([]byte, len(scanner.Bytes()))
+			copy(slc, scanner.Bytes())
 			tx <- &consumer.Message{
-				Data:   utils.DeepCopyBytes(scanner.Bytes()),
+				Data:   slc,
 				Offset: count,
 				Type:   consumer.Logfile,
 				Source: h.Path.String(),
@@ -223,11 +228,11 @@ func Drain(h Handle, ctx context.Context) <-chan *consumer.Message {
 				continue loop
 			}
 
-			out := make([]byte, len(scanner.Bytes()))
-			copy(scanner.Bytes(), out)
+			slc := make([]byte, len(scanner.Bytes()))
+			copy(slc, scanner.Bytes())
 
 			tx <- &consumer.Message{
-				Data:   utils.DeepCopyBytes(scanner.Bytes()),
+				Data:   slc,
 				Offset: count,
 				Type:   consumer.Logfile,
 				Source: h.Path.String(),

@@ -6,8 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-
-	"go-peek/pkg/utils"
 )
 
 var lineSep = []byte{'\n'}
@@ -97,8 +95,10 @@ func statLogFileSinglePass(file io.Reader) (first, last []byte, lines int64, err
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line = scanner.Bytes()
+		slc := make([]byte, len(scanner.Bytes()))
+		copy(slc, scanner.Bytes())
 		if count == 0 {
-			first = utils.DeepCopyBytes(line)
+			first = slc
 		}
 		count++
 	}

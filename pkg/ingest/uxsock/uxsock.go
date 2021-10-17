@@ -142,8 +142,10 @@ func NewConsumer(c *Config) (*Consumer, error) {
 								log.Tracef("breaking uxsock worker %d, %s", id, h.path)
 								break loop
 							default:
+								slc := make([]byte, len(scanner.Bytes()))
+								copy(slc, scanner.Bytes())
 								con.tx <- &consumer.Message{
-									Data:      utils.DeepCopyBytes(scanner.Bytes()),
+									Data:      slc,
 									Offset:    -1,
 									Partition: -1,
 									Type:      consumer.UxSock,
