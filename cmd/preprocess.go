@@ -8,7 +8,6 @@ import (
 	"go-peek/internal/app"
 	"go-peek/pkg/models/consumer"
 	"go-peek/pkg/models/events"
-	"go-peek/pkg/parsers"
 	"go-peek/pkg/process"
 	"io"
 	"os"
@@ -63,12 +62,16 @@ var preprocessCmd = &cobra.Command{
 		app.Throw("Sarama producer init", err)
 		topic := viper.GetString("preprocess.output.kafka.topic")
 		producer.Feed(tx, "Preprocess producer", ctxWriter, func(m consumer.Message) string {
+			if m.Key != "" {
+				return topic + "-" + m.Key
+			}
 			return topic
 		}, &wg)
 
 		chTerminate := make(chan os.Signal, 1)
 		signal.Notify(chTerminate, os.Interrupt, syscall.SIGTERM)
 
+		normalizer := process.NewNormalizer()
 		collector := &process.Collector{
 			HandlerFunc: func(b *bytes.Buffer) error {
 				logger.WithFields(logrus.Fields{
@@ -77,7 +80,7 @@ var preprocessCmd = &cobra.Command{
 
 				scanner := bufio.NewScanner(b)
 				for scanner.Scan() {
-					obj, err := parsers.Parse(scanner.Bytes(), events.SyslogE, consumer.RFC5424)
+					obj, err := normalizer.NormalizeSyslog(scanner.Bytes())
 					if err != nil && err != io.EOF {
 						logger.Error(err)
 					} else if err == nil {
@@ -85,9 +88,17 @@ var preprocessCmd = &cobra.Command{
 						if err != nil {
 							logger.Error(err)
 						} else {
+							var key string
+							switch obj.(type) {
+							case *events.Syslog:
+								key = "syslog"
+							case *events.Snoopy:
+								key = "snoopy"
+							}
 							// TODO - topic map per object type
 							tx <- consumer.Message{
 								Data: bin,
+								Key:  key,
 							}
 						}
 					}
