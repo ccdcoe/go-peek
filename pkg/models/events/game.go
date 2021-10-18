@@ -328,7 +328,7 @@ func (s Suricata) Sender() string { return s.StaticSuricataEve.Sender() }
 
 type Syslog struct {
 	atomic.Syslog
-	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+	GameMeta *meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
 // DumpEventData implements EventDataDumper
@@ -377,7 +377,7 @@ func (s Syslog) GetAsset() *meta.GameAsset {
 // SetAsset is a setter for setting meta to object without knowing the object type
 // all asset lookups and field discoveries should be done before using this method to maintain readability
 func (s *Syslog) SetAsset(data meta.GameAsset) {
-	s.GameMeta = data
+	s.GameMeta = &data
 }
 
 // Time implements atomic.Event
@@ -395,7 +395,7 @@ func (s Syslog) Sender() string { return s.Syslog.Sender() }
 type Snoopy struct {
 	atomic.Snoopy
 	atomic.Syslog
-	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+	GameMeta *meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
 // DumpEventData implements EventDataDumper
@@ -510,7 +510,7 @@ func (s Snoopy) GetAsset() *meta.GameAsset {
 // SetAsset is a setter for setting meta to object without knowing the object type
 // all asset lookups and field discoveries should be done before using this method to maintain readability
 func (s *Snoopy) SetAsset(data meta.GameAsset) {
-	s.GameMeta = data
+	s.GameMeta = &data
 }
 
 // Time implements atomic.Event
