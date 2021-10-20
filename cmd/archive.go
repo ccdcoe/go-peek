@@ -23,12 +23,12 @@ var archiveCmd = &cobra.Command{
 	Use:   "archive",
 	Short: "Archive logs from kafka topics",
 	Run: func(cmd *cobra.Command, args []string) {
-		start := app.Start("archive", logger)
+		start := app.Start(cmd.Name(), logger)
 
 		defer app.Catch(logger)
-		defer app.Done("archive", start, logger)
+		defer app.Done(cmd.Name(), start, logger)
 
-		folder := viper.GetString("archive.output.folder")
+		folder := viper.GetString(cmd.Name() + ".output.folder")
 		if folder == "" {
 			app.Throw("init", fmt.Errorf("Please configure output folder"))
 		}
@@ -39,10 +39,10 @@ var archiveCmd = &cobra.Command{
 
 		logger.Info("Creating kafka consumer")
 		input, err := kafka.NewConsumer(&kafka.Config{
-			Name:          "archive consumer",
-			ConsumerGroup: "peek",
-			Brokers:       viper.GetStringSlice("archive.input.kafka.brokers"),
-			Topics:        viper.GetStringSlice("archive.input.kafka.topics"),
+			Name:          cmd.Name() + " consumer",
+			ConsumerGroup: viper.GetString(cmd.Name() + ".input.kafka.consumer_group"),
+			Brokers:       viper.GetStringSlice(cmd.Name() + ".input.kafka.brokers"),
+			Topics:        viper.GetStringSlice(cmd.Name() + ".input.kafka.topics"),
 			Ctx:           ctxReader,
 			OffsetMode:    kafka.OffsetLastCommit,
 		})
@@ -55,8 +55,8 @@ var archiveCmd = &cobra.Command{
 
 		logrus.Info("creating writer")
 		arch, err := archive.NewHandle(archive.Config{
-			Directory:      viper.GetString("archive.output.folder"),
-			RotateInterval: viper.GetDuration("archive.output.rotate.interval"),
+			Directory:      viper.GetString(cmd.Name() + ".output.folder"),
+			RotateInterval: viper.GetDuration(cmd.Name() + ".output.rotate.interval"),
 			Stream:         tx,
 			Logger:         logger,
 		})

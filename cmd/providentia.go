@@ -26,12 +26,12 @@ var providentiaCmd = &cobra.Command{
 	Use:   "providentia",
 	Short: "Pull asset data from providentia API",
 	Run: func(cmd *cobra.Command, args []string) {
-		start := app.Start("providentia", logger)
+		start := app.Start(cmd.Name(), logger)
 
 		defer app.Catch(logger)
-		defer app.Done("providentia", start, logger)
+		defer app.Done(cmd.Name(), start, logger)
 
-		ticker := time.NewTicker(viper.GetDuration("providentia.interval"))
+		ticker := time.NewTicker(viper.GetDuration(cmd.Name() + ".interval"))
 		defer ticker.Stop()
 
 		var wg sync.WaitGroup
@@ -40,20 +40,20 @@ var providentiaCmd = &cobra.Command{
 		defer cancel()
 
 		tx := make(chan consumer.Message, 10)
-		if viper.GetBool("providentia.output.kafka.enabled") {
+		if viper.GetBool(cmd.Name() + ".output.kafka.enabled") {
 			producer, err := kafka.NewProducer(&kafka.Config{
-				Brokers: viper.GetStringSlice("providentia.output.kafka.brokers"),
+				Brokers: viper.GetStringSlice(cmd.Name() + ".output.kafka.brokers"),
 				Logger:  logger,
 			})
 			app.Throw("Sarama producer init", err)
-			topic := viper.GetString("providentia.output.kafka.topic")
-			producer.Feed(tx, "Providentia producer", ctx, func(m consumer.Message) string {
+			topic := viper.GetString(cmd.Name() + ".output.kafka.topic")
+			producer.Feed(tx, cmd.Name()+" producer", ctx, func(m consumer.Message) string {
 				return topic
 			}, &wg)
 		}
 
 		persist, err := persist.NewBadger(persist.Config{
-			Directory:     path.Join(viper.GetString("work.dir"), "providentia", "badger"),
+			Directory:     path.Join(viper.GetString("work.dir"), cmd.Name(), "badger"),
 			IntervalGC:    1 * time.Minute,
 			RunValueLogGC: true,
 			WaitGroup:     &wg,
@@ -70,8 +70,8 @@ var providentiaCmd = &cobra.Command{
 
 		fn := func() {
 			targets, err := providentia.Pull(providentia.Params{
-				URL:   viper.GetString("providentia.url"),
-				Token: viper.GetString("providentia.token"),
+				URL:   viper.GetString(cmd.Name() + ".url"),
+				Token: viper.GetString(cmd.Name() + ".token"),
 			})
 			if err != nil {
 				logger.WithFields(logrus.Fields{}).Error(err)
@@ -79,7 +79,7 @@ var providentiaCmd = &cobra.Command{
 			}
 			logger.WithFields(logrus.Fields{
 				"results":  len(targets),
-				"url":      viper.GetString("providentia.url"),
+				"url":      viper.GetString(cmd.Name() + ".url"),
 				"endpoint": "targets",
 			}).Info("API call done")
 
@@ -96,11 +96,11 @@ var providentiaCmd = &cobra.Command{
 			for _, item := range assets {
 				encoded, err := json.Marshal(item)
 				app.Throw("Output JSON encode", err)
-				if viper.GetBool("providentia.output.kafka.enabled") {
+				if viper.GetBool(cmd.Name() + ".output.kafka.enabled") {
 					tx <- consumer.Message{
 						Data: encoded,
 						Time: now,
-						Key:  "providentia",
+						Key:  cmd.Name(),
 					}
 				}
 			}
@@ -123,13 +123,13 @@ func init() {
 	rootCmd.AddCommand(providentiaCmd)
 
 	providentiaCmd.PersistentFlags().String("url", "", "API endpoint")
-	viper.BindPFlag("providentia.url", providentiaCmd.PersistentFlags().Lookup("url"))
+	viper.BindPFlag(providentiaCmd.Name()+".url", providentiaCmd.PersistentFlags().Lookup("url"))
 
 	providentiaCmd.PersistentFlags().String("token", "", "API token")
-	viper.BindPFlag("providentia.token", providentiaCmd.PersistentFlags().Lookup("token"))
+	viper.BindPFlag(providentiaCmd.Name()+".token", providentiaCmd.PersistentFlags().Lookup("token"))
 
 	providentiaCmd.PersistentFlags().Duration("interval", 5*time.Minute, "Sleep between API calls")
-	viper.BindPFlag("providentia.interval", providentiaCmd.PersistentFlags().Lookup("interval"))
+	viper.BindPFlag(providentiaCmd.Name()+".interval", providentiaCmd.PersistentFlags().Lookup("interval"))
 
-	app.RegisterOutputKafka("providentia", providentiaCmd.PersistentFlags())
+	app.RegisterOutputKafka(providentiaCmd.Name(), providentiaCmd.PersistentFlags())
 }

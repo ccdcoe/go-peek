@@ -24,10 +24,10 @@ var elasticCmd = &cobra.Command{
 	Use:   "elastic",
 	Short: "Consume messages from kafka and ship to elastic",
 	Run: func(cmd *cobra.Command, args []string) {
-		start := app.Start("elastic", logger)
+		start := app.Start(cmd.Name(), logger)
 
 		defer app.Catch(logger)
-		defer app.Done("elastic", start, logger)
+		defer app.Done(cmd.Name(), start, logger)
 
 		ctxReader, cancelReader := context.WithCancel(context.Background())
 
@@ -35,10 +35,10 @@ var elasticCmd = &cobra.Command{
 
 		logger.Info("Creating kafka consumer")
 		input, err := kafka.NewConsumer(&kafka.Config{
-			Name:          "elastic consumer",
-			ConsumerGroup: viper.GetString("elastic.input.kafka.consumer_group"),
-			Brokers:       viper.GetStringSlice("elastic.input.kafka.brokers"),
-			Topics:        viper.GetStringSlice("elastic.input.kafka.topics"),
+			Name:          cmd.Name() + " consumer",
+			ConsumerGroup: viper.GetString(cmd.Name() + ".input.kafka.consumer_group"),
+			Brokers:       viper.GetStringSlice(cmd.Name() + ".input.kafka.brokers"),
+			Topics:        viper.GetStringSlice(cmd.Name() + ".input.kafka.topics"),
 			Ctx:           ctxReader,
 			OffsetMode:    kafka.OffsetLastCommit,
 		})
@@ -51,12 +51,12 @@ var elasticCmd = &cobra.Command{
 		writer, err := elastic.NewHandle(&elastic.Config{
 			Workers:  4,
 			Debug:    false,
-			Hosts:    viper.GetStringSlice("elastic.output.elasticsearch.hosts"),
+			Hosts:    viper.GetStringSlice(cmd.Name() + ".output.elasticsearch.hosts"),
 			Interval: elastic.DefaultBulkFlushInterval,
 			Stream:   tx,
 			Logger:   logger,
 			Fn: func(m consumer.Message) string {
-				prefix := viper.GetString("elastic.output.elasticsearch.prefix")
+				prefix := viper.GetString(cmd.Name() + ".output.elasticsearch.prefix")
 				if prefix == "" {
 					prefix = "peek"
 				}
@@ -71,7 +71,7 @@ var elasticCmd = &cobra.Command{
 				return fmt.Sprintf("%s-%s-%s", prefix, topic, timestamp.Format(elastic.TimeFmt))
 			},
 		})
-		app.Throw("elastic output create", err)
+		app.Throw(cmd.Name()+" output create", err)
 
 		logrus.Debug("starting up writer")
 		ctxWriter, cancelWriter := context.WithCancel(context.Background())
@@ -108,6 +108,6 @@ var elasticCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(elasticCmd)
 
-	app.RegisterInputKafkaGenericSimple("elastic", elasticCmd.PersistentFlags())
-	app.RegisterOutputElastic("elastic", elasticCmd.PersistentFlags())
+	app.RegisterInputKafkaGenericSimple(elasticCmd.Name(), elasticCmd.PersistentFlags())
+	app.RegisterOutputElastic(elasticCmd.Name(), elasticCmd.PersistentFlags())
 }

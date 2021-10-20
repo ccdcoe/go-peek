@@ -29,10 +29,10 @@ var preprocessCmd = &cobra.Command{
 	Use:   "preprocess",
 	Short: "Preprocess and normalize messages",
 	Run: func(cmd *cobra.Command, args []string) {
-		start := app.Start("preprocess", logger)
+		start := app.Start(cmd.Name(), logger)
 
 		defer app.Catch(logger)
-		defer app.Done("preprocess", start, logger)
+		defer app.Done(cmd.Name(), start, logger)
 
 		ctxReader, cancelReader := context.WithCancel(context.Background())
 
@@ -40,10 +40,10 @@ var preprocessCmd = &cobra.Command{
 
 		logger.Info("Creating kafka consumer")
 		input, err := kafkaIngest.NewConsumer(&kafkaIngest.Config{
-			Name:          "preprocess consumer",
-			ConsumerGroup: viper.GetString("preprocess.input.kafka.consumer_group"),
-			Brokers:       viper.GetStringSlice("preprocess.input.kafka.brokers"),
-			Topics:        viper.GetStringSlice("preprocess.input.kafka.topics"),
+			Name:          cmd.Name() + " consumer",
+			ConsumerGroup: viper.GetString(cmd.Name() + ".input.kafka.consumer_group"),
+			Brokers:       viper.GetStringSlice(cmd.Name() + ".input.kafka.brokers"),
+			Topics:        viper.GetStringSlice(cmd.Name() + ".input.kafka.topics"),
 			Ctx:           ctxReader,
 			OffsetMode:    kafkaIngest.OffsetLastCommit,
 		})
@@ -55,12 +55,12 @@ var preprocessCmd = &cobra.Command{
 
 		ctxWriter, cancelWriter := context.WithCancel(context.Background())
 		producer, err := kafkaOutput.NewProducer(&kafkaOutput.Config{
-			Brokers: viper.GetStringSlice("preprocess.output.kafka.brokers"),
+			Brokers: viper.GetStringSlice(cmd.Name() + ".output.kafka.brokers"),
 			Logger:  logger,
 		})
 		app.Throw("Sarama producer init", err)
-		topic := viper.GetString("preprocess.output.kafka.topic")
-		producer.Feed(tx, "Preprocess producer", ctxWriter, func(m consumer.Message) string {
+		topic := viper.GetString(cmd.Name() + ".output.kafka.topic")
+		producer.Feed(tx, cmd.Name()+" producer", ctxWriter, func(m consumer.Message) string {
 			if m.Key != "" {
 				return topic + "-" + m.Key
 			}
@@ -124,7 +124,7 @@ var preprocessCmd = &cobra.Command{
 			case <-chTerminate:
 				break loop
 			case <-report.C:
-				logger.WithFields(logrus.Fields{"normalized": count}).Debug("preprocess")
+				logger.WithFields(logrus.Fields{"normalized": count}).Debug(cmd.Name())
 			}
 		}
 
@@ -137,6 +137,6 @@ var preprocessCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(preprocessCmd)
 
-	app.RegisterInputKafkaGenericSimple("preprocess", preprocessCmd.PersistentFlags())
-	app.RegisterOutputKafka("preprocess", preprocessCmd.PersistentFlags())
+	app.RegisterInputKafkaGenericSimple(preprocessCmd.Name(), preprocessCmd.PersistentFlags())
+	app.RegisterOutputKafka(preprocessCmd.Name(), preprocessCmd.PersistentFlags())
 }
