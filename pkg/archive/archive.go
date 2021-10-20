@@ -116,7 +116,6 @@ func (h Handle) Do(ctx context.Context, wg *sync.WaitGroup) error {
 				n, _ := writers[key].handle.Write(append(msg.Data, []byte("\n")...))
 				writers[key].writtenBytes += n
 			case <-rotate.C:
-				fmt.Println(time.Now())
 				for key, handle := range writers {
 					handle.handle.Close()
 					delete(writers, key)
