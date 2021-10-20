@@ -26,11 +26,10 @@ var providentiaCmd = &cobra.Command{
 	Use:   "providentia",
 	Short: "Pull asset data from providentia API",
 	Run: func(cmd *cobra.Command, args []string) {
-		start := time.Now()
-		logger.WithFields(logrus.Fields{}).Info("providentia called")
+		start := app.Start("providentia", logger)
 
-		defer logger.WithFields(logrus.Fields{"duration": time.Since(start)}).Info("All done!")
 		defer app.Catch(logger)
+		defer app.Done("providentia", start, logger)
 
 		ticker := time.NewTicker(viper.GetDuration("providentia.interval"))
 		defer ticker.Stop()

@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -23,4 +24,21 @@ func Catch(logger *logrus.Logger) {
 			logger.Fatal(err)
 		}
 	}
+}
+
+func Start(command string, logger *logrus.Logger) time.Time {
+	logger.WithFields(logrus.Fields{
+		"at":      time.Now(),
+		"command": command,
+	}).Info("Starting up")
+	return time.Now()
+}
+
+func Done(command string, start time.Time, logger *logrus.Logger) {
+	logger.WithFields(
+		logrus.Fields{
+			"duration": time.Since(start),
+			"command":  command,
+		},
+	).Info("All done!")
 }

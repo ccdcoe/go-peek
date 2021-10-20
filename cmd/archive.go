@@ -23,11 +23,10 @@ var archiveCmd = &cobra.Command{
 	Use:   "archive",
 	Short: "Archive logs from kafka topics",
 	Run: func(cmd *cobra.Command, args []string) {
-		start := time.Now()
-		logger.WithFields(logrus.Fields{}).Info("archive called")
+		start := app.Start("archive", logger)
 
-		defer logger.WithFields(logrus.Fields{"duration": time.Since(start)}).Info("All done!")
 		defer app.Catch(logger)
+		defer app.Done("archive", start, logger)
 
 		folder := viper.GetString("archive.output.folder")
 		if folder == "" {

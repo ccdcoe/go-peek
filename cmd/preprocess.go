@@ -29,11 +29,10 @@ var preprocessCmd = &cobra.Command{
 	Use:   "preprocess",
 	Short: "Preprocess and normalize messages",
 	Run: func(cmd *cobra.Command, args []string) {
-		start := time.Now()
-		logger.WithFields(logrus.Fields{}).Info("preprocess called")
+		start := app.Start("preprocess", logger)
 
-		defer logger.WithFields(logrus.Fields{"duration": time.Since(start)}).Info("All done!")
 		defer app.Catch(logger)
+		defer app.Done("preprocess", start, logger)
 
 		ctxReader, cancelReader := context.WithCancel(context.Background())
 

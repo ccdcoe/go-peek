@@ -24,11 +24,10 @@ var elasticCmd = &cobra.Command{
 	Use:   "elastic",
 	Short: "Consume messages from kafka and ship to elastic",
 	Run: func(cmd *cobra.Command, args []string) {
-		start := time.Now()
-		logger.WithFields(logrus.Fields{}).Info("elastic called")
+		start := app.Start("elastic", logger)
 
-		defer logger.WithFields(logrus.Fields{"duration": time.Since(start)}).Info("All done!")
 		defer app.Catch(logger)
+		defer app.Done("elastic", start, logger)
 
 		ctxReader, cancelReader := context.WithCancel(context.Background())
 
