@@ -12,6 +12,9 @@ const (
 	FlagInKafkaBrokers       = "input-kafka-brokers"
 	FlagInKafkaConsumerGroup = "input-kafka-consumer-group"
 
+	// Kafka topic mapper
+	FlagInKafkaTopicMapper = "input-kafka-topic-map"
+
 	// Kafka Output
 	FlagOutKafkaEnabled = "output-kafka-enabled"
 	FlagOutKafkaTopic   = "output-kafka-topic"
@@ -54,4 +57,9 @@ func RegisterInputKafkaCore(prefix string, pFlags *pflag.FlagSet) {
 
 	pFlags.String(FlagInKafkaConsumerGroup, "peek", "Kafka consumer group")
 	viper.BindPFlag(prefix+".input.kafka.consumer_group", pFlags.Lookup(FlagInKafkaConsumerGroup))
+}
+
+func RegisterInputKafkaTopicMap(prefix string, pFlags *pflag.FlagSet) {
+	pFlags.StringSlice(FlagInKafkaTopicMapper, []string{}, "Topic and event type separated by colon")
+	viper.BindPFlag(prefix+".input.kafka.topic_map", pFlags.Lookup(FlagInKafkaTopicMapper))
 }
