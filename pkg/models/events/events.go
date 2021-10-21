@@ -18,6 +18,15 @@ type SaganFormatter interface {
 	SaganFormat() string
 }
 
+func NewAtomic(raw string) (Atomic, bool) {
+	for _, atomic := range Atomics {
+		if raw == atomic.String() {
+			return atomic, true
+		}
+	}
+	return SimpleE, false
+}
+
 type Atomic int
 
 func (a Atomic) String() string {
