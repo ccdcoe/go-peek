@@ -37,7 +37,7 @@ func (e ErrEventParse) Error() string {
 type DynamicWinlogbeat struct {
 	Timestamp time.Time `json:"@timestamp"`
 	atomic.DynamicWinlogbeat
-	GameMeta meta.GameAsset `json:"GameMeta,omitempty"`
+	GameMeta *meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
 // DumpEventData implements EventDataDumper
@@ -154,7 +154,7 @@ func (d DynamicWinlogbeat) GetAsset() *meta.GameAsset {
 
 // SetAsset is a setter for setting meta to object without knowing the object type
 // all asset lookups and field discoveries should be done before using this method to maintain readability
-func (d *DynamicWinlogbeat) SetAsset(obj meta.GameAsset) {
+func (d *DynamicWinlogbeat) SetAsset(obj *meta.GameAsset) {
 	d.GameMeta = obj
 }
 
@@ -167,9 +167,9 @@ func (d DynamicWinlogbeat) JSONFormat() ([]byte, error) {
 
 type Suricata struct {
 	atomic.StaticSuricataEve
-	Timestamp time.Time      `json:"@timestamp"`
-	Syslog    *atomic.Syslog `json:"syslog,omitempty"`
-	GameMeta  meta.GameAsset `json:"GameMeta,omitempty"`
+	Timestamp time.Time       `json:"@timestamp"`
+	Syslog    *atomic.Syslog  `json:"syslog,omitempty"`
+	GameMeta  *meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
 // DumpEventData implements EventDataDumper
@@ -310,7 +310,7 @@ func (s Suricata) GetAsset() *meta.GameAsset {
 
 // SetAsset is a setter for setting meta to object without knowing the object type
 // all asset lookups and field discoveries should be done before using this method to maintain readability
-func (s *Suricata) SetAsset(data meta.GameAsset) {
+func (s *Suricata) SetAsset(data *meta.GameAsset) {
 	s.GameMeta = data
 }
 
@@ -376,8 +376,8 @@ func (s Syslog) GetAsset() *meta.GameAsset {
 
 // SetAsset is a setter for setting meta to object without knowing the object type
 // all asset lookups and field discoveries should be done before using this method to maintain readability
-func (s *Syslog) SetAsset(data meta.GameAsset) {
-	s.GameMeta = &data
+func (s *Syslog) SetAsset(data *meta.GameAsset) {
+	s.GameMeta = data
 }
 
 // Time implements atomic.Event
@@ -509,8 +509,8 @@ func (s Snoopy) GetAsset() *meta.GameAsset {
 
 // SetAsset is a setter for setting meta to object without knowing the object type
 // all asset lookups and field discoveries should be done before using this method to maintain readability
-func (s *Snoopy) SetAsset(data meta.GameAsset) {
-	s.GameMeta = &data
+func (s *Snoopy) SetAsset(data *meta.GameAsset) {
+	s.GameMeta = data
 }
 
 // Time implements atomic.Event

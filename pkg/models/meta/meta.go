@@ -16,7 +16,7 @@ type AssetGetterSetter interface {
 	GetAsset() *GameAsset
 	// SetAsset is a setter for setting meta to object without knowing the object type
 	// all asset lookups and field discoveries should be done before using this method to maintain readability
-	SetAsset(GameAsset)
+	SetAsset(*GameAsset)
 }
 
 type GameAsset struct {
