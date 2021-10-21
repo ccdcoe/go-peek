@@ -42,7 +42,15 @@ func (t *QuotedRFC3339) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	t.Time, err = time.Parse("2006-01-02T15:04:05.999999-0700", raw)
+	if err != nil {
+		t.Time, err = time.Parse("2006-01-02T15:04:05.999999Z0700", raw)
+	}
 	return err
+}
+
+// MarshalJSON ensures that timestamps are re-encoded the way Suricata made them
+func (t *QuotedRFC3339) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + t.Time.Format("2006-01-02T15:04:05.000000-0700") + `"`), nil
 }
 
 // Helpers
