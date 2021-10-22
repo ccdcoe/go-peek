@@ -41,8 +41,8 @@ type network struct {
 type Targets []Target
 
 type MappedTarget struct {
-	Target Target
-	Alias  string
+	Target Target `json:"target"`
+	Alias  string `json:"alias"`
 }
 
 type Target struct {

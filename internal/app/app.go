@@ -1,7 +1,9 @@
 package app
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -41,4 +43,18 @@ func Done(command string, start time.Time, logger *logrus.Logger) {
 			"command":  command,
 		},
 	).Info("All done!")
+}
+
+func DumpJSON(path string, data interface{}) error {
+	bin, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	f.Write(bin)
+	return nil
 }

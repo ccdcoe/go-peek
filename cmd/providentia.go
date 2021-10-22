@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"go-peek/internal/app"
 	"go-peek/pkg/anonymizer"
 	"go-peek/pkg/models/consumer"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
@@ -52,8 +54,14 @@ var providentiaCmd = &cobra.Command{
 			}, &wg)
 		}
 
+		workdir := viper.GetString("work.dir")
+		if workdir == "" {
+			app.Throw("app init", errors.New("missing working directory"))
+		}
+		workdir = path.Join(workdir, cmd.Name())
+
 		persist, err := persist.NewBadger(persist.Config{
-			Directory:     path.Join(viper.GetString("work.dir"), cmd.Name(), "badger"),
+			Directory:     path.Join(workdir, "badger"),
 			IntervalGC:    1 * time.Minute,
 			RunValueLogGC: true,
 			WaitGroup:     &wg,
@@ -84,7 +92,10 @@ var providentiaCmd = &cobra.Command{
 			}).Info("API call done")
 
 			mapped := providentia.MapTargets(targets, m)
+			app.DumpJSON(filepath.Join(workdir, "mapped_targets.json"), mapped)
+
 			assets := providentia.ExtractAddrs(mapped, logger)
+			app.DumpJSON(filepath.Join(workdir, "assets.json"), assets)
 
 			logger.WithFields(logrus.Fields{
 				"addrs":             len(assets),
