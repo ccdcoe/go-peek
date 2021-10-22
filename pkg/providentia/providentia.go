@@ -60,13 +60,14 @@ type Target struct {
 	} `json:"vars"`
 }
 
-func (t Target) extract(logger *logrus.Logger) []Record {
+func (t Target) extract(alias string, logger *logrus.Logger) []Record {
 	tx := make([]Record, 0)
 	for _, nw := range t.Vars.Networks {
 		if nw.IPv4 != "" {
 			if addr, _, err := net.ParseCIDR(nw.IPv4); err == nil {
 				tx = append(tx, Record{
 					Name:    t.Name,
+					Pretty:  alias,
 					Domain:  nw.Domain,
 					Updated: time.Now(),
 					Addr:    addr,
@@ -83,6 +84,7 @@ func (t Target) extract(logger *logrus.Logger) []Record {
 			if addr, _, err := net.ParseCIDR(nw.IPv6); err == nil {
 				tx = append(tx, Record{
 					Name:    t.Name,
+					Pretty:  alias,
 					Domain:  nw.Domain,
 					Updated: time.Now(),
 					Addr:    addr,
@@ -149,7 +151,7 @@ func Pull(p Params) (Targets, error) {
 func ExtractAddrs(targets []MappedTarget, logger *logrus.Logger) Records {
 	tx := make(Records, 0)
 	for _, target := range targets {
-		tx = append(tx, target.Target.extract(logger)...)
+		tx = append(tx, target.Target.extract(target.Alias, logger)...)
 	}
 	return tx
 }
