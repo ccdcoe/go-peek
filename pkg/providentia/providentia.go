@@ -114,6 +114,16 @@ type Record struct {
 	Updated time.Time `json:"updated"`
 }
 
+func (r Record) FQDN() string { return r.Name + "." + r.Domain }
+
+func (r Record) Keys() []string {
+	keys := []string{r.Name, r.Pretty, r.Addr.String()}
+	if r.Domain != "" {
+		keys = append(keys, r.FQDN())
+	}
+	return keys
+}
+
 type Records []Record
 
 func Pull(p Params) (Targets, error) {
