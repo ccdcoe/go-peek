@@ -14,6 +14,7 @@ const (
 
 	// Kafka topic mapper
 	FlagInKafkaTopicMapper = "input-kafka-topic-map"
+	FlagInKafkaTopicAssets = "input-kafka-topic-assets"
 
 	// Kafka Output
 	FlagOutKafkaEnabled = "output-kafka-enabled"
@@ -59,7 +60,10 @@ func RegisterInputKafkaCore(prefix string, pFlags *pflag.FlagSet) {
 	viper.BindPFlag(prefix+".input.kafka.consumer_group", pFlags.Lookup(FlagInKafkaConsumerGroup))
 }
 
-func RegisterInputKafkaTopicMap(prefix string, pFlags *pflag.FlagSet) {
+func RegisterInputKafkaEnrich(prefix string, pFlags *pflag.FlagSet) {
 	pFlags.StringSlice(FlagInKafkaTopicMapper, []string{}, "Topic and event type separated by colon")
 	viper.BindPFlag(prefix+".input.kafka.topic_map", pFlags.Lookup(FlagInKafkaTopicMapper))
+
+	pFlags.String(FlagInKafkaTopicAssets, "assets", "Topic that holds asset information")
+	viper.BindPFlag(prefix+".input.kafka.topic_assets", pFlags.Lookup(FlagInKafkaTopicAssets))
 }
