@@ -161,6 +161,11 @@ func (b Badger) runCleanup(wg *sync.WaitGroup, ctx context.Context) error {
 		if wg != nil {
 			defer wg.Done()
 		}
+		if b.config.Logger != nil {
+			defer func() {
+				b.config.Logger.Trace("badgerdb cleanup routine exited")
+			}()
+		}
 	loop:
 		for {
 			select {
