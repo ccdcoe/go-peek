@@ -68,6 +68,7 @@ var providentiaCmd = &cobra.Command{
 			Ctx:           context.TODO(),
 			Logger:        logger,
 		})
+		app.Throw("persist setup", err)
 		defer persist.Close()
 
 		m, err := anonymizer.NewMapper(anonymizer.Config{Persist: persist})
