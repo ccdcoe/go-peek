@@ -2,18 +2,17 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"go-peek/internal/app"
+	"go-peek/pkg/enrich"
 	"go-peek/pkg/ingest/kafka"
 	"go-peek/pkg/models/consumer"
-	"go-peek/pkg/models/events"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -57,66 +56,42 @@ var enrichCmd = &cobra.Command{
 
 		topicMapFn := topics.TopicMap()
 
-		var counts struct {
-			events             uint
-			invalidKind        uint
-			suricataParseError uint
-			windowsParseError  uint
-			syslogParseError   uint
-			snoopyParseError   uint
-		}
+		enricher, err := enrich.NewHandler(enrich.Config{})
+		app.Throw("enrich handler create", err)
+		defer enricher.Close()
+
 		report := time.NewTicker(5 * time.Second)
 		defer report.Stop()
 	loop:
 		for {
 			select {
 			case <-report.C:
-				logger.Debugf("%+v", counts)
+				logger.Debugf("%+v", enricher.Counts)
 			case msg, ok := <-rx:
 				if !ok {
 					break loop
 				}
 				kind, ok := topicMapFn(msg.Source)
 				if !ok {
-					counts.invalidKind++
+					logger.WithFields(logrus.Fields{
+						"raw":    string(msg.Data),
+						"source": msg.Source,
+					}).Error("invalid kind")
 					continue loop
 				}
-				counts.events++
 
-				var event events.GameEvent
-
-				switch kind {
-				case events.SuricataE:
-					var obj events.Suricata
-					if err := json.Unmarshal(msg.Data, &obj); err != nil {
-						counts.suricataParseError++
-						continue loop
-					}
-					event = &obj
-				case events.EventLogE, events.SysmonE:
-					var obj events.DynamicWinlogbeat
-					if err := json.Unmarshal(msg.Data, &obj); err != nil {
-						counts.windowsParseError++
-						continue loop
-					}
-					event = &obj
-				case events.SyslogE:
-					var obj events.Syslog
-					if err := json.Unmarshal(msg.Data, &obj); err != nil {
-						counts.syslogParseError++
-						continue loop
-					}
-					event = &obj
-				case events.SnoopyE:
-					var obj events.Snoopy
-					if err := json.Unmarshal(msg.Data, &obj); err != nil {
-						counts.snoopyParseError++
-						continue loop
-					}
-					event = &obj
+				event, err := enricher.Decode(msg.Data, kind)
+				if err != nil {
+					continue loop
 				}
 
-				fmt.Printf("%+v \n", event)
+				if err := enricher.Enrich(event); err != nil {
+					logger.WithFields(logrus.Fields{
+						"raw":    string(msg.Data),
+						"source": msg.Source,
+						"err":    err,
+					}).Error("unable to enrich")
+				}
 
 			case <-chTerminate:
 				break loop
