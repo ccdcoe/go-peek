@@ -5,7 +5,9 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"go-peek/pkg/models/events"
+	"go-peek/pkg/models/meta"
 	"go-peek/pkg/persist"
 	"go-peek/pkg/providentia"
 )
@@ -13,6 +15,12 @@ import (
 const badgerPrefix = "assets"
 
 var ErrMissingPersist = errors.New("missing badgerdb persistance")
+
+type ErrMissingAssetData struct{ Event events.GameEvent }
+
+func (e ErrMissingAssetData) Error() string {
+	return fmt.Sprintf("missing asset data for %+v", e.Event)
+}
 
 type Config struct {
 	Persist *persist.Badger
@@ -102,7 +110,34 @@ func (h *Handler) Decode(raw []byte, kind events.Atomic) (events.GameEvent, erro
 }
 
 func (h *Handler) Enrich(event events.GameEvent) error {
+	fullAsset := event.GetAsset()
+	if fullAsset == nil {
+		return ErrMissingAssetData{event}
+	}
+
+	fullAsset.Asset = *h.assetLookup(fullAsset.Asset)
+	if fullAsset.Source != nil {
+		fullAsset.Source = h.assetLookup(*fullAsset.Source)
+	}
+	if fullAsset.Destination != nil {
+		fullAsset.Destination = h.assetLookup(*fullAsset.Destination)
+	}
+
 	return nil
+}
+
+func (h Handler) assetLookup(asset meta.Asset) *meta.Asset {
+	if asset.IP != nil {
+		if val, ok := h.assets[asset.IP.String()]; ok {
+			return val.Asset()
+		}
+	}
+	if asset.Host != "" {
+		if val, ok := h.assets[asset.Host]; ok {
+			return val.Asset()
+		}
+	}
+	return &asset
 }
 
 func (h *Handler) Close() error {

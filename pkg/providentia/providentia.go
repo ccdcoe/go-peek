@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"go-peek/pkg/anonymizer"
+	"go-peek/pkg/models/meta"
 	"net"
 	"net/http"
 	"time"
@@ -122,6 +123,16 @@ func (r Record) Keys() []string {
 		keys = append(keys, r.FQDN())
 	}
 	return keys
+}
+
+func (r Record) Asset() *meta.Asset {
+	return &meta.Asset{
+		Host:   r.Name,
+		Alias:  r.Pretty,
+		Domain: r.Domain,
+		IP:     r.Addr,
+		Team:   r.Team,
+	}
 }
 
 type Records []Record
