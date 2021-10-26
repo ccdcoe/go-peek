@@ -39,7 +39,9 @@ var enrichCmd = &cobra.Command{
 		defer wg.Wait()
 		defer func() { logger.Info("Waiting for async workers to exit") }()
 
-		topics, err := app.ParseKafkaTopicItems(viper.GetStringSlice(cmd.Name() + ".input.kafka.topic_map"))
+		topics, err := app.ParseKafkaTopicItems(
+			viper.GetStringSlice(cmd.Name() + ".input.kafka.topic_map"),
+		)
 		app.Throw("topic map parse", err)
 
 		logger.Info("Creating kafka consumer for event stream")
