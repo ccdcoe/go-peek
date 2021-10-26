@@ -97,13 +97,19 @@ var enrichCmd = &cobra.Command{
 		app.Throw("enrich handler create", err)
 		defer enricher.Close()
 
-		report := time.NewTicker(5 * time.Second)
+		report := time.NewTicker(viper.GetDuration(cmd.Name() + ".log.interval"))
 		defer report.Stop()
 	loop:
 		for {
 			select {
 			case <-report.C:
 				logger.Infof("%+v", enricher.Counts)
+				if missing := enricher.MissingKeys(); len(missing) > 0 {
+					logger.WithField("count", len(missing)).Warn("missing asset lookup keys")
+					for _, key := range missing {
+						logger.WithField("value", key).Debug("missing asset host key")
+					}
+				}
 			case msg, ok := <-streamAssets.Messages():
 				if !ok {
 					continue loop
@@ -154,6 +160,7 @@ var enrichCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(enrichCmd)
 
+	app.RegisterLogging(enrichCmd.Name(), enrichCmd.PersistentFlags())
 	app.RegisterInputKafkaCore(enrichCmd.Name(), enrichCmd.PersistentFlags())
 	app.RegisterInputKafkaEnrich(enrichCmd.Name(), enrichCmd.PersistentFlags())
 }

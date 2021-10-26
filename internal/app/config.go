@@ -1,6 +1,8 @@
 package app
 
 import (
+	"time"
+
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
@@ -24,6 +26,9 @@ const (
 	// Elastic Output
 	FlagOutElasticHosts  = "output-elastic-hosts"
 	FlagOutElasticPrefix = "output-elastic-prefix"
+
+	// Logging flags
+	FlagLogInterval = "log-interval"
 )
 
 func RegisterOutputKafka(prefix string, pFlags *pflag.FlagSet) {
@@ -66,4 +71,9 @@ func RegisterInputKafkaEnrich(prefix string, pFlags *pflag.FlagSet) {
 
 	pFlags.String(FlagInKafkaTopicAssets, "assets", "Topic that holds asset information")
 	viper.BindPFlag(prefix+".input.kafka.topic_assets", pFlags.Lookup(FlagInKafkaTopicAssets))
+}
+
+func RegisterLogging(prefix string, pFlags *pflag.FlagSet) {
+	pFlags.Duration(FlagLogInterval, 30*time.Second, "periodic logging and report interval")
+	viper.BindPFlag(prefix+".log.interval", pFlags.Lookup(FlagLogInterval))
 }
