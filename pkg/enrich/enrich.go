@@ -54,8 +54,18 @@ type countsParseErrs struct {
 type Handler struct {
 	Counts
 
+	missingLookupSet map[string]bool
+
 	assets  map[string]providentia.Record
 	persist *persist.Badger
+}
+
+func (h Handler) MissingKeys() []string {
+	keys := make([]string, 0, len(h.missingLookupSet))
+	for key := range h.missingLookupSet {
+		keys = append(keys, key)
+	}
+	return keys
 }
 
 func (h *Handler) AddAsset(value providentia.Record) *Handler {
@@ -136,6 +146,7 @@ func (h Handler) assetLookup(asset meta.Asset) *meta.Asset {
 		if val, ok := h.assets[asset.Host]; ok {
 			return val.Asset()
 		}
+		h.missingLookupSet[asset.Host] = true
 	}
 	return &asset
 }
@@ -162,8 +173,9 @@ func NewHandler(c Config) (*Handler, error) {
 		}
 	}
 	return &Handler{
-		persist: c.Persist,
-		assets:  assets,
-		Counts:  Counts{Assets: len(assets)},
+		persist:          c.Persist,
+		assets:           assets,
+		missingLookupSet: make(map[string]bool),
+		Counts:           Counts{Assets: len(assets)},
 	}, nil
 }
