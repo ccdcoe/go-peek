@@ -7,12 +7,14 @@ import (
 	"go-peek/internal/app"
 	"go-peek/pkg/enrich"
 	"go-peek/pkg/ingest/kafka"
+	"go-peek/pkg/intel/mitre"
 	"go-peek/pkg/models/consumer"
 	"go-peek/pkg/persist"
 	"go-peek/pkg/providentia"
 	"os"
 	"os/signal"
 	"path"
+	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
@@ -93,7 +95,15 @@ var enrichCmd = &cobra.Command{
 		defer persist.Close()
 		defer cancelPersist()
 
-		enricher, err := enrich.NewHandler(enrich.Config{Persist: persist})
+		enricher, err := enrich.NewHandler(
+			enrich.Config{
+				Persist: persist,
+				Mitre: mitre.Config{
+					EnterpriseDump: filepath.Join(workdir, "enterprise.json"),
+					MappingsDump:   filepath.Join(workdir, "mappings.json"),
+				},
+			},
+		)
 		app.Throw("enrich handler create", err)
 		defer enricher.Close()
 

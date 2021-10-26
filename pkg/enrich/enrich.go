@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go-peek/pkg/intel/mitre"
 	"go-peek/pkg/models/events"
 	"go-peek/pkg/models/meta"
 	"go-peek/pkg/persist"
@@ -24,6 +25,7 @@ func (e ErrMissingAssetData) Error() string {
 
 type Config struct {
 	Persist *persist.Badger
+	Mitre   mitre.Config
 }
 
 func (c Config) Validate() error {
@@ -56,6 +58,7 @@ type Handler struct {
 
 	missingLookupSet map[string]bool
 
+	mitre   *mitre.Mapper
 	assets  map[string]providentia.Record
 	persist *persist.Badger
 }
@@ -135,6 +138,12 @@ func (h *Handler) Enrich(event events.GameEvent) error {
 		fullAsset.Destination = h.assetLookup(*fullAsset.Destination)
 	}
 
+	// add MITRE ATT&CK info
+	if mitreInfo := event.GetMitreAttack(); mitreInfo != nil {
+		mitreInfo.Set(h.mitre.Mappings)
+		event.SetMitreAttack(mitreInfo)
+	}
+
 	return nil
 }
 
@@ -174,9 +183,14 @@ func NewHandler(c Config) (*Handler, error) {
 			assets[key] = obj
 		}
 	}
+	m, err := mitre.NewMapper(c.Mitre)
+	if err != nil {
+		return nil, err
+	}
 	return &Handler{
 		persist:          c.Persist,
 		assets:           assets,
+		mitre:            m,
 		missingLookupSet: make(map[string]bool),
 		Counts:           Counts{Assets: len(assets)},
 	}, nil
