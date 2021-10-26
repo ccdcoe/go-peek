@@ -6,6 +6,11 @@ import (
 	sigma "github.com/markuskont/go-sigma-rule-engine/pkg/sigma/v2"
 )
 
+type MitreSetterGetter interface {
+	GetMitreAttack() *MitreAttack
+	SetMitreAttack(*MitreAttack)
+}
+
 type MitreAttack struct {
 	Technique
 	Items      []string

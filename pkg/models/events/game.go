@@ -16,6 +16,7 @@ type GameEvent interface {
 	meta.AssetGetterSetter
 	atomic.JSONFormatter
 	meta.EventDataDumper
+	meta.MitreSetterGetter
 }
 
 type ErrEventParse struct {
@@ -38,6 +39,17 @@ type DynamicWinlogbeat struct {
 	Timestamp time.Time `json:"@timestamp"`
 	atomic.DynamicWinlogbeat
 	GameMeta *meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+func (d DynamicWinlogbeat) GetMitreAttack() *meta.MitreAttack {
+	return d.MitreAttack()
+}
+
+func (d *DynamicWinlogbeat) SetMitreAttack(m *meta.MitreAttack) {
+	if d.GameMeta == nil {
+		d.GameMeta = &meta.GameAsset{}
+	}
+	d.GameMeta.MitreAttack = m
 }
 
 // DumpEventData implements EventDataDumper
@@ -170,6 +182,17 @@ type Suricata struct {
 	Timestamp time.Time       `json:"@timestamp"`
 	Syslog    *atomic.Syslog  `json:"syslog,omitempty"`
 	GameMeta  *meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+func (s Suricata) GetMitreAttack() *meta.MitreAttack {
+	return nil
+}
+
+func (s *Suricata) SetMitreAttack(m *meta.MitreAttack) {
+	if s.GameMeta == nil {
+		s.GameMeta = &meta.GameAsset{}
+	}
+	s.GameMeta.MitreAttack = m
 }
 
 // DumpEventData implements EventDataDumper
@@ -331,6 +354,20 @@ type Syslog struct {
 	GameMeta *meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
+func (s Syslog) GetMitreAttack() *meta.MitreAttack {
+	if s.GameMeta != nil {
+		return s.GameMeta.MitreAttack
+	}
+	return nil
+}
+
+func (s *Syslog) SetMitreAttack(m *meta.MitreAttack) {
+	if s.GameMeta == nil {
+		s.GameMeta = &meta.GameAsset{}
+	}
+	s.GameMeta.MitreAttack = m
+}
+
 // DumpEventData implements EventDataDumper
 func (s Syslog) DumpEventData() *meta.EventData {
 	return &meta.EventData{
@@ -396,6 +433,20 @@ type Snoopy struct {
 	atomic.Snoopy
 	atomic.Syslog
 	GameMeta *meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+func (s Snoopy) GetMitreAttack() *meta.MitreAttack {
+	if s.GameMeta != nil {
+		return s.GameMeta.MitreAttack
+	}
+	return nil
+}
+
+func (s *Snoopy) SetMitreAttack(m *meta.MitreAttack) {
+	if s.GameMeta == nil {
+		s.GameMeta = &meta.GameAsset{}
+	}
+	s.GameMeta.MitreAttack = m
 }
 
 // DumpEventData implements EventDataDumper
