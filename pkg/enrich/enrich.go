@@ -120,11 +120,13 @@ func (h *Handler) Decode(raw []byte, kind events.Atomic) (events.GameEvent, erro
 }
 
 func (h *Handler) Enrich(event events.GameEvent) error {
+	// get blank asset template with info from message
 	fullAsset := event.GetAsset()
 	if fullAsset == nil {
 		return ErrMissingAssetData{event}
 	}
 
+	// do asset db lookup
 	fullAsset.Asset = *h.assetLookup(fullAsset.Asset)
 	if fullAsset.Source != nil {
 		fullAsset.Source = h.assetLookup(*fullAsset.Source)
