@@ -17,6 +17,7 @@ type GameEvent interface {
 	atomic.JSONFormatter
 	meta.EventDataDumper
 	meta.MitreSetterGetter
+	Kinder
 }
 
 type ErrEventParse struct {
@@ -40,6 +41,8 @@ type DynamicWinlogbeat struct {
 	atomic.DynamicWinlogbeat
 	GameMeta *meta.GameAsset `json:"GameMeta,omitempty"`
 }
+
+func (d DynamicWinlogbeat) Kind() Atomic { return EventLogE }
 
 func (d DynamicWinlogbeat) GetMitreAttack() *meta.MitreAttack {
 	return d.MitreAttack()
@@ -183,6 +186,8 @@ type Suricata struct {
 	Syslog    *atomic.Syslog  `json:"syslog,omitempty"`
 	GameMeta  *meta.GameAsset `json:"GameMeta,omitempty"`
 }
+
+func (s Suricata) Kind() Atomic { return SuricataE }
 
 func (s Suricata) GetMitreAttack() *meta.MitreAttack {
 	return nil
@@ -354,6 +359,8 @@ type Syslog struct {
 	GameMeta *meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
+func (s Syslog) Kind() Atomic { return SyslogE }
+
 func (s Syslog) GetMitreAttack() *meta.MitreAttack {
 	if s.GameMeta != nil {
 		return s.GameMeta.MitreAttack
@@ -434,6 +441,8 @@ type Snoopy struct {
 	atomic.Syslog
 	GameMeta *meta.GameAsset `json:"GameMeta,omitempty"`
 }
+
+func (s Snoopy) Kind() Atomic { return SnoopyE }
 
 func (s Snoopy) GetMitreAttack() *meta.MitreAttack {
 	if s.GameMeta != nil {

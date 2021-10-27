@@ -18,6 +18,10 @@ type SaganFormatter interface {
 	SaganFormat() string
 }
 
+type Kinder interface {
+	Kind() Atomic
+}
+
 func NewAtomic(raw string) (Atomic, bool) {
 	for _, atomic := range Atomics {
 		if raw == atomic.String() {
