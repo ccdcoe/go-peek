@@ -9,6 +9,8 @@ import (
 
 	"go-peek/pkg/models/atomic"
 	"go-peek/pkg/models/meta"
+
+	"github.com/markuskont/go-sigma-rule-engine/pkg/sigma/v2"
 )
 
 type GameEvent interface {
@@ -18,6 +20,7 @@ type GameEvent interface {
 	meta.EventDataDumper
 	meta.MitreSetterGetter
 	Kinder
+	sigma.Event
 }
 
 type ErrEventParse struct {
