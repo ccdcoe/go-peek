@@ -190,6 +190,17 @@ type Suricata struct {
 func (s Suricata) Kind() Atomic { return SuricataE }
 
 func (s Suricata) GetMitreAttack() *meta.MitreAttack {
+	if s.Metadata == nil || len(s.Metadata) == 0 {
+		return nil
+	}
+	if val, ok := s.Metadata["mitre_technique_id"]; ok {
+		if len(val) != 1 {
+			return nil
+		}
+		return &meta.MitreAttack{
+			Techniques: []meta.Technique{meta.Technique{ID: val[0]}},
+		}
+	}
 	return nil
 }
 
@@ -283,8 +294,6 @@ func (s Suricata) Select(key string) (interface{}, bool) {
 		return getField(bits[1], s.Ikev2)
 	case "tunnel":
 		return getField(bits[1], s.Tunnel)
-	case "metadata":
-		return getField(bits[1], s.Metadata)
 	case "anomaly":
 		return getField(bits[1], s.Anomaly)
 	}

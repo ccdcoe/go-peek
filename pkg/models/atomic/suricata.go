@@ -34,8 +34,9 @@ type StaticSuricataEve struct {
 	Krb5       map[string]interface{} `json:"krb5,omitempty"`
 	Ikev2      map[string]interface{} `json:"ikev2,omitempty"`
 	Tunnel     map[string]interface{} `json:"tunnel,omitempty"`
-	Metadata   map[string]interface{} `json:"metadata,omitempty"`
 	Anomaly    map[string]interface{} `json:"anomaly,omitempty"`
+
+	Metadata map[string][]string `json:"metadata,omitempty"`
 }
 
 // Time implements atomic.Event
