@@ -18,7 +18,7 @@ type GameEvent interface {
 	meta.AssetGetterSetter
 	atomic.JSONFormatter
 	meta.EventDataDumper
-	meta.MitreSetterGetter
+	meta.MitreGetter
 	Kinder
 	sigma.Event
 }
@@ -49,13 +49,6 @@ func (d DynamicWinlogbeat) Kind() Atomic { return EventLogE }
 
 func (d DynamicWinlogbeat) GetMitreAttack() *meta.MitreAttack {
 	return d.MitreAttack()
-}
-
-func (d *DynamicWinlogbeat) SetMitreAttack(m *meta.MitreAttack) {
-	if d.GameMeta == nil {
-		d.GameMeta = &meta.GameAsset{}
-	}
-	d.GameMeta.MitreAttack = m
 }
 
 // DumpEventData implements EventDataDumper
@@ -205,13 +198,6 @@ func (s Suricata) GetMitreAttack() *meta.MitreAttack {
 		}
 	}
 	return nil
-}
-
-func (s *Suricata) SetMitreAttack(m *meta.MitreAttack) {
-	if s.GameMeta == nil {
-		s.GameMeta = &meta.GameAsset{}
-	}
-	s.GameMeta.MitreAttack = m
 }
 
 // DumpEventData implements EventDataDumper
@@ -380,13 +366,6 @@ func (s Syslog) GetMitreAttack() *meta.MitreAttack {
 	return nil
 }
 
-func (s *Syslog) SetMitreAttack(m *meta.MitreAttack) {
-	if s.GameMeta == nil {
-		s.GameMeta = &meta.GameAsset{}
-	}
-	s.GameMeta.MitreAttack = m
-}
-
 // DumpEventData implements EventDataDumper
 func (s Syslog) DumpEventData() *meta.EventData {
 	return &meta.EventData{
@@ -461,13 +440,6 @@ func (s Snoopy) GetMitreAttack() *meta.MitreAttack {
 		return s.GameMeta.MitreAttack
 	}
 	return nil
-}
-
-func (s *Snoopy) SetMitreAttack(m *meta.MitreAttack) {
-	if s.GameMeta == nil {
-		s.GameMeta = &meta.GameAsset{}
-	}
-	s.GameMeta.MitreAttack = m
 }
 
 // DumpEventData implements EventDataDumper
