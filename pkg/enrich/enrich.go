@@ -144,6 +144,12 @@ func (h *Handler) Enrich(event events.GameEvent) error {
 		event.SetMitreAttack(mitreInfo)
 	}
 
+	switch event.Kind() {
+	case events.SuricataE:
+		// TODO: our MITRE SID lookup
+		// need alert SID, doubt theres any other way than typecasting...
+	}
+
 	return nil
 }
 
