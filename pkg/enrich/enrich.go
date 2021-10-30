@@ -68,6 +68,9 @@ type Handler struct {
 
 	sigma map[events.Atomic]sigma.Ruleset
 
+	// mitre tag per suricata SID
+	sidTag map[int]string
+
 	mitre   *mitre.Mapper
 	assets  map[string]providentia.Record
 	persist *persist.Badger
@@ -79,6 +82,18 @@ func (h Handler) MissingKeys() []string {
 		keys = append(keys, key)
 	}
 	return keys
+}
+
+func (h *Handler) AddSidTag(sid int, tag string) *Handler {
+	if h.sidTag == nil {
+		h.sidTag = make(map[int]string)
+	}
+	h.sidTag[sid] = tag
+	h.persist.Set(badgerPrefix, persist.GenericValue{
+		Key:  "sidtag",
+		Data: h.sidTag,
+	})
+	return h
 }
 
 func (h *Handler) AddAsset(value providentia.Record) *Handler {
@@ -167,6 +182,16 @@ func (h *Handler) Enrich(event events.GameEvent) error {
 	case events.SuricataE:
 		// TODO: our MITRE SID lookup
 		// need alert SID, doubt theres any other way than typecasting...
+		strict, ok := event.(*events.Suricata)
+		if ok && h.sidTag != nil && strict.Alert != nil {
+			if val, present := h.sidTag[strict.Alert.SignatureID]; present {
+				fullAsset.MitreAttack.Techniques = append(
+					fullAsset.MitreAttack.Techniques,
+					meta.Technique{ID: val},
+				)
+				fullAsset.MitreAttack.Set(h.mitre.Mappings)
+			}
+		}
 	}
 
 	// object is initialized with empty techniques, set nil if still empty for later emit check
