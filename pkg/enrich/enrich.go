@@ -169,6 +169,10 @@ func (h *Handler) Enrich(event events.GameEvent) error {
 		// need alert SID, doubt theres any other way than typecasting...
 	}
 
+	// object is initialized with empty techniques, set nil if still empty for later emit check
+	if len(fullAsset.MitreAttack.Techniques) == 0 {
+		fullAsset.MitreAttack = nil
+	}
 	event.SetAsset(fullAsset)
 
 	return nil
