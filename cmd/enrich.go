@@ -9,6 +9,7 @@ import (
 	"go-peek/pkg/ingest/kafka"
 	"go-peek/pkg/intel/mitre"
 	"go-peek/pkg/models/consumer"
+	"go-peek/pkg/models/events"
 	"go-peek/pkg/persist"
 	"go-peek/pkg/providentia"
 	"os"
@@ -19,6 +20,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/markuskont/go-sigma-rule-engine/pkg/sigma/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -95,6 +97,28 @@ var enrichCmd = &cobra.Command{
 		defer persist.Close()
 		defer cancelPersist()
 
+		rulesets, err := app.ParseKafkaTopicItems(viper.GetStringSlice(
+			cmd.Name() + ".sigma.ruleset_path",
+		))
+		if err != nil && err == app.ErrInvalidTopicFlags {
+			logger.Warn("no sigma rulesets found, IDS feature is disabled")
+		} else {
+			app.Throw("sigma ruleset init", err)
+		}
+
+		sigmaRuleMap := make(map[events.Atomic]sigma.Ruleset)
+		for _, rs := range rulesets {
+			logger.WithFields(logrus.Fields{
+				"kind": rs.Type.String(),
+				"path": rs.Topic,
+			}).Debug("parsing sigma ruleset")
+			ruleset, err := sigma.NewRuleset(sigma.Config{
+				Directory: []string{rs.Topic},
+			})
+			app.Throw("sigma "+rs.Topic+" init", err)
+			sigmaRuleMap[rs.Type] = *ruleset
+		}
+
 		enricher, err := enrich.NewHandler(
 			enrich.Config{
 				Persist: persist,
@@ -102,6 +126,7 @@ var enrichCmd = &cobra.Command{
 					EnterpriseDump: filepath.Join(workdir, "enterprise.json"),
 					MappingsDump:   filepath.Join(workdir, "mappings.json"),
 				},
+				Sigma: sigmaRuleMap,
 			},
 		)
 		app.Throw("enrich handler create", err)
@@ -173,4 +198,5 @@ func init() {
 	app.RegisterLogging(enrichCmd.Name(), enrichCmd.PersistentFlags())
 	app.RegisterInputKafkaCore(enrichCmd.Name(), enrichCmd.PersistentFlags())
 	app.RegisterInputKafkaEnrich(enrichCmd.Name(), enrichCmd.PersistentFlags())
+	app.RegisterSigmaRulesetPaths(enrichCmd.Name(), enrichCmd.PersistentFlags())
 }

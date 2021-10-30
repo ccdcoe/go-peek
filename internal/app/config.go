@@ -29,6 +29,9 @@ const (
 
 	// Logging flags
 	FlagLogInterval = "log-interval"
+
+	// Sigma flags
+	FlagSigmaRulesetPaths = "sigma-ruleset-path"
 )
 
 func RegisterOutputKafka(prefix string, pFlags *pflag.FlagSet) {
@@ -71,6 +74,11 @@ func RegisterInputKafkaEnrich(prefix string, pFlags *pflag.FlagSet) {
 
 	pFlags.String(FlagInKafkaTopicAssets, "assets", "Topic that holds asset information")
 	viper.BindPFlag(prefix+".input.kafka.topic_assets", pFlags.Lookup(FlagInKafkaTopicAssets))
+}
+
+func RegisterSigmaRulesetPaths(prefix string, pFlags *pflag.FlagSet) {
+	pFlags.StringSlice(FlagSigmaRulesetPaths, []string{}, "Ruleset kind and path separated by colon")
+	viper.BindPFlag(prefix+".sigma.ruleset_path", pFlags.Lookup(FlagSigmaRulesetPaths))
 }
 
 func RegisterLogging(prefix string, pFlags *pflag.FlagSet) {

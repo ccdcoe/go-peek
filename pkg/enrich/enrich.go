@@ -11,6 +11,8 @@ import (
 	"go-peek/pkg/models/meta"
 	"go-peek/pkg/persist"
 	"go-peek/pkg/providentia"
+
+	"github.com/markuskont/go-sigma-rule-engine/pkg/sigma/v2"
 )
 
 const badgerPrefix = "assets"
@@ -23,9 +25,15 @@ func (e ErrMissingAssetData) Error() string {
 	return fmt.Sprintf("missing asset data for %+v", e.Event)
 }
 
+type SigmaConfig struct {
+	Kind events.Atomic
+	Path string
+}
+
 type Config struct {
 	Persist *persist.Badger
 	Mitre   mitre.Config
+	Sigma   map[events.Atomic]sigma.Ruleset
 }
 
 func (c Config) Validate() error {
@@ -57,6 +65,8 @@ type Handler struct {
 	Counts
 
 	missingLookupSet map[string]bool
+
+	sigma map[events.Atomic]sigma.Ruleset
 
 	mitre   *mitre.Mapper
 	assets  map[string]providentia.Record
@@ -138,10 +148,19 @@ func (h *Handler) Enrich(event events.GameEvent) error {
 		fullAsset.Destination = h.assetLookup(*fullAsset.Destination)
 	}
 
+	// SIGMA match
+	if h.sigma != nil {
+		if rs, ok := h.sigma[event.Kind()]; ok {
+			if res, match := rs.EvalAll(event); match && len(res) > 0 {
+				fullAsset.MitreAttack.ParseSigmaTags(res, h.mitre.Mappings)
+			}
+		}
+	}
+
 	// add MITRE ATT&CK info
 	if mitreInfo := event.GetMitreAttack(); mitreInfo != nil {
 		mitreInfo.Set(h.mitre.Mappings)
-		event.SetMitreAttack(mitreInfo)
+		fullAsset.MitreAttack = mitreInfo
 	}
 
 	switch event.Kind() {
@@ -149,6 +168,8 @@ func (h *Handler) Enrich(event events.GameEvent) error {
 		// TODO: our MITRE SID lookup
 		// need alert SID, doubt theres any other way than typecasting...
 	}
+
+	event.SetAsset(fullAsset)
 
 	return nil
 }
@@ -193,11 +214,15 @@ func NewHandler(c Config) (*Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Handler{
+	handler := &Handler{
 		persist:          c.Persist,
 		assets:           assets,
 		mitre:            m,
 		missingLookupSet: make(map[string]bool),
 		Counts:           Counts{Assets: len(assets)},
-	}, nil
+	}
+	if c.Sigma != nil && len(c.Sigma) > 0 {
+		handler.sigma = c.Sigma
+	}
+	return handler, nil
 }
