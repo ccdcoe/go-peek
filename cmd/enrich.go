@@ -76,18 +76,22 @@ var enrichCmd = &cobra.Command{
 		tx := make(chan consumer.Message, 0)
 		defer close(tx)
 
-		producer, err := kafkaOutput.NewProducer(&kafkaOutput.Config{
+		streamOutput, err := kafkaOutput.NewProducer(&kafkaOutput.Config{
 			Brokers: viper.GetStringSlice(cmd.Name() + ".output.kafka.brokers"),
 			Logger:  logger,
 		})
 		app.Throw("Sarama producer init", err)
 		topic := viper.GetString(cmd.Name() + ".output.kafka.topic")
-		producer.Feed(tx, cmd.Name()+" producer", context.TODO(), func(m consumer.Message) string {
-			if viper.GetBool(cmd.Name() + ".output.kafka.topic_split") {
-				return topic + "-" + m.Key
-			}
-			return topic
-		}, &wg)
+		streamOutput.Feed(tx, cmd.Name()+" output producer", context.TODO(),
+			func(m consumer.Message) string {
+				if m.Source == "emit" {
+					return viper.GetString(cmd.Name() + ".output.kafka.topic_emit")
+				}
+				if viper.GetBool(cmd.Name() + ".output.kafka.topic_split") {
+					return topic + "-" + m.Key
+				}
+				return topic
+			}, &wg)
 
 		chTerminate := make(chan os.Signal, 1)
 		signal.Notify(chTerminate, os.Interrupt, syscall.SIGTERM)
@@ -217,13 +221,21 @@ var enrichCmd = &cobra.Command{
 
 				if meta := event.GetAsset(); meta.MitreAttack != nil {
 					// mitre-enriched events should be fast-tracked
+					tx <- consumer.Message{
+						Data:   encoded,
+						Time:   event.Time(),
+						Key:    kind.String(),
+						Event:  kind,
+						Source: "emit",
+					}
 				}
 
 				// send to generic topics
 				tx <- consumer.Message{
-					Data: encoded,
-					Time: event.Time(),
-					Key:  kind.String(),
+					Data:  encoded,
+					Time:  event.Time(),
+					Key:   kind.String(),
+					Event: kind,
 				}
 
 			case <-chTerminate:

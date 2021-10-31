@@ -54,7 +54,7 @@ func RegisterOutputKafkaEnrichment(prefix string, pFlags *pflag.FlagSet) {
 	viper.BindPFlag(prefix+".output.kafka.topic_split", pFlags.Lookup(FlagOutKafkaTopicSplit))
 
 	pFlags.String(FlagOutKafkaTopicEmit, "emit", "Kafka topic for emitting fast-tracked events.")
-	viper.BindPFlag("prefix"+"output.kafka.topic_emit", pFlags.Lookup(FlagOutKafkaTopicEmit))
+	viper.BindPFlag(prefix+".output.kafka.topic_emit", pFlags.Lookup(FlagOutKafkaTopicEmit))
 }
 
 func RegisterOutputElastic(prefix string, pFlags *pflag.FlagSet) {
