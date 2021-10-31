@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"go-peek/pkg/intel/mitre"
+	"go-peek/pkg/models/atomic"
 	"go-peek/pkg/models/events"
 	"go-peek/pkg/models/meta"
 	"go-peek/pkg/persist"
@@ -123,12 +124,15 @@ func (h *Handler) Decode(raw []byte, kind events.Atomic) (events.GameEvent, erro
 		}
 		event = &obj
 	case events.EventLogE, events.SysmonE:
-		var obj events.DynamicWinlogbeat
+		var obj atomic.DynamicWinlogbeat
 		if err := json.Unmarshal(raw, &obj); err != nil {
 			h.Counts.ParseErrs.Windows++
 			return nil, err
 		}
-		event = &obj
+		event = &events.DynamicWinlogbeat{
+			Timestamp:         obj.Time(),
+			DynamicWinlogbeat: obj,
+		}
 	case events.SyslogE:
 		var obj events.Syslog
 		if err := json.Unmarshal(raw, &obj); err != nil {
