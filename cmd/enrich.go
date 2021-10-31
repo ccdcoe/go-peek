@@ -20,6 +20,9 @@ import (
 	"syscall"
 	"time"
 
+	kafkaIngest "go-peek/pkg/ingest/kafka"
+	kafkaOutput "go-peek/pkg/outputs/kafka"
+
 	"github.com/markuskont/go-sigma-rule-engine/pkg/sigma/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -33,7 +36,7 @@ var enrichCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := app.Start(cmd.Name(), logger)
 
-		defer app.Catch(logger)
+		// defer app.Catch(logger)
 		defer app.Done(cmd.Name(), start, logger)
 
 		ctxReader, cancelReader := context.WithCancel(context.Background())
@@ -49,7 +52,7 @@ var enrichCmd = &cobra.Command{
 		app.Throw("topic map parse", err)
 
 		logger.Info("Creating kafka consumer for event stream")
-		streamEvents, err := kafka.NewConsumer(&kafka.Config{
+		streamEvents, err := kafkaIngest.NewConsumer(&kafkaIngest.Config{
 			Name:          cmd.Name() + " event stream",
 			ConsumerGroup: viper.GetString(cmd.Name() + ".input.kafka.consumer_group"),
 			Brokers:       viper.GetStringSlice(cmd.Name() + ".input.kafka.brokers"),
@@ -60,7 +63,7 @@ var enrichCmd = &cobra.Command{
 		app.Throw(cmd.Name()+" event stream setup", err)
 
 		logger.Info("Creating kafka consumer for asset stream")
-		streamAssets, err := kafka.NewConsumer(&kafka.Config{
+		streamAssets, err := kafkaIngest.NewConsumer(&kafkaIngest.Config{
 			Name:          cmd.Name() + " asset stream",
 			ConsumerGroup: viper.GetString(cmd.Name() + ".input.kafka.consumer_group"),
 			Brokers:       viper.GetStringSlice(cmd.Name() + ".input.kafka.brokers"),
@@ -72,6 +75,19 @@ var enrichCmd = &cobra.Command{
 
 		tx := make(chan consumer.Message, 0)
 		defer close(tx)
+
+		producer, err := kafkaOutput.NewProducer(&kafkaOutput.Config{
+			Brokers: viper.GetStringSlice(cmd.Name() + ".output.kafka.brokers"),
+			Logger:  logger,
+		})
+		app.Throw("Sarama producer init", err)
+		topic := viper.GetString(cmd.Name() + ".output.kafka.topic")
+		producer.Feed(tx, cmd.Name()+" producer", context.TODO(), func(m consumer.Message) string {
+			if viper.GetBool(cmd.Name() + ".output.kafka.topic_split") {
+				return topic + "-" + m.Key
+			}
+			return topic
+		}, &wg)
 
 		chTerminate := make(chan os.Signal, 1)
 		signal.Notify(chTerminate, os.Interrupt, syscall.SIGTERM)
@@ -174,6 +190,10 @@ var enrichCmd = &cobra.Command{
 
 				event, err := enricher.Decode(msg.Data, kind)
 				if err != nil {
+					logrus.WithFields(logrus.Fields{
+						"raw":  string(msg.Data),
+						"kind": kind.String(),
+					}).Error("unable to decode")
 					continue loop
 				}
 
@@ -183,6 +203,27 @@ var enrichCmd = &cobra.Command{
 						"source": msg.Source,
 						"err":    err,
 					}).Error("unable to enrich")
+					continue loop
+				}
+
+				encoded, err := event.JSONFormat()
+				if err != nil {
+					logger.WithFields(logrus.Fields{
+						"err":   err,
+						"event": event,
+					}).Error("event encode error")
+					continue loop
+				}
+
+				if meta := event.GetAsset(); meta.MitreAttack != nil {
+					// mitre-enriched events should be fast-tracked
+				}
+
+				// send to generic topics
+				tx <- consumer.Message{
+					Data: encoded,
+					Time: event.Time(),
+					Key:  kind.String(),
 				}
 
 			case <-chTerminate:
@@ -199,4 +240,6 @@ func init() {
 	app.RegisterInputKafkaCore(enrichCmd.Name(), enrichCmd.PersistentFlags())
 	app.RegisterInputKafkaEnrich(enrichCmd.Name(), enrichCmd.PersistentFlags())
 	app.RegisterSigmaRulesetPaths(enrichCmd.Name(), enrichCmd.PersistentFlags())
+	app.RegisterOutputKafka(enrichCmd.Name(), enrichCmd.PersistentFlags())
+	app.RegisterOutputKafkaEnrichment(enrichCmd.Name(), enrichCmd.PersistentFlags())
 }

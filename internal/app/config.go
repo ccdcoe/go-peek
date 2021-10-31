@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -19,9 +20,11 @@ const (
 	FlagInKafkaTopicAssets = "input-kafka-topic-assets"
 
 	// Kafka Output
-	FlagOutKafkaEnabled = "output-kafka-enabled"
-	FlagOutKafkaTopic   = "output-kafka-topic"
-	FlagOutKafkaBrokers = "output-kafka-brokers"
+	FlagOutKafkaEnabled    = "output-kafka-enabled"
+	FlagOutKafkaTopic      = "output-kafka-topic"
+	FlagOutKafkaBrokers    = "output-kafka-brokers"
+	FlagOutKafkaTopicSplit = "output-kafka-topic-split"
+	FlagOutKafkaTopicEmit  = "output-kafka-topic-emit"
 
 	// Elastic Output
 	FlagOutElasticHosts  = "output-elastic-hosts"
@@ -43,6 +46,15 @@ func RegisterOutputKafka(prefix string, pFlags *pflag.FlagSet) {
 
 	pFlags.StringSlice(FlagOutKafkaBrokers, []string{"localhost:9092"}, "Kafka output broker list")
 	viper.BindPFlag(prefix+".output.kafka.brokers", pFlags.Lookup(FlagOutKafkaBrokers))
+}
+
+func RegisterOutputKafkaEnrichment(prefix string, pFlags *pflag.FlagSet) {
+	pFlags.Bool(FlagOutKafkaTopicSplit, false, "Split output to multiple topics per event kind. "+
+		fmt.Sprintf("uses --%s as prefix.", FlagOutKafkaTopic))
+	viper.BindPFlag(prefix+".output.kafka.topic_split", pFlags.Lookup(FlagOutKafkaTopicSplit))
+
+	pFlags.String(FlagOutKafkaTopicEmit, "emit", "Kafka topic for emitting fast-tracked events.")
+	viper.BindPFlag("prefix"+"output.kafka.topic_emit", pFlags.Lookup(FlagOutKafkaTopicEmit))
 }
 
 func RegisterOutputElastic(prefix string, pFlags *pflag.FlagSet) {
