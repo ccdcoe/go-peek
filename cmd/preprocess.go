@@ -38,16 +38,23 @@ var preprocessCmd = &cobra.Command{
 
 		var wg sync.WaitGroup
 
+		topics, err := app.ParseKafkaTopicItems(
+			viper.GetStringSlice(cmd.Name() + ".input.kafka.topic_map"),
+		)
+		app.Throw("topic map parse", err)
+
 		logger.Info("Creating kafka consumer")
 		input, err := kafkaIngest.NewConsumer(&kafkaIngest.Config{
 			Name:          cmd.Name() + " consumer",
 			ConsumerGroup: viper.GetString(cmd.Name() + ".input.kafka.consumer_group"),
 			Brokers:       viper.GetStringSlice(cmd.Name() + ".input.kafka.brokers"),
-			Topics:        viper.GetStringSlice(cmd.Name() + ".input.kafka.topics"),
+			Topics:        topics.Topics(),
 			Ctx:           ctxReader,
 			OffsetMode:    kafkaIngest.OffsetLastCommit,
 		})
 		app.Throw("kafka consumer", err)
+
+		topicMapFn := topics.TopicMap()
 
 		rx := input.Messages()
 		tx := make(chan consumer.Message, 0)
@@ -71,11 +78,11 @@ var preprocessCmd = &cobra.Command{
 		signal.Notify(chTerminate, os.Interrupt, syscall.SIGTERM)
 
 		normalizer := process.NewNormalizer()
-		collector := &process.Collector{
+		syslogCollector := &process.Collector{
 			HandlerFunc: func(b *bytes.Buffer) error {
 				logger.WithFields(logrus.Fields{
 					"len": b.Len(),
-				}).Trace("collect handler called")
+				}).Trace("syslog collect handler called")
 
 				scanner := bufio.NewScanner(b)
 				for scanner.Scan() {
@@ -91,11 +98,11 @@ var preprocessCmd = &cobra.Command{
 							var kind events.Atomic
 							switch obj.(type) {
 							case *events.Syslog:
-								key = "syslog"
 								kind = events.SyslogE
+								key = kind.String()
 							case *events.Snoopy:
-								key = "snoopy"
 								kind = events.SnoopyE
+								key = kind.String()
 							}
 							// TODO - topic map per object type
 							tx <- consumer.Message{
@@ -104,6 +111,29 @@ var preprocessCmd = &cobra.Command{
 								Event: kind,
 							}
 						}
+					}
+				}
+				return scanner.Err()
+			},
+			Size:   64 * 1024,
+			Ticker: time.NewTicker(1 * time.Second),
+		}
+
+		windowsCollector := &process.Collector{
+			HandlerFunc: func(b *bytes.Buffer) error {
+				logger.WithFields(logrus.Fields{
+					"len": b.Len(),
+				}).Trace("windows collect handler called")
+
+				scanner := bufio.NewScanner(b)
+				for scanner.Scan() {
+					// TODO - topic map per object type
+					slc := make([]byte, len(scanner.Bytes()))
+					copy(slc, scanner.Bytes())
+					tx <- consumer.Message{
+						Data:  slc,
+						Key:   events.EventLogE.String(),
+						Event: events.EventLogE,
 					}
 				}
 				return scanner.Err()
@@ -123,7 +153,12 @@ var preprocessCmd = &cobra.Command{
 				if !ok {
 					break loop
 				}
-				collector.Collect(msg.Data)
+				switch val, ok := topicMapFn(msg.Source); ok {
+				case val == events.SyslogE, val == events.SnoopyE:
+					syslogCollector.Collect(msg.Data)
+				case val == events.EventLogE:
+					windowsCollector.Collect(msg.Data)
+				}
 				count++
 			case <-chTerminate:
 				break loop
@@ -141,6 +176,6 @@ var preprocessCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(preprocessCmd)
 
-	app.RegisterInputKafkaGenericSimple(preprocessCmd.Name(), preprocessCmd.PersistentFlags())
+	app.RegisterInputKafkaPreproc(preprocessCmd.Name(), preprocessCmd.PersistentFlags())
 	app.RegisterOutputKafka(preprocessCmd.Name(), preprocessCmd.PersistentFlags())
 }

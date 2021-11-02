@@ -65,6 +65,11 @@ func RegisterOutputElastic(prefix string, pFlags *pflag.FlagSet) {
 	viper.BindPFlag(prefix+".output.elasticsearch.prefix", pFlags.Lookup(FlagOutElasticPrefix))
 }
 
+func RegisterInputKafkaPreproc(prefix string, pFlags *pflag.FlagSet) {
+	RegisterInputKafkaCore(prefix, pFlags)
+	RegisterInputKafkaTopicMap(prefix, pFlags)
+}
+
 func RegisterInputKafkaGenericSimple(prefix string, pFlags *pflag.FlagSet) {
 	pFlags.StringSlice(FlagInKafkaTopics, []string{}, "List of input topics")
 	viper.BindPFlag(prefix+".input.kafka.topics", pFlags.Lookup(FlagInKafkaTopics))
@@ -80,12 +85,16 @@ func RegisterInputKafkaCore(prefix string, pFlags *pflag.FlagSet) {
 	viper.BindPFlag(prefix+".input.kafka.consumer_group", pFlags.Lookup(FlagInKafkaConsumerGroup))
 }
 
-func RegisterInputKafkaEnrich(prefix string, pFlags *pflag.FlagSet) {
+func RegisterInputKafkaTopicMap(prefix string, pFlags *pflag.FlagSet) {
 	pFlags.StringSlice(FlagInKafkaTopicMapper, []string{}, "Topic and event type separated by colon")
 	viper.BindPFlag(prefix+".input.kafka.topic_map", pFlags.Lookup(FlagInKafkaTopicMapper))
+}
 
+func RegisterInputKafkaEnrich(prefix string, pFlags *pflag.FlagSet) {
 	pFlags.String(FlagInKafkaTopicAssets, "assets", "Topic that holds asset information")
 	viper.BindPFlag(prefix+".input.kafka.topic_assets", pFlags.Lookup(FlagInKafkaTopicAssets))
+
+	RegisterInputKafkaTopicMap(prefix, pFlags)
 }
 
 func RegisterSigmaRulesetPaths(prefix string, pFlags *pflag.FlagSet) {
