@@ -138,6 +138,9 @@ func NewHandle(c Config) (*Handle, error) {
 		return nil, ErrMissingDir
 	}
 	if stat, err := os.Stat(c.Directory); os.IsNotExist(err) {
+		if err := os.Mkdir(c.Directory, 0700); err != nil {
+			return nil, err
+		}
 		return nil, fmt.Errorf("Archive dir %s missing", c.Directory)
 	} else if !stat.IsDir() {
 		return nil, fmt.Errorf("Archive dir %s exists but is not a folder", c.Directory)
