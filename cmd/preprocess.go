@@ -88,16 +88,20 @@ var preprocessCmd = &cobra.Command{
 							logger.Error(err)
 						} else {
 							var key string
+							var kind events.Atomic
 							switch obj.(type) {
 							case *events.Syslog:
 								key = "syslog"
+								kind = events.SyslogE
 							case *events.Snoopy:
 								key = "snoopy"
+								kind = events.SnoopyE
 							}
 							// TODO - topic map per object type
 							tx <- consumer.Message{
-								Data: bin,
-								Key:  key,
+								Data:  bin,
+								Key:   key,
+								Event: kind,
 							}
 						}
 					}
