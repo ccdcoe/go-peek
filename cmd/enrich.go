@@ -219,7 +219,7 @@ var enrichCmd = &cobra.Command{
 					continue loop
 				}
 
-				if meta := event.GetAsset(); meta.MitreAttack != nil {
+				if event.Emit() {
 					// mitre-enriched events should be fast-tracked
 					tx <- consumer.Message{
 						Data:   encoded,

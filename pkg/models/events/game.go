@@ -13,6 +13,10 @@ import (
 	"github.com/markuskont/go-sigma-rule-engine/pkg/sigma/v2"
 )
 
+type Emitter interface {
+	Emit() bool
+}
+
 type GameEvent interface {
 	atomic.Event
 	meta.AssetGetterSetter
@@ -21,6 +25,7 @@ type GameEvent interface {
 	meta.MitreGetter
 	Kinder
 	sigma.Event
+	Emitter
 }
 
 type ErrEventParse struct {
@@ -43,6 +48,10 @@ type DynamicWinlogbeat struct {
 	Timestamp time.Time `json:"@timestamp"`
 	atomic.DynamicWinlogbeat
 	GameMeta *meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+func (d DynamicWinlogbeat) Emit() bool {
+	return d.GameMeta != nil && d.GameMeta.MitreAttack != nil
 }
 
 func (d DynamicWinlogbeat) Kind() Atomic { return EventLogE }
@@ -183,6 +192,10 @@ type Suricata struct {
 	Timestamp time.Time       `json:"@timestamp"`
 	Syslog    *atomic.Syslog  `json:"syslog,omitempty"`
 	GameMeta  *meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+func (s Suricata) Emit() bool {
+	return s.GameMeta != nil && s.GameMeta.MitreAttack != nil
 }
 
 func (s Suricata) Kind() Atomic { return SuricataE }
@@ -359,6 +372,10 @@ type Syslog struct {
 	GameMeta *meta.GameAsset `json:"GameMeta,omitempty"`
 }
 
+func (s Syslog) Emit() bool {
+	return s.GameMeta != nil && s.GameMeta.MitreAttack != nil
+}
+
 func (s Syslog) Kind() Atomic { return SyslogE }
 
 func (s Syslog) GetMitreAttack() *meta.MitreAttack {
@@ -433,6 +450,10 @@ type Snoopy struct {
 	atomic.Snoopy
 	atomic.Syslog
 	GameMeta *meta.GameAsset `json:"GameMeta,omitempty"`
+}
+
+func (s Snoopy) Emit() bool {
+	return s.GameMeta != nil && s.GameMeta.MitreAttack != nil
 }
 
 func (s Snoopy) Kind() Atomic { return SnoopyE }
