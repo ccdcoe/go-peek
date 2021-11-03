@@ -45,7 +45,12 @@ func (s SyslogServer) Run(wg *sync.WaitGroup, ctx context.Context) error {
 				default:
 				}
 			}
-			s.Collector.Collect(buf[:n])
+			if err := s.Collector.Collect(buf[:n]); err != nil {
+				select {
+				case s.Errors <- err:
+				default:
+				}
+			}
 		}
 	}(ctx)
 	return nil
