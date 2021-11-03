@@ -3,6 +3,7 @@ package process
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -56,12 +57,15 @@ func (s SyslogServer) Run(wg *sync.WaitGroup, ctx context.Context) error {
 	return nil
 }
 
-func NewSyslogServer(fn CollectBulkFullFn) (*SyslogServer, error) {
+func NewSyslogServer(fn CollectBulkFullFn, port int) (*SyslogServer, error) {
 	if fn == nil {
 		return nil, errors.New("missing bulk handler func")
 	}
+	if port <= 0 || port >= 49151 {
+		return nil, fmt.Errorf("invalid udp syslog port %d", port)
+	}
 	server := &SyslogServer{}
-	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:514")
+	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("0.0.0.0:%d", port))
 	if err != nil {
 		return nil, err
 	}

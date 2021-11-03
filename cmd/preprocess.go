@@ -173,7 +173,7 @@ var preprocessCmd = &cobra.Command{
 				}
 			}
 			return scanner.Err()
-		})
+		}, 514)
 		app.Throw("udp syslog setup", err)
 
 		ctxUDPSyslog, cancelUDPSyslog := context.WithCancel(context.Background())
