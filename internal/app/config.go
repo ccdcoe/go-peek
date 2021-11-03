@@ -15,6 +15,9 @@ const (
 	FlagInKafkaBrokers       = "input-kafka-brokers"
 	FlagInKafkaConsumerGroup = "input-kafka-consumer-group"
 
+	// Syslog input
+	FlagInSyslogUDPPort = "input-syslog-udp-port"
+
 	// Kafka topic mapper
 	FlagInKafkaTopicMapper = "input-kafka-topic-map"
 	FlagInKafkaTopicAssets = "input-kafka-topic-assets"
@@ -83,6 +86,11 @@ func RegisterInputKafkaCore(prefix string, pFlags *pflag.FlagSet) {
 
 	pFlags.String(FlagInKafkaConsumerGroup, "peek", "Kafka consumer group")
 	viper.BindPFlag(prefix+".input.kafka.consumer_group", pFlags.Lookup(FlagInKafkaConsumerGroup))
+}
+
+func RegisterInputSyslogUDP(prefix string, pFlags *pflag.FlagSet) {
+	pFlags.Int(FlagInSyslogUDPPort, 514, "UDP syslog port")
+	viper.BindPFlag(prefix+".input.syslog.udp.port", pFlags.Lookup(FlagInSyslogUDPPort))
 }
 
 func RegisterInputKafkaTopicMap(prefix string, pFlags *pflag.FlagSet) {

@@ -149,6 +149,11 @@ var preprocessCmd = &cobra.Command{
 			syslogSuricata int
 		}
 
+		logger.
+			WithField("port", viper.GetInt(cmd.Name()+".input.syslog.udp.port")).
+			WithField("proto", "udp").
+			Info("starting up syslog server")
+
 		udpSyslogSuricata, err := process.NewSyslogServer(func(b *bytes.Buffer) error {
 			logger.WithFields(logrus.Fields{
 				"len": b.Len(),
@@ -173,7 +178,7 @@ var preprocessCmd = &cobra.Command{
 				}
 			}
 			return scanner.Err()
-		}, 514)
+		}, viper.GetInt(cmd.Name()+".input.syslog.udp.port"))
 		app.Throw("udp syslog setup", err)
 
 		ctxUDPSyslog, cancelUDPSyslog := context.WithCancel(context.Background())
@@ -228,4 +233,5 @@ func init() {
 
 	app.RegisterInputKafkaPreproc(preprocessCmd.Name(), preprocessCmd.PersistentFlags())
 	app.RegisterOutputKafka(preprocessCmd.Name(), preprocessCmd.PersistentFlags())
+	app.RegisterInputSyslogUDP(preprocessCmd.Name(), preprocessCmd.PersistentFlags())
 }
