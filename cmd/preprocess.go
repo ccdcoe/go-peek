@@ -143,10 +143,42 @@ var preprocessCmd = &cobra.Command{
 		}
 
 		var counts struct {
-			total        int
-			kafkaSyslog  int
-			kafkaWindows int
+			total          int
+			kafkaSyslog    int
+			kafkaWindows   int
+			syslogSuricata int
 		}
+
+		udpSyslogSuricata, err := process.NewSyslogServer(func(b *bytes.Buffer) error {
+			logger.WithFields(logrus.Fields{
+				"len": b.Len(),
+			}).Trace("udp syslog collect handler called")
+			scanner := bufio.NewScanner(b)
+			for scanner.Scan() {
+				// FIXME - refactor hardcoded logstash cutset
+				bits := bytes.SplitN(scanner.Bytes(), []byte("LOGSTASH[-]: "), 2)
+				if bits == nil && len(bits) != 2 {
+					logger.WithFields(logrus.Fields{
+						"msg": scanner.Text(),
+					}).Error("udp syslog msg split")
+				} else {
+					slc := make([]byte, len(bits[1]))
+					copy(slc, bits[1])
+					tx <- consumer.Message{
+						Data:  slc,
+						Event: events.SuricataE,
+						Key:   events.SuricataE.String(),
+					}
+					counts.syslogSuricata++
+				}
+			}
+			return scanner.Err()
+		})
+		app.Throw("udp syslog setup", err)
+
+		ctxUDPSyslog, cancelUDPSyslog := context.WithCancel(context.Background())
+		app.Throw("udp syslog worker spawn", udpSyslogSuricata.Run(&wg, ctxUDPSyslog))
+
 		report := time.NewTicker(15 * time.Second)
 		defer report.Stop()
 		logger.Info("Starting main loop")
@@ -166,14 +198,19 @@ var preprocessCmd = &cobra.Command{
 					counts.kafkaWindows++
 				}
 				counts.total++
+			case err, ok := <-udpSyslogSuricata.Errors:
+				if ok && err != nil {
+					logger.Error(err)
+				}
 			case <-chTerminate:
 				break loop
 			case <-report.C:
 				logger.WithFields(
 					logrus.Fields{
-						"total":         counts.total,
-						"kafka_windows": counts.kafkaWindows,
-						"kafka_syslog":  counts.kafkaSyslog,
+						"total":           counts.total,
+						"kafka_windows":   counts.kafkaWindows,
+						"kafka_syslog":    counts.kafkaSyslog,
+						"syslog_suricata": counts.syslogSuricata,
 					},
 				).Debug(cmd.Name())
 			}
@@ -181,6 +218,7 @@ var preprocessCmd = &cobra.Command{
 
 		cancelReader()
 		cancelWriter()
+		cancelUDPSyslog()
 		wg.Wait()
 	},
 }
