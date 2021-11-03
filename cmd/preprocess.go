@@ -142,7 +142,11 @@ var preprocessCmd = &cobra.Command{
 			Ticker: time.NewTicker(1 * time.Second),
 		}
 
-		var count int
+		var counts struct {
+			total        int
+			kafkaSyslog  int
+			kafkaWindows int
+		}
 		report := time.NewTicker(15 * time.Second)
 		defer report.Stop()
 		logger.Info("Starting main loop")
@@ -156,14 +160,22 @@ var preprocessCmd = &cobra.Command{
 				switch val, ok := topicMapFn(msg.Source); ok {
 				case val == events.SyslogE, val == events.SnoopyE:
 					syslogCollector.Collect(msg.Data)
+					counts.kafkaSyslog++
 				case val == events.EventLogE:
 					windowsCollector.Collect(msg.Data)
+					counts.kafkaWindows++
 				}
-				count++
+				counts.total++
 			case <-chTerminate:
 				break loop
 			case <-report.C:
-				logger.WithFields(logrus.Fields{"normalized": count}).Debug(cmd.Name())
+				logger.WithFields(
+					logrus.Fields{
+						"total":         counts.total,
+						"kafka_windows": counts.kafkaWindows,
+						"kafka_syslog":  counts.kafkaSyslog,
+					},
+				).Debug(cmd.Name())
 			}
 		}
 
