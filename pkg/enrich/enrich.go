@@ -53,6 +53,7 @@ type Counts struct {
 	Assets       int
 
 	ParseErrs countsParseErrs
+	Problems  problems
 }
 
 type countsParseErrs struct {
@@ -60,6 +61,10 @@ type countsParseErrs struct {
 	Windows  uint
 	Syslog   uint
 	Snoopy   uint
+}
+
+type problems struct {
+	MissingSuricataTimestamp uint
 }
 
 type Handler struct {
@@ -121,6 +126,9 @@ func (h *Handler) Decode(raw []byte, kind events.Atomic) (events.GameEvent, erro
 		if err := json.Unmarshal(raw, &obj); err != nil {
 			h.Counts.ParseErrs.Suricata++
 			return nil, err
+		}
+		if ts := obj.Time(); ts.IsZero() {
+			h.Problems.MissingSuricataTimestamp++
 		}
 		event = &events.Suricata{
 			Timestamp:         obj.Time(),
