@@ -159,6 +159,7 @@ var preprocessCmd = &cobra.Command{
 				"len": b.Len(),
 			}).Trace("udp syslog collect handler called")
 			scanner := bufio.NewScanner(b)
+		loop:
 			for scanner.Scan() {
 				// FIXME - refactor hardcoded logstash cutset
 				bits := bytes.SplitN(scanner.Bytes(), []byte("LOGSTASH[-]: "), 2)
@@ -166,16 +167,20 @@ var preprocessCmd = &cobra.Command{
 					logger.WithFields(logrus.Fields{
 						"msg": scanner.Text(),
 					}).Error("udp syslog msg split")
-				} else {
-					slc := make([]byte, len(bits[1]))
-					copy(slc, bits[1])
-					tx <- consumer.Message{
-						Data:  slc,
-						Event: events.SuricataE,
-						Key:   events.SuricataE.String(),
-					}
-					counts.syslogSuricata++
+					continue loop
 				}
+				slc := make([]byte, len(bits[1]))
+				copy(slc, bits[1])
+				key := events.SuricataE.String()
+				if process.IsSuricataAlert(slc) {
+					key += "-alert"
+				}
+				tx <- consumer.Message{
+					Data:  slc,
+					Event: events.SuricataE,
+					Key:   key,
+				}
+				counts.syslogSuricata++
 			}
 			return scanner.Err()
 		}, viper.GetInt(cmd.Name()+".input.syslog.udp.port"))
