@@ -79,8 +79,9 @@ var providentiaCmd = &cobra.Command{
 
 		fn := func() {
 			targets, err := providentia.Pull(providentia.Params{
-				URL:   viper.GetString(cmd.Name() + ".url"),
-				Token: viper.GetString(cmd.Name() + ".token"),
+				URL:     viper.GetString(cmd.Name() + ".url"),
+				Token:   viper.GetString(cmd.Name() + ".token"),
+				RawDump: filepath.Join(workdir, "raw-api-result.json"),
 			})
 			if err != nil {
 				logger.WithFields(logrus.Fields{}).Error(err)

@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"go-peek/pkg/anonymizer"
 	"go-peek/pkg/models/meta"
+	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -28,6 +30,7 @@ func (e ErrRespDecode) Error() string {
 
 type Params struct {
 	URL, Token string
+	RawDump    string
 }
 
 type network struct {
@@ -161,9 +164,21 @@ func Pull(p Params) (Targets, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if p.RawDump != "" {
+		f, err := os.Create(p.RawDump)
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+		f.Write(data)
+	}
+
 	var obj Response
-	decoder := json.NewDecoder(resp.Body)
-	if err := decoder.Decode(&obj); err != nil {
+	if err := json.Unmarshal(data, &obj); err != nil {
 		return nil, ErrRespDecode{Decode: err}
 	}
 	return obj.Hosts, nil
