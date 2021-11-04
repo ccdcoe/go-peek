@@ -3,7 +3,6 @@ package enrich
 import (
 	"bytes"
 	"encoding/gob"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"go-peek/pkg/intel/mitre"
@@ -13,8 +12,11 @@ import (
 	"go-peek/pkg/persist"
 	"go-peek/pkg/providentia"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/markuskont/go-sigma-rule-engine/pkg/sigma/v2"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 const badgerPrefix = "assets"
 
