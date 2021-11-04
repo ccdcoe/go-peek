@@ -227,6 +227,10 @@ func (h Handler) assetLookup(asset meta.Asset) *meta.Asset {
 	if asset.Host != "" {
 		if val, ok := h.assets[asset.Host]; ok {
 			return val.Asset()
+		} else if fqdn := asset.FQDN(); fqdn != "" {
+			if val, ok := h.assets[fqdn]; ok {
+				return val.Asset()
+			}
 		}
 		h.missingLookupSet[asset.Host] = true
 	}
