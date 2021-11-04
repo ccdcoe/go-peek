@@ -131,6 +131,39 @@ func (b Badger) Set(prefix string, vals ...GenericValue) error {
 	return txn.Commit()
 }
 
+type ValueHandleFunc func([]byte) error
+
+func (b Badger) GetSingle(key string, handler ValueHandleFunc) error {
+	if b.DB == nil {
+		return ErrMissingHandle
+	}
+	return b.DB.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(key))
+		if err != nil {
+			return err
+		}
+		return item.Value(handler)
+	})
+}
+
+func (b Badger) SetSingle(key string, value interface{}) error {
+	if b.DB == nil {
+		return ErrMissingHandle
+	}
+	if value == nil {
+		return ErrNoValsToSet
+	}
+	return b.DB.Update(func(txn *badger.Txn) error {
+		var buf bytes.Buffer
+		encoder := gob.NewEncoder(&buf)
+		err := encoder.Encode(value)
+		if err != nil {
+			return err
+		}
+		return txn.Set([]byte(key), buf.Bytes())
+	})
+}
+
 func (b Badger) Cleanup() error {
 	if b.DB == nil {
 		return ErrMissingHandle
