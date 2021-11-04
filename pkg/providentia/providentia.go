@@ -59,6 +59,9 @@ type Target struct {
 	} `json:"team"`
 
 	Vars struct {
+		ID       string    `json:"id"`
+		Role     string    `json:"role"`
+		Hostname string    `json:"hostname"`
 		Networks []network `json:"networks"`
 		Groups   []string  `json:"groups"`
 	} `json:"vars"`
@@ -70,12 +73,14 @@ func (t Target) extract(alias string, logger *logrus.Logger) []Record {
 		if nw.IPv4 != "" {
 			if addr, _, err := net.ParseCIDR(nw.IPv4); err == nil {
 				tx = append(tx, Record{
-					Name:    t.Name,
-					Pretty:  alias,
-					Domain:  nw.Domain,
-					Updated: time.Now(),
-					Addr:    addr,
-					Team:    t.Team.Name,
+					AnsibleName: t.Name,
+					HostName:    t.Vars.Hostname,
+					Role:        t.Vars.Role,
+					Pretty:      alias,
+					Domain:      nw.Domain,
+					Updated:     time.Now(),
+					Addr:        addr,
+					Team:        t.Team.Name,
 				})
 			} else if logger != nil {
 				logger.WithFields(logrus.Fields{
@@ -87,12 +92,14 @@ func (t Target) extract(alias string, logger *logrus.Logger) []Record {
 		if nw.IPv6 != "" {
 			if addr, _, err := net.ParseCIDR(nw.IPv6); err == nil {
 				tx = append(tx, Record{
-					Name:    t.Name,
-					Pretty:  alias,
-					Domain:  nw.Domain,
-					Updated: time.Now(),
-					Addr:    addr,
-					Team:    t.Team.Name,
+					AnsibleName: t.Name,
+					HostName:    t.Vars.Hostname,
+					Role:        t.Vars.Role,
+					Pretty:      alias,
+					Domain:      nw.Domain,
+					Updated:     time.Now(),
+					Addr:        addr,
+					Team:        t.Team.Name,
 				})
 			} else if logger != nil {
 				logger.WithFields(logrus.Fields{
@@ -110,31 +117,40 @@ type Response struct {
 }
 
 type Record struct {
-	Name    string    `json:"name"`
-	Pretty  string    `json:"pretty"`
-	Domain  string    `json:"domain"`
-	Addr    net.IP    `json:"addr"`
-	Team    string    `json:"team"`
-	Updated time.Time `json:"updated"`
+	AnsibleName string    `json:"ansible_name"`
+	HostName    string    `json:"host_name"`
+	Pretty      string    `json:"pretty"`
+	Domain      string    `json:"domain"`
+	Role        string    `json:"role"`
+	Addr        net.IP    `json:"addr"`
+	Team        string    `json:"team"`
+	Updated     time.Time `json:"updated"`
 }
 
-func (r Record) FQDN() string { return r.Name + "." + r.Domain }
+func (r Record) FQDN() string { return r.HostName + "." + r.Domain }
 
 func (r Record) Keys() []string {
-	keys := []string{r.Name, r.Pretty, r.Addr.String()}
+	keys := []string{r.HostName, r.AnsibleName, r.Pretty, r.Addr.String()}
 	if r.Domain != "" {
 		keys = append(keys, r.FQDN())
 	}
-	return keys
+	out := make([]string, 0, len(keys))
+	for _, key := range keys {
+		if key != "" {
+			out = append(out, key)
+		}
+	}
+	return out
 }
 
 func (r Record) Asset() *meta.Asset {
 	return &meta.Asset{
-		Host:   r.Name,
+		Host:   r.HostName,
 		Alias:  r.Pretty,
 		Domain: r.Domain,
 		IP:     r.Addr,
 		Team:   r.Team,
+		VM:     r.AnsibleName,
 	}
 }
 
