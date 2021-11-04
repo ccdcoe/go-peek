@@ -37,7 +37,7 @@ var enrichCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := app.Start(cmd.Name(), logger)
 
-		// defer app.Catch(logger)
+		defer app.Catch(logger)
 		defer app.Done(cmd.Name(), start, logger)
 
 		ctxReader, cancelReader := context.WithCancel(context.Background())
