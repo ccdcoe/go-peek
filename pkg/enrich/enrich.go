@@ -33,8 +33,11 @@ func (e ErrMissingAssetData) Error() string {
 }
 
 type SidMitreTag struct {
-	Sid      int
-	MitreTag string
+	ID     string `json:"id"`
+	MSG    string `json:"msg"`
+	Name   string `json:"name"`
+	Tactic string `json:"tactic"`
+	SID    int    `json:"sid"`
 }
 
 type SigmaConfig struct {
@@ -125,10 +128,10 @@ func (h *Handler) AddSidTag(item SidMitreTag) *Handler {
 	if h.sidTag == nil {
 		h.sidTag = make(map[int]string)
 	}
-	h.sidTag[item.Sid] = item.MitreTag
-	_, ok := h.missingSidMaps[item.Sid]
+	h.sidTag[item.SID] = item.ID
+	_, ok := h.missingSidMaps[item.SID]
 	if ok {
-		delete(h.missingSidMaps, item.Sid)
+		delete(h.missingSidMaps, item.SID)
 	}
 	return h
 }

@@ -8,6 +8,7 @@ import (
 	"go-peek/pkg/enrich"
 	"go-peek/pkg/ingest/kafka"
 	"go-peek/pkg/intel/mitre"
+	"go-peek/pkg/mitremeerkat"
 	"go-peek/pkg/models/consumer"
 	"go-peek/pkg/models/events"
 	"go-peek/pkg/persist"
@@ -194,7 +195,7 @@ var enrichCmd = &cobra.Command{
 				if !ok {
 					continue loop
 				}
-				var obj enrich.SidMitreTag
+				var obj mitremeerkat.Mapping
 				if err := json.Unmarshal(msg.Data, &obj); err != nil {
 					logger.WithFields(logrus.Fields{
 						"raw":    string(msg.Data),
