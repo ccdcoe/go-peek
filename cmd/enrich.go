@@ -73,6 +73,17 @@ var enrichCmd = &cobra.Command{
 		})
 		app.Throw(cmd.Name()+" asset stream setup", err)
 
+		logger.Info("Creating kafka consumer for sid map stream")
+		streamSidMap, err := kafkaIngest.NewConsumer(&kafkaIngest.Config{
+			Name:          cmd.Name() + " asset stream",
+			ConsumerGroup: viper.GetString(cmd.Name() + ".input.kafka.consumer_group"),
+			Brokers:       viper.GetStringSlice(cmd.Name() + ".input.kafka.brokers"),
+			Topics:        []string{viper.GetString(cmd.Name() + ".input.kafka.topic_sid_mitre")},
+			Ctx:           ctxReader,
+			OffsetMode:    kafka.OffsetLastCommit,
+		})
+		app.Throw(cmd.Name()+" sid map stream setup", err)
+
 		tx := make(chan consumer.Message, 0)
 		defer close(tx)
 
@@ -150,7 +161,11 @@ var enrichCmd = &cobra.Command{
 			},
 		)
 		app.Throw("enrich handler create", err)
-		defer enricher.Close()
+		defer func() {
+			if err := enricher.Close(); err != nil {
+				logger.WithField("err", err).Error("problem closing enricher")
+			}
+		}()
 
 		report := time.NewTicker(viper.GetDuration(cmd.Name() + ".log.interval"))
 		defer report.Stop()
@@ -165,6 +180,30 @@ var enrichCmd = &cobra.Command{
 						logger.WithField("value", key).Debug("missing asset host key")
 					}
 				}
+				if sidMap := enricher.MissingSidMaps(); len(sidMap) > 0 {
+					logger.WithField("count", len(sidMap)).Warn("missing suricata MITRE SID mappings")
+					for sid, msg := range sidMap {
+						logger.WithFields(logrus.Fields{
+							"sid": sid,
+							"msg": msg,
+						}).Debug("missing MITRE SID mapping")
+					}
+				}
+				enricher.Persist()
+			case msg, ok := <-streamSidMap.Messages():
+				if !ok {
+					continue loop
+				}
+				var obj enrich.SidMitreTag
+				if err := json.Unmarshal(msg.Data, &obj); err != nil {
+					logger.WithFields(logrus.Fields{
+						"raw":    string(msg.Data),
+						"source": msg.Source,
+						"err":    err,
+					}).Error("unable to parse sid mapping")
+					continue loop
+				}
+				enricher.AddSidTag(obj)
 			case msg, ok := <-streamAssets.Messages():
 				if !ok {
 					continue loop

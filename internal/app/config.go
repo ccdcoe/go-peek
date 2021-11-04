@@ -21,6 +21,7 @@ const (
 	// Kafka topic mapper
 	FlagInKafkaTopicMapper = "input-kafka-topic-map"
 	FlagInKafkaTopicAssets = "input-kafka-topic-assets"
+	FlagInKafkaTopicSidMap = "input-kafka-topic-sid-mitre"
 
 	// Kafka Output
 	FlagOutKafkaEnabled    = "output-kafka-enabled"
@@ -101,6 +102,9 @@ func RegisterInputKafkaTopicMap(prefix string, pFlags *pflag.FlagSet) {
 func RegisterInputKafkaEnrich(prefix string, pFlags *pflag.FlagSet) {
 	pFlags.String(FlagInKafkaTopicAssets, "assets", "Topic that holds asset information")
 	viper.BindPFlag(prefix+".input.kafka.topic_assets", pFlags.Lookup(FlagInKafkaTopicAssets))
+
+	pFlags.String(FlagInKafkaTopicSidMap, "meerkat_sid_mitre_map", "Topic that holds asset information")
+	viper.BindPFlag(prefix+".input.kafka.topic_sid_mitre", pFlags.Lookup(FlagInKafkaTopicSidMap))
 
 	RegisterInputKafkaTopicMap(prefix, pFlags)
 }

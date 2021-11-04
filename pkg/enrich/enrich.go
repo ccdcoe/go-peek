@@ -18,7 +18,11 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-const badgerPrefix = "assets"
+const (
+	badgerPrefix        = "assets"
+	badgerSidMapKey     = "enrich-suricata-sid-map"
+	badgerMissingSidKey = "enrich-suricata-sid-missing"
+)
 
 var ErrMissingPersist = errors.New("missing badgerdb persistance")
 
@@ -26,6 +30,11 @@ type ErrMissingAssetData struct{ Event events.GameEvent }
 
 func (e ErrMissingAssetData) Error() string {
 	return fmt.Sprintf("missing asset data for %+v", e.Event)
+}
+
+type SidMitreTag struct {
+	Sid      int
+	MitreTag string
 }
 
 type SigmaConfig struct {
@@ -54,8 +63,11 @@ type Counts struct {
 	AssetUpdates uint
 	Assets       int
 
-	ParseErrs countsParseErrs
-	Problems  problems
+	MappedMitreSIDs int
+
+	ParseErrs  countsParseErrs
+	Enrichment lookups
+	Problems   problems
 }
 
 type countsParseErrs struct {
@@ -63,6 +75,15 @@ type countsParseErrs struct {
 	Windows  uint
 	Syslog   uint
 	Snoopy   uint
+}
+
+type lookups struct {
+	SuricataSidMatches uint
+	SuricataSidMisses  uint
+
+	SigmaMatches   uint
+	SigmaMisses    uint
+	SigmaNoRuleset uint
 }
 
 type problems struct {
@@ -73,6 +94,7 @@ type Handler struct {
 	Counts
 
 	missingLookupSet map[string]bool
+	missingSidMaps   map[int]string
 
 	sigma map[events.Atomic]sigma.Ruleset
 
@@ -84,6 +106,13 @@ type Handler struct {
 	persist *persist.Badger
 }
 
+func (h Handler) MissingSidMaps() map[int]string {
+	if h.missingLookupSet == nil {
+		return map[int]string{}
+	}
+	return h.missingSidMaps
+}
+
 func (h Handler) MissingKeys() []string {
 	keys := make([]string, 0, len(h.missingLookupSet))
 	for key := range h.missingLookupSet {
@@ -92,16 +121,26 @@ func (h Handler) MissingKeys() []string {
 	return keys
 }
 
-func (h *Handler) AddSidTag(sid int, tag string) *Handler {
+func (h *Handler) AddSidTag(item SidMitreTag) *Handler {
 	if h.sidTag == nil {
 		h.sidTag = make(map[int]string)
 	}
-	h.sidTag[sid] = tag
-	h.persist.Set(badgerPrefix, persist.GenericValue{
-		Key:  "sidtag",
-		Data: h.sidTag,
-	})
+	h.sidTag[item.Sid] = item.MitreTag
+	_, ok := h.missingSidMaps[item.Sid]
+	if ok {
+		delete(h.missingSidMaps, item.Sid)
+	}
 	return h
+}
+
+func (h Handler) Persist() error {
+	if err := h.persist.SetSingle(badgerSidMapKey, h.sidTag); err != nil {
+		return err
+	}
+	if err := h.persist.SetSingle(badgerMissingSidKey, h.missingSidMaps); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (h *Handler) AddAsset(value providentia.Record) *Handler {
@@ -182,10 +221,16 @@ func (h *Handler) Enrich(event events.GameEvent) error {
 
 	// SIGMA match
 	if h.sigma != nil {
-		if rs, ok := h.sigma[event.Kind()]; ok {
+		rs, ok := h.sigma[event.Kind()]
+		if ok {
 			if res, match := rs.EvalAll(event); match && len(res) > 0 {
 				fullAsset.MitreAttack.ParseSigmaTags(res, h.mitre.Mappings)
+				h.Counts.Enrichment.SigmaMatches++
+			} else {
+				h.Counts.Enrichment.SigmaMisses++
 			}
+		} else {
+			h.Counts.Enrichment.SigmaNoRuleset++
 		}
 	}
 
@@ -197,7 +242,6 @@ func (h *Handler) Enrich(event events.GameEvent) error {
 
 	switch event.Kind() {
 	case events.SuricataE:
-		// TODO: our MITRE SID lookup
 		// need alert SID, doubt theres any other way than typecasting...
 		strict, ok := event.(*events.Suricata)
 		if ok && h.sidTag != nil && strict.Alert != nil {
@@ -207,6 +251,10 @@ func (h *Handler) Enrich(event events.GameEvent) error {
 					meta.Technique{ID: val},
 				)
 				fullAsset.MitreAttack.Set(h.mitre.Mappings)
+				h.Counts.Enrichment.SuricataSidMatches++
+			} else {
+				h.Counts.Enrichment.SuricataSidMisses++
+				h.missingSidMaps[strict.Alert.SignatureID] = strict.Alert.Signature
 			}
 		}
 	}
@@ -241,7 +289,7 @@ func (h Handler) assetLookup(asset meta.Asset) *meta.Asset {
 	return &asset
 }
 
-func (h *Handler) Close() error {
+func (h Handler) Close() error {
 	return nil
 }
 
@@ -249,8 +297,14 @@ func NewHandler(c Config) (*Handler, error) {
 	if err := c.Validate(); err != nil {
 		return nil, err
 	}
+
+	handler := &Handler{
+		persist:          c.Persist,
+		missingLookupSet: make(map[string]bool),
+	}
 	assets := make(map[string]providentia.Record)
 	records := c.Persist.Scan(badgerPrefix)
+
 	for record := range records {
 		var obj providentia.Record
 		buf := bytes.NewBuffer(record.Data)
@@ -262,19 +316,45 @@ func NewHandler(c Config) (*Handler, error) {
 			assets[key] = obj
 		}
 	}
+	handler.assets = assets
+	handler.Counts.Assets = len(handler.assets)
+
 	m, err := mitre.NewMapper(c.Mitre)
 	if err != nil {
 		return nil, err
 	}
-	handler := &Handler{
-		persist:          c.Persist,
-		assets:           assets,
-		mitre:            m,
-		missingLookupSet: make(map[string]bool),
-		Counts:           Counts{Assets: len(assets)},
-	}
+	handler.mitre = m
+
 	if c.Sigma != nil && len(c.Sigma) > 0 {
 		handler.sigma = c.Sigma
 	}
+
+	sidTag, err := getSidMap(badgerSidMapKey, handler.persist)
+	if err != nil {
+		return nil, err
+	}
+	handler.sidTag = sidTag
+
+	missingSidTag, err := getSidMap(badgerMissingSidKey, handler.persist)
+	if err != nil {
+		return nil, err
+	}
+	handler.missingSidMaps = missingSidTag
+
 	return handler, nil
+}
+
+func getSidMap(key string, p *persist.Badger) (map[int]string, error) {
+	var data map[int]string
+	err := p.GetSingle(badgerSidMapKey, func(b []byte) error {
+		buf := bytes.NewBuffer(b)
+		return gob.NewDecoder(buf).Decode(&data)
+	})
+	if err != nil {
+		return data, err
+	}
+	if data == nil {
+		data = make(map[int]string)
+	}
+	return data, nil
 }
