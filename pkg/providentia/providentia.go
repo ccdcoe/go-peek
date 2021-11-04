@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -65,6 +66,20 @@ type Target struct {
 		Networks []network `json:"networks"`
 		Groups   []string  `json:"groups"`
 	} `json:"vars"`
+
+	Groups []string `json:"groups,omitempty"`
+}
+
+func (t Target) extractOS() string {
+	if t.Groups == nil || len(t.Groups) == 0 {
+		return ""
+	}
+	for _, group := range t.Groups {
+		if strings.HasPrefix(group, "os_") {
+			return group
+		}
+	}
+	return "unk"
 }
 
 func (t Target) extract(alias string, logger *logrus.Logger) []Record {
@@ -81,6 +96,8 @@ func (t Target) extract(alias string, logger *logrus.Logger) []Record {
 					Updated:     time.Now(),
 					Addr:        addr,
 					Team:        t.Team.Name,
+					OS:          t.extractOS(),
+					NetworkName: nw.Name,
 				})
 			} else if logger != nil {
 				logger.WithFields(logrus.Fields{
@@ -100,6 +117,8 @@ func (t Target) extract(alias string, logger *logrus.Logger) []Record {
 					Updated:     time.Now(),
 					Addr:        addr,
 					Team:        t.Team.Name,
+					OS:          t.extractOS(),
+					NetworkName: nw.Name,
 				})
 			} else if logger != nil {
 				logger.WithFields(logrus.Fields{
@@ -124,6 +143,8 @@ type Record struct {
 	Role        string    `json:"role"`
 	Addr        net.IP    `json:"addr"`
 	Team        string    `json:"team"`
+	OS          string    `json:"os"`
+	NetworkName string    `json:"network_name"`
 	Updated     time.Time `json:"updated"`
 }
 
@@ -151,6 +172,12 @@ func (r Record) Asset() *meta.Asset {
 		IP:     r.Addr,
 		Team:   r.Team,
 		VM:     r.AnsibleName,
+		Role:   r.Role,
+		OS:     r.OS,
+		Zone:   r.NetworkName,
+		Indicators: meta.Indicators{
+			IsAsset: r.Team == "blue",
+		},
 	}
 }
 
