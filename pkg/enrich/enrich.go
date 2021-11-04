@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"go-peek/pkg/intel/mitre"
+	"go-peek/pkg/mitremeerkat"
 	"go-peek/pkg/models/atomic"
 	"go-peek/pkg/models/events"
 	"go-peek/pkg/models/meta"
@@ -30,14 +31,6 @@ type ErrMissingAssetData struct{ Event events.GameEvent }
 
 func (e ErrMissingAssetData) Error() string {
 	return fmt.Sprintf("missing asset data for %+v", e.Event)
-}
-
-type SidMitreTag struct {
-	ID     string `json:"id"`
-	MSG    string `json:"msg"`
-	Name   string `json:"name"`
-	Tactic string `json:"tactic"`
-	SID    int    `json:"sid"`
 }
 
 type SigmaConfig struct {
@@ -124,7 +117,7 @@ func (h Handler) MissingKeys() []string {
 	return keys
 }
 
-func (h *Handler) AddSidTag(item SidMitreTag) *Handler {
+func (h *Handler) AddSidTag(item mitremeerkat.Mapping) *Handler {
 	if h.sidTag == nil {
 		h.sidTag = make(map[int]string)
 	}
