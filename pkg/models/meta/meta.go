@@ -37,20 +37,17 @@ type GameAsset struct {
 }
 
 func (g *GameAsset) SetDirection() *GameAsset {
-	if g.Source != nil && g.Destination != nil {
-		if g.Source.Team == "blue" && g.Destination.Team != "blue" {
-			g.SetOutbound()
-		}
-		if g.Destination.Team == "blue" && g.Source.Team != "blue" {
-			g.SetInbound()
-		}
-		if g.Source.Team == "blue" && g.Destination.Team == "blue" &&
-			g.Source.Zone == g.Destination.Zone {
-			g.SetLateral()
-		}
-	}
-	if g.Source == nil && g.Destination == nil {
-		g.SetLocal()
+	switch {
+	case g.Source == nil && g.Destination == nil:
+		g.Directionality = DirLocal
+	case g.Source.IsAsset && !g.Destination.IsAsset:
+		g.Directionality = DirOutbound
+	case !g.Source.IsAsset && g.Destination.IsAsset:
+		g.Directionality = DirInbound
+	case g.Source.IsAsset && g.Destination.IsAsset:
+		g.Directionality = DirLateral
+	default:
+		g.Directionality = DirUnk
 	}
 	g.DirectionString = g.Directionality.String()
 	return g
