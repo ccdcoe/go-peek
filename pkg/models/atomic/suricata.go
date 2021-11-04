@@ -41,7 +41,12 @@ type StaticSuricataEve struct {
 
 // Time implements atomic.Event
 // Timestamp in event, should default to time.Time{} so time.IsZero() could be used to verify success
-func (s StaticSuricataEve) Time() time.Time { return s.EveBase.Timestamp.Time }
+func (s StaticSuricataEve) Time() time.Time {
+	if s.EveBase.Timestamp == nil {
+		return time.Time{}
+	}
+	return s.EveBase.Timestamp.Time
+}
 
 // Source implements atomic.Event
 // Source of message, usually emitting program
