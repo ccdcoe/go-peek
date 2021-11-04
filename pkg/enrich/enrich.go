@@ -213,7 +213,7 @@ func (h *Handler) Enrich(event events.GameEvent) error {
 	if len(fullAsset.MitreAttack.Techniques) == 0 {
 		fullAsset.MitreAttack = nil
 	}
-	event.SetAsset(fullAsset)
+	event.SetAsset(fullAsset.SetDirection())
 
 	return nil
 }
