@@ -13,7 +13,7 @@ import (
 	"go-peek/pkg/persist"
 	"go-peek/pkg/providentia"
 
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v3"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/markuskont/go-sigma-rule-engine/pkg/sigma/v2"
 )
