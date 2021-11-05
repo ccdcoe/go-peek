@@ -345,7 +345,7 @@ func NewHandler(c Config) (*Handler, error) {
 
 func getSidMap(key string, p *persist.Badger) (map[int]string, error) {
 	var data map[int]string
-	err := p.GetSingle(badgerSidMapKey, func(b []byte) error {
+	err := p.GetSingle(key, func(b []byte) error {
 		buf := bytes.NewBuffer(b)
 		return gob.NewDecoder(buf).Decode(&data)
 	})
