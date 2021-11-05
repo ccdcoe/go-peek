@@ -104,7 +104,7 @@ type Handler struct {
 }
 
 func (h Handler) MissingSidMaps() map[int]string {
-	if h.missingLookupSet == nil {
+	if h.missingSidMaps == nil {
 		return map[int]string{}
 	}
 	return h.missingSidMaps
