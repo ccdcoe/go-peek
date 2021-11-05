@@ -127,6 +127,7 @@ func (h *Handler) AddSidTag(item mitremeerkat.Mapping) *Handler {
 	if ok {
 		delete(h.missingSidMaps, item.SID)
 	}
+	h.Counts.MappedMitreSIDs = len(h.sidTag)
 	return h
 }
 
@@ -331,6 +332,7 @@ func NewHandler(c Config) (*Handler, error) {
 		return nil, err
 	}
 	handler.sidTag = sidTag
+	handler.Counts.MappedMitreSIDs = len(sidTag)
 
 	missingSidTag, err := getSidMap(badgerMissingSidKey, handler.persist)
 	if err != nil {
