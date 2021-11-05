@@ -13,6 +13,7 @@ import (
 	"go-peek/pkg/persist"
 	"go-peek/pkg/providentia"
 
+	"github.com/dgraph-io/badger"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/markuskont/go-sigma-rule-engine/pkg/sigma/v2"
 )
@@ -346,7 +347,7 @@ func getSidMap(key string, p *persist.Badger) (map[int]string, error) {
 		buf := bytes.NewBuffer(b)
 		return gob.NewDecoder(buf).Decode(&data)
 	})
-	if err != nil {
+	if err != nil && err != badger.ErrKeyNotFound {
 		return data, err
 	}
 	if data == nil {
