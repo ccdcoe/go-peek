@@ -15,6 +15,10 @@ const (
 	FlagInKafkaBrokers       = "input-kafka-brokers"
 	FlagInKafkaConsumerGroup = "input-kafka-consumer-group"
 
+	// Special kafka input topic keys
+	FlagInKafkaTopicAssetsVcenter     = "input-kafka-topic-assets-vcenter"
+	FlagInKafkaTopicAssetsProvidentia = "input-kafka-topic-assets-providentia"
+
 	// Syslog input
 	FlagInSyslogUDPPort = "input-syslog-udp-port"
 
@@ -67,6 +71,16 @@ func RegisterOutputElastic(prefix string, pFlags *pflag.FlagSet) {
 
 	pFlags.String(FlagOutElasticPrefix, "peek", "Prefix to be prepended to dynamically generated elastic index")
 	viper.BindPFlag(prefix+".output.elasticsearch.prefix", pFlags.Lookup(FlagOutElasticPrefix))
+}
+
+func RegisterInputKafkaAssetMerge(prefix string, pFlags *pflag.FlagSet) {
+	RegisterInputKafkaCore(prefix, pFlags)
+
+	pFlags.String(FlagInKafkaTopicAssetsProvidentia, "peek-assets-providentia", "Topic holding providentia asset data")
+	viper.BindPFlag(prefix+".input.kafka.topic_assets_providentia", pFlags.Lookup(FlagInKafkaTopicAssetsProvidentia))
+
+	pFlags.String(FlagInKafkaTopicAssetsVcenter, "peek-assets-vcenter", "Topic holding providentia asset data")
+	viper.BindPFlag(prefix+".input.kafka.topic_assets_vcenter", pFlags.Lookup(FlagInKafkaTopicAssetsVcenter))
 }
 
 func RegisterInputKafkaPreproc(prefix string, pFlags *pflag.FlagSet) {
