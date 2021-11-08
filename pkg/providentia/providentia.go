@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"go-peek/pkg/anonymizer"
+	"go-peek/pkg/models"
 	"go-peek/pkg/models/meta"
 	"io/ioutil"
 	"net"
@@ -146,6 +147,25 @@ type Record struct {
 	OS          string    `json:"os"`
 	NetworkName string    `json:"network_name"`
 	Updated     time.Time `json:"updated"`
+}
+
+func (r Record) IsAsset() bool { return r.Team == "blue" }
+
+// VsphereCopy makes a new Record entry from vsphere asset report
+// keep everything as-is, just copy higher-fidelity info with new IP
+func (r Record) VsphereCopy(vs models.AssetVcenter) Record {
+	return Record{
+		AnsibleName: r.HostName,
+		HostName:    r.HostName,
+		Pretty:      r.Pretty,
+		Domain:      r.Domain,
+		Role:        r.Role,
+		Addr:        vs.IP,
+		Team:        r.Team,
+		OS:          r.OS,
+		NetworkName: r.NetworkName,
+		Updated:     vs.TS,
+	}
 }
 
 func (r Record) FQDN() string { return r.HostName + "." + r.Domain }
