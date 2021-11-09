@@ -55,6 +55,8 @@ var elasticCmd = &cobra.Command{
 			Interval: elastic.DefaultBulkFlushInterval,
 			Stream:   tx,
 			Logger:   logger,
+			Username: viper.GetString(cmd.Name() + ".output.elasticsearch.xpack.user"),
+			Password: viper.GetString(cmd.Name() + ".output.elasticsearch.xpack.pass"),
 			Fn: func(m consumer.Message) string {
 				prefix := viper.GetString(cmd.Name() + ".output.elasticsearch.prefix")
 				if prefix == "" {

@@ -35,8 +35,10 @@ const (
 	FlagOutKafkaTopicEmit  = "output-kafka-topic-emit"
 
 	// Elastic Output
-	FlagOutElasticHosts  = "output-elastic-hosts"
-	FlagOutElasticPrefix = "output-elastic-prefix"
+	FlagOutElasticHosts     = "output-elastic-hosts"
+	FlagOutElasticPrefix    = "output-elastic-prefix"
+	FlagOutElasticXpackUser = "output-elastic-xpack-user"
+	FlagOutElasticXpackPass = "output-elastic-xpack-pass"
 
 	// Logging flags
 	FlagLogInterval = "log-interval"
@@ -71,6 +73,12 @@ func RegisterOutputElastic(prefix string, pFlags *pflag.FlagSet) {
 
 	pFlags.String(FlagOutElasticPrefix, "peek", "Prefix to be prepended to dynamically generated elastic index")
 	viper.BindPFlag(prefix+".output.elasticsearch.prefix", pFlags.Lookup(FlagOutElasticPrefix))
+
+	pFlags.String(FlagOutElasticXpackUser, "", "Xpack username. Empty value disables auth")
+	viper.BindPFlag(prefix+".output.elasticsearch.xpack.user", pFlags.Lookup(FlagOutElasticXpackUser))
+
+	pFlags.String(FlagOutElasticXpackPass, "", "Xpack username. Empty value disales auth")
+	viper.BindPFlag(prefix+".output.elasticsearch.xpack.pass", pFlags.Lookup(FlagOutElasticXpackPass))
 }
 
 func RegisterInputKafkaAssetMerge(prefix string, pFlags *pflag.FlagSet) {
