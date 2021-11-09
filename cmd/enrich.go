@@ -143,12 +143,20 @@ var enrichCmd = &cobra.Command{
 			logger.WithFields(logrus.Fields{
 				"kind": rs.Type.String(),
 				"path": rs.Topic,
-			}).Debug("parsing sigma ruleset")
+			}).Trace("parsing sigma ruleset")
 			ruleset, err := sigma.NewRuleset(sigma.Config{
 				Directory: []string{rs.Topic},
 			})
 			app.Throw("sigma "+rs.Topic+" init", err)
 			sigmaRuleMap[rs.Type] = *ruleset
+			logger.WithFields(logrus.Fields{
+				"path":         rs.Topic,
+				"type":         rs.Type.String(),
+				"sigma_parsed": ruleset.Ok,
+				"sigma_failed": ruleset.Failed,
+				"sigma_unsupp": ruleset.Unsupported,
+				"sigma_total":  ruleset.Total,
+			}).Debug("ruleset parsed")
 		}
 
 		enricher, err := enrich.NewHandler(
