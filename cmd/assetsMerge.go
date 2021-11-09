@@ -111,6 +111,7 @@ var assetsMergeCmd = &cobra.Command{
 					seenRecords[obj.AnsibleName] = obj
 
 					counts.TotalProvidentia++
+					out = obj
 
 				case viper.GetString(cmd.Name() + ".input.kafka.topic_assets_vcenter"):
 					var obj models.AssetVcenter
