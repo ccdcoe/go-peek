@@ -65,7 +65,6 @@ func (m *Mapper) CheckAndUpdate(name string) (string, error) {
 loop:
 	for key := range m.Pool {
 		if offset == idx {
-			// FIXME - debug code
 			rename = key
 			delete(m.Pool, key)
 			break loop
