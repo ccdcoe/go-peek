@@ -71,7 +71,12 @@ var providentiaCmd = &cobra.Command{
 		app.Throw("persist setup", err)
 		defer persist.Close()
 
-		m, err := anonymizer.NewMapper(anonymizer.Config{Persist: persist})
+		m, err := anonymizer.NewMapper(
+			anonymizer.Config{
+				Persist: persist,
+				Logger:  logger,
+			},
+		)
 		app.Throw("Anonymizer creation", err)
 
 		chTerminate := make(chan os.Signal, 1)
@@ -93,7 +98,8 @@ var providentiaCmd = &cobra.Command{
 				"endpoint": "targets",
 			}).Info("API call done")
 
-			mapped := providentia.MapTargets(targets, m)
+			mapped, err := providentia.MapTargets(targets, m)
+			app.Throw("target renaming", err)
 			app.DumpJSON(filepath.Join(workdir, "mapped_targets.json"), mapped)
 
 			assets := providentia.ExtractAddrs(mapped, logger)

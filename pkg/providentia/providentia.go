@@ -255,13 +255,17 @@ func ExtractAddrs(targets []MappedTarget, logger *logrus.Logger) Records {
 	return tx
 }
 
-func MapTargets(targets Targets, anon *anonymizer.Mapper) []MappedTarget {
+func MapTargets(targets Targets, anon *anonymizer.Mapper) ([]MappedTarget, error) {
 	tx := make([]MappedTarget, len(targets))
 	for i, tgt := range targets {
+		alias, err := anon.CheckAndUpdate(tgt.Name)
+		if err != nil {
+			return tx, err
+		}
 		tx[i] = MappedTarget{
 			Target: tgt,
-			Alias:  anon.CheckAndUpdate(tgt.Name),
+			Alias:  alias,
 		}
 	}
-	return tx
+	return tx, nil
 }
