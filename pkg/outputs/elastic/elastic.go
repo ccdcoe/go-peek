@@ -32,6 +32,8 @@ type Config struct {
 	Stream   <-chan consumer.Message
 	Logger   *logrus.Logger
 	Fn       consumer.TopicMapFn
+
+	Username, Password string
 }
 
 func NewDefaultConfig() *Config {
@@ -84,12 +86,25 @@ func NewHandle(c *Config) (*Handle, error) {
 	if c.Logger != nil {
 		c.Logger.Tracef("Elastic libary version %s", olivere.Version)
 	}
-	client, err := olivere.NewClient(
-		olivere.SetURL(c.Hosts...),
-		olivere.SetSniff(false),
-		olivere.SetHealthcheckInterval(10*time.Second),
-		olivere.SetHealthcheckTimeout(5*time.Second),
-	)
+
+	var client *olivere.Client
+	var err error
+	if c.Username != "" && c.Password != "" {
+		client, err = olivere.NewClient(
+			olivere.SetURL(c.Hosts...),
+			olivere.SetSniff(false),
+			olivere.SetHealthcheckInterval(10*time.Second),
+			olivere.SetHealthcheckTimeout(5*time.Second),
+			olivere.SetBasicAuth(c.Username, c.Password),
+		)
+	} else {
+		client, err = olivere.NewClient(
+			olivere.SetURL(c.Hosts...),
+			olivere.SetSniff(false),
+			olivere.SetHealthcheckInterval(10*time.Second),
+			olivere.SetHealthcheckTimeout(5*time.Second),
+		)
+	}
 	if err != nil {
 		return nil, err
 	}
