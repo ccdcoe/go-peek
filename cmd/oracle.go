@@ -1,21 +1,27 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go-peek/internal/app"
 	kafkaIngest "go-peek/pkg/ingest/kafka"
 	"go-peek/pkg/mitremeerkat"
 	"go-peek/pkg/oracle"
+	"go-peek/pkg/persist"
 	"go-peek/pkg/providentia"
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/dgraph-io/badger/v3"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -33,6 +39,24 @@ var oracleCmd = &cobra.Command{
 
 		defer app.Catch(logger)
 		defer app.Done(cmd.Name(), start, logger)
+
+		workdir := viper.GetString("work.dir")
+		if workdir == "" {
+			app.Throw("app init", errors.New("missing working directory"))
+		}
+		workdir = path.Join(workdir, cmd.Name())
+		ctxPersist, cancelPersist := context.WithCancel(context.Background())
+		persist, err := persist.NewBadger(persist.Config{
+			Directory:     path.Join(workdir, "badger"),
+			IntervalGC:    1 * time.Minute,
+			RunValueLogGC: true,
+			WaitGroup:     &wg,
+			Ctx:           ctxPersist,
+			Logger:        logger,
+		})
+		app.Throw("persist setup", err)
+		defer persist.Close()
+		defer cancelPersist()
 
 		ctxReader, cancelReader := context.WithCancel(context.Background())
 
@@ -69,6 +93,16 @@ var oracleCmd = &cobra.Command{
 
 		data := oracle.NewData()
 
+		err = persist.GetSingle(cmd.Name()+"-data", func(b []byte) error {
+			buf := bytes.NewBuffer(b)
+			return gob.NewDecoder(buf).Decode(data)
+		})
+		if err != nil && err == badger.ErrKeyNotFound {
+			logger.Warn("no persistance to load")
+		} else if err != nil {
+			app.Throw("persist load", err)
+		}
+
 		tickUpdateData := time.NewTicker(5 * time.Second)
 		defer tickUpdateData.Stop()
 
@@ -84,6 +118,7 @@ var oracleCmd = &cobra.Command{
 				}).Info("updating containers")
 				s.Assets.Update(data.Assets)
 				s.SidMap.Update(data.Meerkat)
+				persist.SetSingle(cmd.Name()+"-data", data)
 			case <-chTerminate:
 				break loop
 			case msg, ok := <-input.Messages():
