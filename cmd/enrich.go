@@ -95,6 +95,9 @@ var enrichCmd = &cobra.Command{
 		topic := viper.GetString(cmd.Name() + ".output.kafka.topic")
 		streamOutput.Feed(tx, cmd.Name()+" output producer", context.TODO(),
 			func(m consumer.Message) string {
+				if m.Source == "oracle" {
+					return viper.GetString(cmd.Name() + ".output.kafka.topic_oracle")
+				}
 				if m.Source == "emit" {
 					return viper.GetString(cmd.Name() + ".output.kafka.topic_emit")
 				}
@@ -195,6 +198,20 @@ var enrichCmd = &cobra.Command{
 							"sid": sid,
 							"msg": msg,
 						}).Debug("missing MITRE SID mapping")
+					}
+					mappings := mitremeerkat.NewMappings(sidMap)
+					encoded, err := json.Marshal(mappings)
+					if err != nil {
+						logger.WithFields(logrus.Fields{
+							"raw": mappings,
+							"err": err,
+						}).Error("unable to encode json")
+						continue loop
+					}
+					tx <- consumer.Message{
+						Source: "oracle",
+						Key:    "meerkat_missing_sid_map",
+						Data:   encoded,
 					}
 				}
 				enricher.Persist()
