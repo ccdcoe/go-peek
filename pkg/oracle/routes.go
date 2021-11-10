@@ -9,6 +9,6 @@ func (s *Server) Routes() {
 	s.Router = mux.NewRouter()
 
 	s.Router.HandleFunc("/", s.handleIndex())
-	s.Router.HandleFunc("/assets", s.handleAssets())
-	s.Router.HandleFunc("/mitremeerkat", s.handleMitreMeerkat())
+	s.Router.HandleFunc("/assets", s.handleAssets()).Methods("GET")
+	s.Router.HandleFunc("/mitremeerkat", s.handleMitreMeerkat()).Methods("GET")
 }
