@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"go-peek/pkg/ingest/kafka"
 	"os"
 	"path"
 	"strings"
@@ -17,9 +18,12 @@ import (
 var (
 	cfgFile      string
 	debug, trace bool
+	devel        bool
 )
 
 var logger = logrus.New()
+
+var kafkaOffset = kafka.OffsetLastCommit
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -43,6 +47,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.peek.yaml)")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Run in debug mode. Increases logging verbosity.")
 	rootCmd.PersistentFlags().BoolVar(&trace, "trace", false, "Run in trace mode. Log like a maniac.")
+	rootCmd.PersistentFlags().BoolVar(&devel, "devel", false, "Run in development mode. Use kafka earliest consumer, etc.")
 
 	rootCmd.PersistentFlags().String("work-dir", path.Join(
 		os.Getenv("HOME"),
@@ -84,6 +89,9 @@ func initConfig() {
 		// Search config in home directory with name ".peek" (without extension).
 		viper.AddConfigPath(home)
 		viper.SetConfigName(".peek")
+	}
+	if devel {
+		kafkaOffset = kafka.OffsetEarliest
 	}
 
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"go-peek/internal/app"
-	"go-peek/pkg/ingest/kafka"
 	kafkaIngest "go-peek/pkg/ingest/kafka"
 	"go-peek/pkg/oracle"
 	"go-peek/pkg/providentia"
@@ -49,7 +48,7 @@ var oracleCmd = &cobra.Command{
 				topicAssets,
 			},
 			Ctx:        ctxReader,
-			OffsetMode: kafka.OffsetLastCommit,
+			OffsetMode: kafkaOffset,
 		})
 		app.Throw(cmd.Name()+" event stream setup", err)
 		defer cancelReader()

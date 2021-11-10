@@ -6,7 +6,6 @@ import (
 	"errors"
 	"go-peek/internal/app"
 	"go-peek/pkg/enrich"
-	"go-peek/pkg/ingest/kafka"
 	"go-peek/pkg/intel/mitre"
 	"go-peek/pkg/mitremeerkat"
 	"go-peek/pkg/models/consumer"
@@ -59,7 +58,7 @@ var enrichCmd = &cobra.Command{
 			Brokers:       viper.GetStringSlice(cmd.Name() + ".input.kafka.brokers"),
 			Topics:        topics.Topics(),
 			Ctx:           ctxReader,
-			OffsetMode:    kafka.OffsetLastCommit,
+			OffsetMode:    kafkaOffset,
 		})
 		app.Throw(cmd.Name()+" event stream setup", err)
 
@@ -70,7 +69,7 @@ var enrichCmd = &cobra.Command{
 			Brokers:       viper.GetStringSlice(cmd.Name() + ".input.kafka.brokers"),
 			Topics:        []string{viper.GetString(cmd.Name() + ".input.kafka.topic_assets")},
 			Ctx:           ctxReader,
-			OffsetMode:    kafka.OffsetLastCommit,
+			OffsetMode:    kafkaOffset,
 		})
 		app.Throw(cmd.Name()+" asset stream setup", err)
 
@@ -81,7 +80,7 @@ var enrichCmd = &cobra.Command{
 			Brokers:       viper.GetStringSlice(cmd.Name() + ".input.kafka.brokers"),
 			Topics:        []string{viper.GetString(cmd.Name() + ".input.kafka.topic_sid_mitre")},
 			Ctx:           ctxReader,
-			OffsetMode:    kafka.OffsetLastCommit,
+			OffsetMode:    kafkaOffset,
 		})
 		app.Throw(cmd.Name()+" sid map stream setup", err)
 

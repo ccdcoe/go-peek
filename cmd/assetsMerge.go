@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"go-peek/internal/app"
-	"go-peek/pkg/ingest/kafka"
 	kafkaIngest "go-peek/pkg/ingest/kafka"
 	"go-peek/pkg/models"
 	"go-peek/pkg/models/consumer"
@@ -45,7 +44,7 @@ var assetsMergeCmd = &cobra.Command{
 				viper.GetString(cmd.Name() + ".input.kafka.topic_assets_vcenter"),
 			},
 			Ctx:        ctxReader,
-			OffsetMode: kafka.OffsetLastCommit,
+			OffsetMode: kafkaOffset,
 		})
 		app.Throw(cmd.Name()+" asset stream setup", err)
 		defer ctxCancel()

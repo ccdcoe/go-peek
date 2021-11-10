@@ -44,7 +44,7 @@ var archiveCmd = &cobra.Command{
 			Brokers:       viper.GetStringSlice(cmd.Name() + ".input.kafka.brokers"),
 			Topics:        viper.GetStringSlice(cmd.Name() + ".input.kafka.topics"),
 			Ctx:           ctxReader,
-			OffsetMode:    kafka.OffsetLastCommit,
+			OffsetMode:    kafkaOffset,
 		})
 		app.Throw("archive consumer", err)
 
