@@ -16,15 +16,16 @@ func (c *ContainerMitreMeerkat) Update(d map[int]mitremeerkat.Mapping) {
 	if d == nil || len(d) == 0 {
 		return
 	}
+	c.RWMutex.Lock()
+	defer c.RWMutex.Unlock()
+
 	c.Data = make([]mitremeerkat.Mapping, 0, len(d))
 	for _, obj := range d {
 		c.Data = append(c.Data, obj)
 	}
-	c.RWMutex.Lock()
-	defer c.RWMutex.Unlock()
 }
 
-func (c *ContainerMitreMeerkat) JSON() ([]byte, error) {
+func (c *ContainerMitreMeerkat) JSONFormat() ([]byte, error) {
 	c.RLock()
 	defer c.RUnlock()
 	if c.Data == nil {
@@ -39,6 +40,9 @@ type ContainerAssets struct {
 }
 
 func (c *ContainerAssets) Update(d map[string]providentia.Record) {
+	c.RWMutex.Lock()
+	defer c.RWMutex.Unlock()
+
 	if d == nil || len(d) == 0 {
 		return
 	}
@@ -46,11 +50,9 @@ func (c *ContainerAssets) Update(d map[string]providentia.Record) {
 	for _, obj := range d {
 		c.Data = append(c.Data, obj)
 	}
-	c.RWMutex.Lock()
-	defer c.RWMutex.Unlock()
 }
 
-func (c *ContainerAssets) JSON() ([]byte, error) {
+func (c *ContainerAssets) JSONFormat() ([]byte, error) {
 	c.RLock()
 	defer c.RUnlock()
 	if c.Data == nil {
