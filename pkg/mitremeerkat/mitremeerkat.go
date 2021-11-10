@@ -7,6 +7,22 @@ import (
 	"strconv"
 )
 
+type Mappings []Mapping
+
+func NewMappings(m map[int]string) Mappings {
+	tx := make(Mappings, 0)
+	if m == nil || len(m) == 0 {
+		return tx
+	}
+	for sid, msg := range m {
+		tx = append(tx, Mapping{
+			SID: sid,
+			MSG: msg,
+		})
+	}
+	return tx
+}
+
 type Mapping struct {
 	ID     string `json:"id"`
 	MSG    string `json:"msg"`
