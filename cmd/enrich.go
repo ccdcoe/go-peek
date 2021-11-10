@@ -302,4 +302,5 @@ func init() {
 	app.RegisterSigmaRulesetPaths(enrichCmd.Name(), enrichCmd.PersistentFlags())
 	app.RegisterOutputKafka(enrichCmd.Name(), enrichCmd.PersistentFlags())
 	app.RegisterOutputKafkaEnrichment(enrichCmd.Name(), enrichCmd.PersistentFlags())
+	app.RegisterOutputKafkaOracle(enrichCmd.Name(), enrichCmd.PersistentFlags())
 }

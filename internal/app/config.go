@@ -28,11 +28,12 @@ const (
 	FlagInKafkaTopicSidMap = "input-kafka-topic-sid-mitre"
 
 	// Kafka Output
-	FlagOutKafkaEnabled    = "output-kafka-enabled"
-	FlagOutKafkaTopic      = "output-kafka-topic"
-	FlagOutKafkaBrokers    = "output-kafka-brokers"
-	FlagOutKafkaTopicSplit = "output-kafka-topic-split"
-	FlagOutKafkaTopicEmit  = "output-kafka-topic-emit"
+	FlagOutKafkaEnabled     = "output-kafka-enabled"
+	FlagOutKafkaTopic       = "output-kafka-topic"
+	FlagOutKafkaBrokers     = "output-kafka-brokers"
+	FlagOutKafkaTopicSplit  = "output-kafka-topic-split"
+	FlagOutKafkaTopicEmit   = "output-kafka-topic-emit"
+	FlagOutKafkaTopicOracle = "output-kafka-topic-oracle"
 
 	// Elastic Output
 	FlagOutElasticHosts     = "output-elastic-hosts"
@@ -56,6 +57,11 @@ func RegisterOutputKafka(prefix string, pFlags *pflag.FlagSet) {
 
 	pFlags.StringSlice(FlagOutKafkaBrokers, []string{"localhost:9092"}, "Kafka output broker list")
 	viper.BindPFlag(prefix+".output.kafka.brokers", pFlags.Lookup(FlagOutKafkaBrokers))
+}
+
+func RegisterOutputKafkaOracle(prefix string, pFlags *pflag.FlagSet) {
+	pFlags.String(FlagOutKafkaTopicOracle, "peek-oracle", "Kafka topic sending oracle metadata.")
+	viper.BindPFlag(prefix+".output.kafka.topic_oracle", pFlags.Lookup(FlagOutKafkaTopicOracle))
 }
 
 func RegisterOutputKafkaEnrichment(prefix string, pFlags *pflag.FlagSet) {
