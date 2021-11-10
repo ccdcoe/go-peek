@@ -136,6 +136,18 @@ type Response struct {
 	Hosts []Target `json:"hosts"`
 }
 
+type Records []Record
+
+func (r Records) FilterByTime(since time.Duration) Records {
+	tx := make(Records, 0, len(r))
+	for _, item := range r {
+		if time.Since(item.Updated) < since {
+			tx = append(tx, item)
+		}
+	}
+	return tx
+}
+
 type Record struct {
 	AnsibleName string    `json:"ansible_name"`
 	HostName    string    `json:"host_name"`
@@ -200,8 +212,6 @@ func (r Record) Asset() *meta.Asset {
 		},
 	}
 }
-
-type Records []Record
 
 func Pull(p Params) (Targets, error) {
 	if p.URL == "" {
