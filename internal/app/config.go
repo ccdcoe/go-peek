@@ -127,8 +127,6 @@ func RegisterInputKafkaEnrich(prefix string, pFlags *pflag.FlagSet) {
 
 	pFlags.String(FlagInKafkaTopicSidMap, "meerkat_sid_mitre_map", "Topic that holds asset information")
 	viper.BindPFlag(prefix+".input.kafka.topic_sid_mitre", pFlags.Lookup(FlagInKafkaTopicSidMap))
-
-	RegisterInputKafkaTopicMap(prefix, pFlags)
 }
 
 func RegisterSigmaRulesetPaths(prefix string, pFlags *pflag.FlagSet) {

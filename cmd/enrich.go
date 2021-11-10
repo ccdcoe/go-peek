@@ -298,6 +298,7 @@ func init() {
 
 	app.RegisterLogging(enrichCmd.Name(), enrichCmd.PersistentFlags())
 	app.RegisterInputKafkaCore(enrichCmd.Name(), enrichCmd.PersistentFlags())
+	app.RegisterInputKafkaTopicMap(enrichCmd.Name(), enrichCmd.PersistentFlags())
 	app.RegisterInputKafkaEnrich(enrichCmd.Name(), enrichCmd.PersistentFlags())
 	app.RegisterSigmaRulesetPaths(enrichCmd.Name(), enrichCmd.PersistentFlags())
 	app.RegisterOutputKafka(enrichCmd.Name(), enrichCmd.PersistentFlags())
