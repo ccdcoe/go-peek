@@ -13,7 +13,7 @@ func (s *Server) Routes() {
 
 	s.Router.HandleFunc("/", s.handleIndex())
 	s.Router.HandleFunc("/assets", s.handleAssets())
-	s.Router.HandleFunc("/mitremeerkat", s.handleAssets())
+	s.Router.HandleFunc("/mitremeerkat", s.handleMitreMeerkat())
 }
 
 func (s *Server) handleIndex() http.HandlerFunc {
@@ -49,5 +49,13 @@ func (s *Server) handleAssets() http.HandlerFunc {
 
 func (s *Server) handleMitreMeerkat() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
+		data, err := s.SidMap.JSON()
+		if err != nil {
+			rw.WriteHeader(500)
+			return
+		}
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(200)
+		rw.Write(data)
 	}
 }

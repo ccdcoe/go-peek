@@ -23,4 +23,5 @@ type Server struct {
 	Router *mux.Router
 
 	Assets ContainerAssets
+	SidMap ContainerMitreMeerkat
 }

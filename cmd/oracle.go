@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go-peek/internal/app"
 	kafkaIngest "go-peek/pkg/ingest/kafka"
+	"go-peek/pkg/mitremeerkat"
 	"go-peek/pkg/oracle"
 	"go-peek/pkg/providentia"
 	"net/http"
@@ -78,9 +79,11 @@ var oracleCmd = &cobra.Command{
 			select {
 			case <-tickUpdateData.C:
 				logger.WithFields(logrus.Fields{
-					"assets": len(data.Assets),
+					"assets":  len(data.Assets),
+					"sid_map": len(data.Meerkat),
 				}).Info("updating containers")
 				s.Assets.Update(data.Assets)
+				s.SidMap.Update(data.Meerkat)
 			case <-chTerminate:
 				break loop
 			case msg, ok := <-input.Messages():
@@ -100,6 +103,16 @@ var oracleCmd = &cobra.Command{
 					}
 					data.Assets[obj.Addr.String()] = obj
 				case topicMitreMeerkat:
+					var obj mitremeerkat.Mapping
+					if err := json.Unmarshal(msg.Data, &obj); err != nil {
+						logger.WithFields(logrus.Fields{
+							"raw":    string(msg.Data),
+							"source": msg.Source,
+							"err":    err,
+						}).Error("unable to parse asset")
+						continue loop
+					}
+					data.Meerkat[obj.SID] = obj
 				}
 			}
 		}
