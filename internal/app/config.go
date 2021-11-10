@@ -18,6 +18,7 @@ const (
 	// Special kafka input topic keys
 	FlagInKafkaTopicAssetsVcenter     = "input-kafka-topic-assets-vcenter"
 	FlagInKafkaTopicAssetsProvidentia = "input-kafka-topic-assets-providentia"
+	FlagInKafkaTopicOracle            = "input-kafka-topic-oracle"
 
 	// Syslog input
 	FlagInSyslogUDPPort = "input-syslog-udp-port"
@@ -62,6 +63,11 @@ func RegisterOutputKafka(prefix string, pFlags *pflag.FlagSet) {
 func RegisterOutputKafkaOracle(prefix string, pFlags *pflag.FlagSet) {
 	pFlags.String(FlagOutKafkaTopicOracle, "peek-oracle", "Kafka topic sending oracle metadata.")
 	viper.BindPFlag(prefix+".output.kafka.topic_oracle", pFlags.Lookup(FlagOutKafkaTopicOracle))
+}
+
+func RegisterInputKafkaOracle(prefix string, pFlags *pflag.FlagSet) {
+	pFlags.String(FlagInKafkaTopicOracle, "peek-oracle", "Kafka topic sending oracle metadata.")
+	viper.BindPFlag(prefix+".input.kafka.topic_oracle", pFlags.Lookup(FlagInKafkaTopicOracle))
 }
 
 func RegisterOutputKafkaEnrichment(prefix string, pFlags *pflag.FlagSet) {

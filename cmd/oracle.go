@@ -62,6 +62,7 @@ var oracleCmd = &cobra.Command{
 
 		topicMitreMeerkat := viper.GetString(cmd.Name() + ".input.kafka.topic_sid_mitre")
 		topicAssets := viper.GetString(cmd.Name() + ".input.kafka.topic_assets")
+		topicInOracle := viper.GetString(cmd.Name() + ".input.kafka.topic_oracle")
 
 		logger.Info("Creating kafka consumer for event stream")
 		input, err := kafkaIngest.NewConsumer(&kafkaIngest.Config{
@@ -71,6 +72,7 @@ var oracleCmd = &cobra.Command{
 			Topics: []string{
 				topicMitreMeerkat,
 				topicAssets,
+				topicInOracle,
 			},
 			Ctx:        ctxReader,
 			OffsetMode: kafkaOffset,
@@ -126,6 +128,10 @@ var oracleCmd = &cobra.Command{
 					break loop
 				}
 				switch msg.Source {
+				case topicInOracle:
+					switch msg.Key {
+					case "meerkat_missing_sid_map":
+					}
 				case topicAssets:
 					var obj providentia.Record
 					if err := json.Unmarshal(msg.Data, &obj); err != nil {
@@ -163,5 +169,6 @@ func init() {
 	viper.BindPFlag(oracleCmd.Name()+".port", pFlags.Lookup("port"))
 
 	app.RegisterInputKafkaCore(oracleCmd.Name(), pFlags)
+	app.RegisterInputKafkaOracle(oracleCmd.Name(), pFlags)
 	app.RegisterInputKafkaEnrich(oracleCmd.Name(), pFlags)
 }
