@@ -2,7 +2,9 @@ package oracle
 
 import (
 	"go-peek/pkg/mitremeerkat"
+	"go-peek/pkg/models/atomic"
 	"go-peek/pkg/providentia"
+	"net/http"
 
 	"github.com/gorilla/mux"
 )
@@ -24,4 +26,15 @@ type Server struct {
 
 	Assets ContainerAssets
 	SidMap ContainerMitreMeerkat
+}
+
+func respJSON(rw http.ResponseWriter, data atomic.JSONFormatter) {
+	encoded, err := data.JSONFormat()
+	if err != nil {
+		rw.WriteHeader(500)
+		return
+	}
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(200)
+	rw.Write(encoded)
 }
