@@ -34,3 +34,9 @@ func (s *Server) handleMitreMeerkat() http.HandlerFunc {
 		respJSON(rw, &s.SidMap)
 	}
 }
+
+func (s *Server) handleMitreMeerkatMissing() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		respJSON(rw, &s.MissingSidMaps)
+	}
+}

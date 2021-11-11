@@ -10,14 +10,16 @@ import (
 )
 
 type Data struct {
-	Assets  map[string]providentia.Record
-	Meerkat map[int]mitremeerkat.Mapping
+	Assets         map[string]providentia.Record
+	Meerkat        map[int]mitremeerkat.Mapping
+	MissingSidMaps mitremeerkat.Mappings
 }
 
 func NewData() *Data {
 	return &Data{
-		Assets:  make(map[string]providentia.Record),
-		Meerkat: make(map[int]mitremeerkat.Mapping),
+		Assets:         make(map[string]providentia.Record),
+		Meerkat:        make(map[int]mitremeerkat.Mapping),
+		MissingSidMaps: make(mitremeerkat.Mappings, 0),
 	}
 }
 
@@ -25,7 +27,9 @@ type Server struct {
 	Router *mux.Router
 
 	Assets ContainerAssets
-	SidMap ContainerMitreMeerkat
+
+	SidMap         ContainerMitreMeerkat
+	MissingSidMaps ContainerMitreMeerkat
 }
 
 func respJSON(rw http.ResponseWriter, data atomic.JSONFormatter) {

@@ -13,16 +13,25 @@ type ContainerMitreMeerkat struct {
 }
 
 func (c *ContainerMitreMeerkat) Update(d map[int]mitremeerkat.Mapping) {
+	c.RWMutex.Lock()
+	defer c.RWMutex.Unlock()
 	if d == nil || len(d) == 0 {
 		return
 	}
-	c.RWMutex.Lock()
-	defer c.RWMutex.Unlock()
-
 	c.Data = make([]mitremeerkat.Mapping, 0, len(d))
 	for _, obj := range d {
 		c.Data = append(c.Data, obj)
 	}
+}
+
+func (c *ContainerMitreMeerkat) Copy(d mitremeerkat.Mappings) {
+	c.RWMutex.Lock()
+	defer c.RWMutex.Unlock()
+	if d == nil || len(d) == 0 {
+		return
+	}
+	c.Data = make(mitremeerkat.Mappings, len(d))
+	copy(c.Data, d)
 }
 
 func (c *ContainerMitreMeerkat) JSONFormat() ([]byte, error) {

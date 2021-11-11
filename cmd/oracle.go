@@ -115,11 +115,13 @@ var oracleCmd = &cobra.Command{
 			select {
 			case <-tickUpdateData.C:
 				logger.WithFields(logrus.Fields{
-					"assets":  len(data.Assets),
-					"sid_map": len(data.Meerkat),
+					"assets":          len(data.Assets),
+					"sid_map":         len(data.Meerkat),
+					"missing_sid_map": len(data.MissingSidMaps),
 				}).Info("updating containers")
 				s.Assets.Update(data.Assets)
 				s.SidMap.Update(data.Meerkat)
+				s.MissingSidMaps.Copy(data.MissingSidMaps)
 				persist.SetSingle(cmd.Name()+"-data", data)
 			case <-chTerminate:
 				break loop
@@ -131,6 +133,16 @@ var oracleCmd = &cobra.Command{
 				case topicInOracle:
 					switch msg.Key {
 					case "meerkat_missing_sid_map":
+						var obj mitremeerkat.Mappings
+						if err := json.Unmarshal(msg.Data, &obj); err != nil {
+							logger.WithFields(logrus.Fields{
+								"raw":    string(msg.Data),
+								"source": msg.Source,
+								"err":    err,
+							}).Error("unable to parse asset")
+							continue loop
+						}
+						data.MissingSidMaps = obj
 					}
 				case topicAssets:
 					var obj providentia.Record
