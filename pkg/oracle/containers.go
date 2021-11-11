@@ -7,6 +7,30 @@ import (
 	"sync"
 )
 
+type ContainerIoC struct {
+	sync.RWMutex
+	Data map[string]IoC
+}
+
+func (c *ContainerIoC) Slice() []IoC {
+	c.RWMutex.RLock()
+	defer c.RWMutex.RUnlock()
+	tx := make([]IoC, 0, len(c.Data))
+	for _, item := range c.Data {
+		tx = append(tx, item)
+	}
+	return tx
+}
+
+func (c *ContainerIoC) JSONFormat() ([]byte, error) {
+	c.RWMutex.RLock()
+	defer c.RWMutex.RUnlock()
+	if c.Data == nil {
+		c.Data = make(map[string]IoC)
+	}
+	return json.Marshal(c.Slice())
+}
+
 type ContainerMitreMeerkat struct {
 	sync.RWMutex
 	Data mitremeerkat.Mappings

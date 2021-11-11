@@ -41,3 +41,14 @@ func (s *Server) handleMitreMeerkatMissing() http.HandlerFunc {
 		mmWrapper(rw, r, &s.MissingSidMaps)
 	}
 }
+
+func (s *Server) handleIoCServe() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		respJSON(rw, &s.IoC)
+	}
+}
+
+func (s *Server) handleIoCAdd() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+	}
+}

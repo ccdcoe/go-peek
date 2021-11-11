@@ -11,4 +11,6 @@ type Server struct {
 
 	SidMap         ContainerMitreMeerkat
 	MissingSidMaps ContainerMitreMeerkat
+
+	IoC ContainerIoC
 }
