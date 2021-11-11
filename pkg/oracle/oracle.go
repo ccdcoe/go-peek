@@ -53,3 +53,13 @@ func respCSV(rw http.ResponseWriter, data atomic.CSVFormatter) {
 	w := csv.NewWriter(rw)
 	w.WriteAll(rows)
 }
+
+func mmWrapper(rw http.ResponseWriter, r *http.Request, data *ContainerMitreMeerkat) {
+	format := r.URL.Query().Get("format")
+	switch format {
+	case "csv":
+		respCSV(rw, data)
+	default:
+		respJSON(rw, data)
+	}
+}

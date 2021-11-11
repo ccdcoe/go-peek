@@ -31,17 +31,12 @@ func (s *Server) handleAssets() http.HandlerFunc {
 
 func (s *Server) handleMitreMeerkat() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		respJSON(rw, &s.SidMap)
+		mmWrapper(rw, r, &s.SidMap)
 	}
 }
 
 func (s *Server) handleMitreMeerkatMissing() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		fmt := r.URL.Query().Get("format")
-		if fmt == "csv" {
-			respCSV(rw, &s.MissingSidMaps)
-			return
-		}
-		respJSON(rw, &s.MissingSidMaps)
+		mmWrapper(rw, r, &s.MissingSidMaps)
 	}
 }
