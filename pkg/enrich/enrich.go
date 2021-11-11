@@ -219,10 +219,11 @@ func (h *Handler) Enrich(event events.GameEvent) error {
 
 	// SIGMA match
 	if h.sigma != nil {
-		rs, ok := h.sigma[event.Kind()]
+		ruleset, ok := h.sigma[event.Kind()]
 		if ok {
-			if res, match := rs.EvalAll(event); match && len(res) > 0 {
-				fullAsset.MitreAttack.ParseSigmaTags(res, h.mitre.Mappings)
+			if result, match := ruleset.EvalAll(event); match && len(result) > 0 {
+				fullAsset.SigmaResults = result
+				fullAsset.MitreAttack.ParseSigmaTags(fullAsset.SigmaResults, h.mitre.Mappings)
 				h.Counts.Enrichment.SigmaMatches++
 			} else {
 				h.Counts.Enrichment.SigmaMisses++
