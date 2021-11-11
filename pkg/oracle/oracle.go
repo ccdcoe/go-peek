@@ -1,6 +1,7 @@
 package oracle
 
 import (
+	"encoding/csv"
 	"go-peek/pkg/mitremeerkat"
 	"go-peek/pkg/models/atomic"
 	"go-peek/pkg/providentia"
@@ -41,4 +42,14 @@ func respJSON(rw http.ResponseWriter, data atomic.JSONFormatter) {
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(200)
 	rw.Write(encoded)
+}
+
+func respCSV(rw http.ResponseWriter, data atomic.CSVFormatter) {
+	rw.Header().Set("Content-Type", "text/x-csv")
+	rw.WriteHeader(200)
+
+	rows := data.CSVFormat(true)
+
+	w := csv.NewWriter(rw)
+	w.WriteAll(rows)
 }

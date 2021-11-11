@@ -30,5 +30,5 @@ type JSONFormatter interface {
 	JSONFormat() ([]byte, error)
 }
 type CSVFormatter interface {
-	CSVFormat() [][]string
+	CSVFormat(bool) [][]string
 }

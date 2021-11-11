@@ -9,6 +9,17 @@ import (
 
 type Mappings []Mapping
 
+func (m Mappings) CSVFormat(header bool) [][]string {
+	tx := make([][]string, 0, len(m)+1)
+	if header {
+		tx = append(tx, Mapping{}.Keys())
+	}
+	for _, item := range m {
+		tx = append(tx, item.StrSlc())
+	}
+	return tx
+}
+
 func NewMappings(m map[int]string) Mappings {
 	tx := make(Mappings, 0)
 	if m == nil || len(m) == 0 {
@@ -29,6 +40,16 @@ type Mapping struct {
 	Name   string `json:"name"`
 	Tactic string `json:"tactic"`
 	SID    int    `json:"sid"`
+}
+
+// Keys is for implementing CSV header
+func (m Mapping) Keys() []string {
+	return []string{"id", "msg", "name", "tactic", "sid"}
+}
+
+// StrSlc is for implementing CSV rows
+func (m Mapping) StrSlc() []string {
+	return []string{m.ID, m.MSG, m.Name, m.Tactic, strconv.Itoa(m.SID)}
 }
 
 func ParseCSV(path string) ([]Mapping, error) {

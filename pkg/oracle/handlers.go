@@ -37,6 +37,11 @@ func (s *Server) handleMitreMeerkat() http.HandlerFunc {
 
 func (s *Server) handleMitreMeerkatMissing() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
+		fmt := r.URL.Query().Get("format")
+		if fmt == "csv" {
+			respCSV(rw, &s.MissingSidMaps)
+			return
+		}
 		respJSON(rw, &s.MissingSidMaps)
 	}
 }

@@ -9,7 +9,13 @@ import (
 
 type ContainerMitreMeerkat struct {
 	sync.RWMutex
-	Data []mitremeerkat.Mapping
+	Data mitremeerkat.Mappings
+}
+
+func (c *ContainerMitreMeerkat) CSVFormat(header bool) [][]string {
+	c.RWMutex.Lock()
+	defer c.RWMutex.Unlock()
+	return c.Data.CSVFormat(header)
 }
 
 func (c *ContainerMitreMeerkat) Update(d map[int]mitremeerkat.Mapping) {
