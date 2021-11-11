@@ -6,8 +6,6 @@ import (
 	"go-peek/pkg/models/atomic"
 	"go-peek/pkg/providentia"
 	"net/http"
-
-	"github.com/gorilla/mux"
 )
 
 type Data struct {
@@ -22,15 +20,6 @@ func NewData() *Data {
 		Meerkat:        make(map[int]mitremeerkat.Mapping),
 		MissingSidMaps: make(mitremeerkat.Mappings, 0),
 	}
-}
-
-type Server struct {
-	Router *mux.Router
-
-	Assets ContainerAssets
-
-	SidMap         ContainerMitreMeerkat
-	MissingSidMaps ContainerMitreMeerkat
 }
 
 func respJSON(rw http.ResponseWriter, data atomic.JSONFormatter) {
