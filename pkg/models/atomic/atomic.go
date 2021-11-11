@@ -29,10 +29,6 @@ type JSONFormatter interface {
 	// JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
 	JSONFormat() ([]byte, error)
 }
-
-// CSVFormatter is for encoding parsed messages in CSV format, for easy database dumps and excel stuff
-// Output should integrate easily with encoding/csv Write() method
 type CSVFormatter interface {
-	CSVHeader() []string
-	CSVFormat() []string
+	CSVFormat() [][]string
 }
