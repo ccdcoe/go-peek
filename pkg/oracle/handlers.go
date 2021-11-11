@@ -8,9 +8,10 @@ import (
 func (s *Server) handleIndex() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		get := map[string]string{
-			"/":             "API routes listing",
-			"/assets":       "asset listing",
-			"/mitremeerkat": "suricata SID to MITRE mappings",
+			"/":                      "API routes listing",
+			"/assets":                "asset listing",
+			"/mitremeerkat/mappings": "suricata SID to MITRE mappings",
+			"/mitremeerkat/missing":  "missing suricata SID to MITRE mappings",
 		}
 		d, err := json.Marshal(get)
 		if err != nil {
