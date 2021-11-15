@@ -2,7 +2,9 @@ package oracle
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"time"
 )
 
 func (s *Server) handleIndex() http.HandlerFunc {
@@ -44,11 +46,57 @@ func (s *Server) handleMitreMeerkatMissing() http.HandlerFunc {
 
 func (s *Server) handleIoCServe() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		respJSON(rw, &s.IoC)
+		encoded, err := json.Marshal(s.IoC.Slice())
+		if err != nil {
+			rw.WriteHeader(500)
+			return
+		}
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(200)
+		rw.Write(encoded)
 	}
 }
 
 func (s *Server) handleIoCAdd() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			rw.WriteHeader(500)
+			fmt.Fprintf(rw, `{"status": "err", "error": "%s"}`, err)
+			return
+		}
+		ioc := IoC{
+			Type:  r.FormValue("type"),
+			Value: r.FormValue("value"),
+			Added: time.Now(),
+		}
+		id, err := s.IoC.Add(ioc)
+		if err != nil {
+			rw.WriteHeader(500)
+			fmt.Fprintf(
+				rw,
+				`{"status": "err", "value": "%s", "error": "%s", "type": "%s"}`,
+				ioc.Value, err, ioc.Type,
+			)
+			return
+		}
+		if id == -1 {
+			rw.WriteHeader(500)
+			fmt.Fprintf(
+				rw,
+				`{"status": "err", "value": "%s", "error": "unable to insert value", "type": "%s"}`,
+				ioc.Value, ioc.Type,
+			)
+			return
+		}
+
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(200)
+		fmt.Fprintf(
+			rw,
+			`{"status": "ok", "value": "%s", "type": "%s", "id": %d}`,
+			ioc.Value,
+			ioc.Type,
+			id,
+		)
 	}
 }
