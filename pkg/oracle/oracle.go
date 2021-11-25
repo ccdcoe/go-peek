@@ -2,6 +2,8 @@ package oracle
 
 import (
 	"encoding/csv"
+	"encoding/json"
+	"fmt"
 	"go-peek/pkg/mitremeerkat"
 	"go-peek/pkg/models/atomic"
 	"go-peek/pkg/providentia"
@@ -20,6 +22,17 @@ func NewData() *Data {
 		Meerkat:        make(map[int]mitremeerkat.Mapping),
 		MissingSidMaps: make(mitremeerkat.Mappings, 0),
 	}
+}
+
+func respEncodeJSON(rw http.ResponseWriter, data interface{}) {
+	encoded, err := json.Marshal(data)
+	if err != nil {
+		simpleJSONErr(err, rw)
+		return
+	}
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(200)
+	rw.Write(encoded)
 }
 
 func respJSON(rw http.ResponseWriter, data atomic.JSONFormatter) {
@@ -51,4 +64,8 @@ func mmWrapper(rw http.ResponseWriter, r *http.Request, data *ContainerMitreMeer
 	default:
 		respJSON(rw, data)
 	}
+}
+
+func simpleJSONErr(err error, rw http.ResponseWriter) {
+	fmt.Fprintf(rw, `{"status": "err", "error": "%s"}`, err)
 }

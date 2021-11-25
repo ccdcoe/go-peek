@@ -3,6 +3,7 @@ package oracle
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"go-peek/pkg/mitremeerkat"
 	"go-peek/pkg/providentia"
 	"sync"
@@ -12,7 +13,7 @@ type assigner struct {
 	ID int
 }
 
-func (a *assigner) insertIoC(item IoC, container map[string]IoC) (int, error) {
+func (a *assigner) insertIoC(item IoC, container IoCMap, idm IoCMapID) (int, error) {
 	key := item.key()
 	if _, ok := container[key]; ok {
 		return item.ID, nil
@@ -21,7 +22,10 @@ func (a *assigner) insertIoC(item IoC, container map[string]IoC) (int, error) {
 	item = item.assign(a.ID)
 	a.ID++
 	// set IoC value
-	container[key] = item
+	ptr := &item
+	container[key] = ptr
+	// also add pointer to same item to ID map, so we can easily modify it
+	idm[item.ID] = ptr
 	// return new SID for API response
 	return item.ID, nil
 }
@@ -31,12 +35,26 @@ type DataIoC struct {
 	assigner
 	DestIP IoCMap
 	SrcIP  IoCMap
+
+	mapID IoCMapID
 }
 
 // ContainerIoC takes care of thread safety
 type ContainerIoC struct {
 	sync.RWMutex
 	Data *DataIoC
+}
+
+func (c *ContainerIoC) Disable(id int) (IoC, error) {
+	c.Lock()
+	defer c.Unlock()
+	c.verify()
+	item, ok := c.Data.mapID[id]
+	if !ok {
+		return IoC{}, fmt.Errorf("IoC with ID %d not found", id)
+	}
+	item.Enabled = false
+	return *item, nil
 }
 
 func (c *ContainerIoC) Add(item IoC) (int, error) {
@@ -48,9 +66,9 @@ func (c *ContainerIoC) Add(item IoC) (int, error) {
 	c.verify()
 	switch item.Type {
 	case "dest_ip":
-		return c.Data.insertIoC(item, c.Data.DestIP)
+		return c.Data.insertIoC(item, c.Data.DestIP, c.Data.mapID)
 	case "src_ip":
-		return c.Data.insertIoC(item, c.Data.SrcIP)
+		return c.Data.insertIoC(item, c.Data.SrcIP, c.Data.mapID)
 	default:
 	}
 	return -1, errors.New("unsupported item type")
@@ -72,10 +90,13 @@ func (c *ContainerIoC) verify() {
 		c.Data = &DataIoC{}
 	}
 	if c.Data.DestIP == nil {
-		c.Data.DestIP = make(map[string]IoC)
+		c.Data.DestIP = make(IoCMap)
 	}
 	if c.Data.SrcIP == nil {
-		c.Data.SrcIP = make(map[string]IoC)
+		c.Data.SrcIP = make(IoCMap)
+	}
+	if c.Data.mapID == nil {
+		c.Data.mapID = make(IoCMapID)
 	}
 }
 

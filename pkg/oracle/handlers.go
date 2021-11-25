@@ -2,9 +2,13 @@ package oracle
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 func (s *Server) handleIndex() http.HandlerFunc {
@@ -65,9 +69,10 @@ func (s *Server) handleIoCAdd() http.HandlerFunc {
 			return
 		}
 		ioc := IoC{
-			Type:  r.FormValue("type"),
-			Value: r.FormValue("value"),
-			Added: time.Now(),
+			Enabled: true,
+			Type:    r.FormValue("type"),
+			Value:   r.FormValue("value"),
+			Added:   time.Now(),
 		}
 		id, err := s.IoC.Add(ioc)
 		if err != nil {
@@ -98,5 +103,27 @@ func (s *Server) handleIoCAdd() http.HandlerFunc {
 			ioc.Type,
 			id,
 		)
+	}
+}
+
+func (s *Server) handleIoCDisable() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		id, ok := vars["id"]
+		if !ok {
+			simpleJSONErr(errors.New("missing id"), rw)
+			return
+		}
+		num, err := strconv.Atoi(id)
+		if err != nil {
+			simpleJSONErr(err, rw)
+			return
+		}
+		item, err := s.IoC.Disable(num)
+		if err != nil {
+			simpleJSONErr(err, rw)
+			return
+		}
+		respEncodeJSON(rw, item)
 	}
 }

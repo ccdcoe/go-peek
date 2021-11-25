@@ -33,6 +33,10 @@ func (s *Server) Routes() {
 		s.handleIoCAdd(),
 	).Methods("POST")
 	s.Router.HandleFunc(
+		"/ioc/{id}",
+		s.handleIoCDisable(),
+	).Methods("DELETE")
+	s.Router.HandleFunc(
 		"/ioc/meerkat",
 		s.handleIoCAdd(),
 	).Methods("GET")
