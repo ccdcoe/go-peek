@@ -40,8 +40,8 @@ type ContainerIoC struct {
 }
 
 func (c *ContainerIoC) Add(item IoC) (int, error) {
-	c.RWMutex.Lock()
-	defer c.RWMutex.Unlock()
+	c.Lock()
+	defer c.Unlock()
 	if err := item.validate(); err != nil {
 		return -1, err
 	}
@@ -57,8 +57,8 @@ func (c *ContainerIoC) Add(item IoC) (int, error) {
 }
 
 func (c *ContainerIoC) Slice() []IoC {
-	c.RWMutex.RLock()
-	defer c.RWMutex.RUnlock()
+	c.RLock()
+	defer c.RUnlock()
 	c.verify()
 	tx := make([]IoC, 0, len(c.Data.DestIP)+len(c.Data.SrcIP))
 	tx = append(tx, c.Data.DestIP.Values()...)
@@ -85,15 +85,15 @@ type ContainerMitreMeerkat struct {
 }
 
 func (c *ContainerMitreMeerkat) CSVFormat(header bool) [][]string {
-	c.RWMutex.Lock()
-	defer c.RWMutex.Unlock()
+	c.Lock()
+	defer c.Unlock()
 	return c.Data.CSVFormat(header)
 }
 
 func (c *ContainerMitreMeerkat) Update(d map[int]mitremeerkat.Mapping) {
-	c.RWMutex.Lock()
-	defer c.RWMutex.Unlock()
-	if d == nil || len(d) == 0 {
+	c.Lock()
+	defer c.Unlock()
+	if len(d) == 0 {
 		return
 	}
 	c.Data = make([]mitremeerkat.Mapping, 0, len(d))
@@ -103,8 +103,8 @@ func (c *ContainerMitreMeerkat) Update(d map[int]mitremeerkat.Mapping) {
 }
 
 func (c *ContainerMitreMeerkat) Copy(d mitremeerkat.Mappings) {
-	c.RWMutex.Lock()
-	defer c.RWMutex.Unlock()
+	c.Lock()
+	defer c.Unlock()
 	if d == nil || len(d) == 0 {
 		return
 	}
@@ -127,10 +127,10 @@ type ContainerAssets struct {
 }
 
 func (c *ContainerAssets) Update(d map[string]providentia.Record) {
-	c.RWMutex.Lock()
-	defer c.RWMutex.Unlock()
+	c.Lock()
+	defer c.Unlock()
 
-	if d == nil || len(d) == 0 {
+	if len(d) == 0 {
 		return
 	}
 	c.Data = make([]providentia.Record, 0, len(d))
