@@ -99,7 +99,11 @@ var oracleCmd = &cobra.Command{
 		defer tickUpdateData.Stop()
 
 		s := &oracle.Server{}
-		s.IoC.Data = &data.IoC
+		if data.IoC != nil {
+			for _, item := range data.IoC {
+				s.IoC.Add(item, true)
+			}
+		}
 
 		s.Routes()
 		wg.Add(1)
@@ -124,7 +128,7 @@ var oracleCmd = &cobra.Command{
 				s.Assets.Update(data.Assets)
 				s.SidMap.Update(data.Meerkat)
 				s.MissingSidMaps.Copy(data.MissingSidMaps)
-				data.IoC = s.IoC.Copy()
+				data.IoC = s.IoC.Extract()
 				persist.SetSingle(cmd.Name()+"-data", data)
 			case <-chTerminate:
 				break loop

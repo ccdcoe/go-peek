@@ -29,11 +29,21 @@ func (i IoC) key() string {
 
 func (i IoC) assign(id int) IoC {
 	return IoC{
+		ID:      id,
+		Enabled: i.Enabled,
 		Value:   i.Value,
 		Type:    i.Type,
-		Enabled: i.Enabled,
 		Added:   time.Now(),
-		ID:      id,
+	}
+}
+
+func (i IoC) copy() *IoC {
+	return &IoC{
+		ID:      i.ID,
+		Enabled: i.Enabled,
+		Value:   i.Value,
+		Type:    i.Type,
+		Added:   i.Added,
 	}
 }
 
@@ -70,18 +80,22 @@ func (i IoCMap) Values() []IoC {
 
 func copyIocMap(rx IoCMap) IoCMap {
 	tx := make(IoCMap)
+	if rx == nil {
+		return tx
+	}
 	for key, value := range rx {
-		cpy := *value
-		tx[key] = &cpy
+		tx[key] = value.copy()
 	}
 	return tx
 }
 
 func copyIoCMapID(rx IoCMapID) IoCMapID {
 	tx := make(IoCMapID)
+	if rx == nil {
+		return tx
+	}
 	for key, value := range rx {
-		cpy := *value
-		tx[key] = &cpy
+		tx[key] = value.copy()
 	}
 	return tx
 }

@@ -74,7 +74,7 @@ func (s *Server) handleIoCAdd() http.HandlerFunc {
 			Value:   r.FormValue("value"),
 			Added:   time.Now(),
 		}
-		id, err := s.IoC.Add(ioc)
+		id, err := s.IoC.Add(ioc, false)
 		if err != nil {
 			rw.WriteHeader(500)
 			fmt.Fprintf(
@@ -106,6 +106,7 @@ func (s *Server) handleIoCAdd() http.HandlerFunc {
 	}
 }
 
+// FIXME - refactor along with enable
 func (s *Server) handleIoCDisable() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
@@ -120,6 +121,29 @@ func (s *Server) handleIoCDisable() http.HandlerFunc {
 			return
 		}
 		item, err := s.IoC.Disable(num)
+		if err != nil {
+			simpleJSONErr(err, rw)
+			return
+		}
+		respEncodeJSON(rw, item)
+	}
+}
+
+// FIXME - refactor along with Disable
+func (s *Server) handleIoCEnable() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		id, ok := vars["id"]
+		if !ok {
+			simpleJSONErr(errors.New("missing id"), rw)
+			return
+		}
+		num, err := strconv.Atoi(id)
+		if err != nil {
+			simpleJSONErr(err, rw)
+			return
+		}
+		item, err := s.IoC.Enable(num)
 		if err != nil {
 			simpleJSONErr(err, rw)
 			return

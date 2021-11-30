@@ -13,14 +13,16 @@ type Assigner struct {
 	ID int
 }
 
-func (a *Assigner) insertIoC(item IoC, container IoCMap, idm IoCMapID) (int, error) {
+func (a *Assigner) insertIoC(item IoC, container IoCMap, idm IoCMapID, set bool) (int, error) {
 	key := item.key()
 	if _, ok := container[key]; ok {
 		return item.ID, nil
 	}
-	// assign new SID to IoC
-	item = item.assign(a.ID)
-	a.ID++
+	if !set {
+		// assign new SID to IoC
+		item = item.assign(a.ID)
+		a.ID++
+	}
 	// set IoC value
 	ptr := &item
 	container[key] = ptr
@@ -45,15 +47,17 @@ type ContainerIoC struct {
 	Data *DataIoC
 }
 
-func (c *ContainerIoC) Copy() DataIoC {
-	c.RLock()
-	defer c.RUnlock()
-	return DataIoC{
-		Assigner: c.Data.Assigner,
-		SrcIP:    copyIocMap(c.Data.SrcIP),
-		DestIP:   copyIocMap(c.Data.DestIP),
-		MapID:    copyIoCMapID(c.Data.MapID),
+func (c *ContainerIoC) Extract() []IoC {
+	c.Lock()
+	defer c.Unlock()
+	if c.Data == nil || c.Data.MapID == nil {
+		return nil
 	}
+	tx := make([]IoC, 0, len(c.Data.MapID))
+	for _, item := range c.Data.MapID {
+		tx = append(tx, *item)
+	}
+	return tx
 }
 
 func (c *ContainerIoC) Disable(id int) (IoC, error) {
@@ -68,7 +72,19 @@ func (c *ContainerIoC) Disable(id int) (IoC, error) {
 	return *item, nil
 }
 
-func (c *ContainerIoC) Add(item IoC) (int, error) {
+func (c *ContainerIoC) Enable(id int) (IoC, error) {
+	c.Lock()
+	defer c.Unlock()
+	c.verify()
+	item, ok := c.Data.MapID[id]
+	if !ok {
+		return IoC{}, fmt.Errorf("IoC with ID %d not found", id)
+	}
+	item.Enabled = true
+	return *item, nil
+}
+
+func (c *ContainerIoC) Add(item IoC, set bool) (int, error) {
 	c.Lock()
 	defer c.Unlock()
 	if err := item.validate(); err != nil {
@@ -77,9 +93,9 @@ func (c *ContainerIoC) Add(item IoC) (int, error) {
 	c.verify()
 	switch item.Type {
 	case "dest_ip":
-		return c.Data.insertIoC(item, c.Data.DestIP, c.Data.MapID)
+		return c.Data.insertIoC(item, c.Data.DestIP, c.Data.MapID, set)
 	case "src_ip":
-		return c.Data.insertIoC(item, c.Data.SrcIP, c.Data.MapID)
+		return c.Data.insertIoC(item, c.Data.SrcIP, c.Data.MapID, set)
 	default:
 	}
 	return -1, errors.New("unsupported item type")
