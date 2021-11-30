@@ -156,7 +156,7 @@ func (s *Server) handleIoCEnable() http.HandlerFunc {
 const revision = 1
 
 var (
-	tplSrcIP  = `alert ip [%s/32] any -> $HOME_NET any (msg:"XS YT IoC for %s"; threshold: type limit, track by_src, seconds 60, count 1; classtype:misc-attack; flowbits:set,YT.Evil; sid:%d; rev:%d; metadata:affected_product Any, attack_target Any, deployment Perimeter, tag YT, signature_severity Major, created_at 2021_11_30, updated_at 2021_11_30;)`
+	tplSrcIP  = `alert ip [%s/32] any -> $HOME_NET any (msg:"XS YT IoC for %s"; threshold: type limit, track by_dest, seconds 60, count 1; classtype:misc-attack; flowbits:set,YT.Evil; sid:%d; rev:%d; metadata:affected_product Any, attack_target Any, deployment Perimeter, tag YT, signature_severity Major, created_at 2021_11_30, updated_at 2021_11_30;)`
 	tplDestIP = `alert ip $HOME_NET any -> [%s/32] any (msg:"XS YT IoC for %s"; threshold: type limit, track by_src, seconds 60, count 1; classtype:misc-attack; flowbits:set,YT.Evil; sid:%d; rev:%d; metadata:affected_product Any, attack_target Any, deployment Perimeter, tag YT, signature_severity Major, created_at 2021_11_30, updated_at 2021_11_30;)`
 )
 
