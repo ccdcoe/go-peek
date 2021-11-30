@@ -41,7 +41,7 @@ func (s *Server) Routes() {
 		s.handleIoCEnable(),
 	).Methods("GET")
 	s.Router.HandleFunc(
-		"/ioc/meerkat",
-		s.handleIoCAdd(),
+		"/rules",
+		s.handleIoCMeerkatRules(),
 	).Methods("GET")
 }
