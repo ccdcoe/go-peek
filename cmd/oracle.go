@@ -80,16 +80,6 @@ var oracleCmd = &cobra.Command{
 		app.Throw(cmd.Name()+" event stream setup", err)
 		defer cancelReader()
 
-		s := oracle.Server{}
-		s.Routes()
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			port := viper.GetInt(cmd.Name() + ".port")
-			logrus.Infof("Starting up REST API on port %d", port)
-			logrus.Error(http.ListenAndServe(fmt.Sprintf(":%d", port), s.Router))
-		}()
-
 		chTerminate := make(chan os.Signal, 1)
 		signal.Notify(chTerminate, os.Interrupt, syscall.SIGTERM)
 
@@ -108,6 +98,18 @@ var oracleCmd = &cobra.Command{
 		tickUpdateData := time.NewTicker(5 * time.Second)
 		defer tickUpdateData.Stop()
 
+		s := &oracle.Server{}
+		s.IoC.Data = &data.IoC
+
+		s.Routes()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			port := viper.GetInt(cmd.Name() + ".port")
+			logrus.Infof("Starting up REST API on port %d", port)
+			logrus.Error(http.ListenAndServe(fmt.Sprintf(":%d", port), s.Router))
+		}()
+
 		logger.Info("starting event loop")
 
 	loop:
@@ -122,6 +124,7 @@ var oracleCmd = &cobra.Command{
 				s.Assets.Update(data.Assets)
 				s.SidMap.Update(data.Meerkat)
 				s.MissingSidMaps.Copy(data.MissingSidMaps)
+				data.IoC = s.IoC.Copy()
 				persist.SetSingle(cmd.Name()+"-data", data)
 			case <-chTerminate:
 				break loop

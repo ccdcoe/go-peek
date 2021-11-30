@@ -9,11 +9,11 @@ import (
 	"sync"
 )
 
-type assigner struct {
+type Assigner struct {
 	ID int
 }
 
-func (a *assigner) insertIoC(item IoC, container IoCMap, idm IoCMapID) (int, error) {
+func (a *Assigner) insertIoC(item IoC, container IoCMap, idm IoCMapID) (int, error) {
 	key := item.key()
 	if _, ok := container[key]; ok {
 		return item.ID, nil
@@ -32,11 +32,11 @@ func (a *assigner) insertIoC(item IoC, container IoCMap, idm IoCMapID) (int, err
 
 // DataIoC is for simple gob dumping without worrying about passing locks
 type DataIoC struct {
-	assigner
+	Assigner
 	DestIP IoCMap
 	SrcIP  IoCMap
 
-	mapID IoCMapID
+	MapID IoCMapID
 }
 
 // ContainerIoC takes care of thread safety
@@ -45,11 +45,22 @@ type ContainerIoC struct {
 	Data *DataIoC
 }
 
+func (c *ContainerIoC) Copy() DataIoC {
+	c.RLock()
+	defer c.RUnlock()
+	return DataIoC{
+		Assigner: c.Data.Assigner,
+		SrcIP:    copyIocMap(c.Data.SrcIP),
+		DestIP:   copyIocMap(c.Data.DestIP),
+		MapID:    copyIoCMapID(c.Data.MapID),
+	}
+}
+
 func (c *ContainerIoC) Disable(id int) (IoC, error) {
 	c.Lock()
 	defer c.Unlock()
 	c.verify()
-	item, ok := c.Data.mapID[id]
+	item, ok := c.Data.MapID[id]
 	if !ok {
 		return IoC{}, fmt.Errorf("IoC with ID %d not found", id)
 	}
@@ -66,9 +77,9 @@ func (c *ContainerIoC) Add(item IoC) (int, error) {
 	c.verify()
 	switch item.Type {
 	case "dest_ip":
-		return c.Data.insertIoC(item, c.Data.DestIP, c.Data.mapID)
+		return c.Data.insertIoC(item, c.Data.DestIP, c.Data.MapID)
 	case "src_ip":
-		return c.Data.insertIoC(item, c.Data.SrcIP, c.Data.mapID)
+		return c.Data.insertIoC(item, c.Data.SrcIP, c.Data.MapID)
 	default:
 	}
 	return -1, errors.New("unsupported item type")
@@ -95,8 +106,8 @@ func (c *ContainerIoC) verify() {
 	if c.Data.SrcIP == nil {
 		c.Data.SrcIP = make(IoCMap)
 	}
-	if c.Data.mapID == nil {
-		c.Data.mapID = make(IoCMapID)
+	if c.Data.MapID == nil {
+		c.Data.MapID = make(IoCMapID)
 	}
 }
 

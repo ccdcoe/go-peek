@@ -67,3 +67,21 @@ func (i IoCMap) Values() []IoC {
 	}
 	return tx
 }
+
+func copyIocMap(rx IoCMap) IoCMap {
+	tx := make(IoCMap)
+	for key, value := range rx {
+		cpy := *value
+		tx[key] = &cpy
+	}
+	return tx
+}
+
+func copyIoCMapID(rx IoCMapID) IoCMapID {
+	tx := make(IoCMapID)
+	for key, value := range rx {
+		cpy := *value
+		tx[key] = &cpy
+	}
+	return tx
+}

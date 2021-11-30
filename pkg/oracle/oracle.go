@@ -14,6 +14,7 @@ type Data struct {
 	Assets         map[string]providentia.Record
 	Meerkat        map[int]mitremeerkat.Mapping
 	MissingSidMaps mitremeerkat.Mappings
+	IoC            DataIoC
 }
 
 func NewData() *Data {
