@@ -22,6 +22,12 @@ func (a *Assigner) insertIoC(item IoC, container IoCMap, idm IoCMapID, set bool)
 		// assign new SID to IoC
 		item = item.assign(a.ID)
 		a.ID++
+	} else {
+		// offline persist load needs to fix assigner offset, or adding items later will cause
+		// duplicate IDs
+		if item.ID > a.ID {
+			a.ID = item.ID + 1
+		}
 	}
 	// set IoC value
 	ptr := &item
@@ -45,6 +51,21 @@ type DataIoC struct {
 type ContainerIoC struct {
 	sync.RWMutex
 	Data *DataIoC
+}
+
+func (c *ContainerIoC) Offset() int {
+	c.RLock()
+	defer c.RUnlock()
+	return c.Data.Assigner.ID
+}
+
+func (c *ContainerIoC) Len() int {
+	c.RLock()
+	defer c.RUnlock()
+	if c.Data.MapID == nil {
+		return 0
+	}
+	return len(c.Data.MapID)
 }
 
 func (c *ContainerIoC) Extract() []IoC {

@@ -18,6 +18,7 @@ func (s *Server) handleIndex() http.HandlerFunc {
 			"/assets":                "asset listing",
 			"/mitremeerkat/mappings": "suricata SID to MITRE mappings",
 			"/mitremeerkat/missing":  "missing suricata SID to MITRE mappings",
+			"/ioc":                   "GET: serve json list of IoC reports",
 		}
 		d, err := json.Marshal(get)
 		if err != nil {
@@ -152,35 +153,11 @@ func (s *Server) handleIoCEnable() http.HandlerFunc {
 	}
 }
 
-// update this whenever making changes to templates
-const revision = 1
-
-var (
-	tplSrcIP  = `alert ip [%s/32] any -> $HOME_NET any (msg:"XS YT IoC for %s"; threshold: type limit, track by_dest, seconds 60, count 1; classtype:misc-attack; flowbits:set,YT.Evil; sid:%d; rev:%d; metadata:affected_product Any, attack_target Any, deployment Perimeter, tag YT, signature_severity Major, created_at 2021_11_30, updated_at 2021_11_30;)`
-	tplDestIP = `alert ip $HOME_NET any -> [%s/32] any (msg:"XS YT IoC for %s"; threshold: type limit, track by_src, seconds 60, count 1; classtype:misc-attack; flowbits:set,YT.Evil; sid:%d; rev:%d; metadata:affected_product Any, attack_target Any, deployment Perimeter, tag YT, signature_severity Major, created_at 2021_11_30, updated_at 2021_11_30;)`
-)
-
 func (s *Server) handleIoCMeerkatRules() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		ioc := s.IoC.Extract()
-		offset := 2000000000
 		for _, item := range ioc {
-			switch item.Type {
-			case "src_ip":
-				fmt.Fprintf(rw, template(tplSrcIP, item.Enabled), item.Value, item.Type, offset+item.ID, revision)
-				fmt.Fprintf(rw, "\n")
-			case "dest_ip":
-				fmt.Fprintf(rw, template(tplDestIP, item.Enabled), item.Value, item.Type, offset+item.ID, revision)
-				fmt.Fprintf(rw, "\n")
-			}
+			fmt.Fprintf(rw, "%s\n", item.Rule())
 		}
 	}
-}
-
-func template(base string, enabled bool) (tpl string) {
-	tpl = base
-	if !enabled {
-		tpl = "# " + base
-	}
-	return tpl
 }

@@ -103,6 +103,10 @@ var oracleCmd = &cobra.Command{
 			for _, item := range data.IoC {
 				s.IoC.Add(item, true)
 			}
+			logger.WithFields(logrus.Fields{
+				"offset": s.IoC.Offset(),
+				"items":  s.IoC.Len(),
+			}).Info("loaded persistent IoC data")
 		}
 
 		s.Routes()

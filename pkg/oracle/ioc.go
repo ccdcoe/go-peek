@@ -2,6 +2,7 @@ package oracle
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"time"
 )
@@ -12,6 +13,27 @@ var (
 	ErrInvalidIP       = errors.New("invalid IP addr")
 )
 
+const (
+	// update this whenever making changes to templates
+	revision  = 1
+	sidOffset = 2000000000
+)
+
+var (
+	tplSrcIP  = `alert ip [%s/32] any -> $HOME_NET any (msg:"XS YT IoC for %s"; threshold: type limit, track by_dst, seconds 60, count 1; classtype:misc-attack; flowbits:set,YT.Evil; sid:%d; rev:%d; metadata:%s;)`
+	tplDestIP = `alert ip $HOME_NET any -> [%s/32] any (msg:"XS YT IoC for %s"; threshold: type limit, track by_src, seconds 60, count 1; classtype:misc-attack; flowbits:set,YT.Evil; sid:%d; rev:%d; metadata:%s;)`
+
+	tplMetadata = `affected_product Any, attack_target Any, deployment Perimeter, tag YT, signature_severity Major, created_at 2021_11_30, updated_at 2021_11_30`
+)
+
+func template(base string, enabled bool) (tpl string) {
+	tpl = base
+	if !enabled {
+		tpl = "# " + base
+	}
+	return tpl
+}
+
 type IndicatorOfCompromise int
 
 // IoC stands for Indicator of compromise
@@ -21,6 +43,26 @@ type IoC struct {
 	Value   string    `json:"value"`
 	Type    string    `json:"type"`
 	Added   time.Time `json:"added"`
+}
+
+func (i IoC) Rule() string {
+	var tpl string
+	switch i.Type {
+	case "src_ip":
+		tpl = tplSrcIP
+	case "dest_ip":
+		tpl = tplDestIP
+	default:
+		return fmt.Sprintf("# unsupported ioc type for %d", i.ID)
+	}
+	return fmt.Sprintf(
+		template(tpl, i.Enabled),
+		i.Value,
+		i.Type,
+		sidOffset+i.ID,
+		revision,
+		tplMetadata,
+	)
 }
 
 func (i IoC) key() string {
