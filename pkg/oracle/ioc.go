@@ -20,18 +20,40 @@ const (
 )
 
 var (
-	tplSrcIP  = `alert ip [%s/32] any -> $HOME_NET any (msg:"XS YT IoC for %s"; threshold: type limit, track by_dst, seconds 60, count 1; classtype:misc-attack; flowbits:set,YT.Evil; sid:%d; rev:%d; metadata:%s;)`
-	tplDestIP = `alert ip $HOME_NET any -> [%s/32] any (msg:"XS YT IoC for %s"; threshold: type limit, track by_src, seconds 60, count 1; classtype:misc-attack; flowbits:set,YT.Evil; sid:%d; rev:%d; metadata:%s;)`
+	tplSrcIP    = `alert ip [%s/32] any -> $HOME_NET any (msg:"XS YT IoC - %s - %s - Known Bad IP Inbound Traffic"; threshold: type limit, track by_dst, seconds 60, count 1; classtype:misc-attack; flowbits:set,YT.Evil; sid:%d; rev:%d; metadata:%s;)`
+	tplDestIP   = `alert ip $HOME_NET any -> [%s/32] any (msg:"XS YT IoC - %s - %s - Asset Connecting to Known Bad IP"; threshold: type limit, track by_src, seconds 60, count 1; classtype:misc-attack; flowbits:set,YT.Evil; sid:%d; rev:%d; metadata:%s;)`
+	tplJA3      = `alert tls $HOME_NET any -> $EXTERNAL_NET any (msg:"XS YT IoC - %s - %s - Known Bad TLS Client Fingerprint Seen in Request"; flow:established,to_server; flowbits:set,YT.Evil; ja3.hash; content:"%s"; classtype:trojan-activity; sid:%d; rev:%d; metadata:%s;)`
+	tplJA3S     = `alert tls $EXTERNAL_NET any -> $HOME_NET any (msg:"XS YT IoC - %s - %s - Known Bad TLS Server Fingerprint Seen in Response"; flow:established,to_client; flowbits:set,YT.Evil; ja3s.hash; content:"%s"; classtype:trojan-activity; sid:%d; rev:%d; metadata:%s;)`
+	tplTLSSNI   = `alert tls $HOME_NET any -> $EXTERNAL_NET any (msg:"XS YT IoC - %s - %s - Asset Connecting to Known Bad TLS Server"; flow:to_server,established; tls.sni; content:"%s"; endswith; flowbits:set,YT.Evil; classtype:domain-c2; sid:%d; rev:%d; metadata:%s;)`
+	tplHTTPHost = `alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"XS YT IoC - %s - %s - Asset Connecting to Known Bad HTTP Site"; flow:established,to_server; http.host; content:"%s"; endswith; flowbits:set,YT.Evil; classtype:trojan-activity; sid:%d; rev:%d; metadata: %s;)`
 
-	tplMetadata = `affected_product Any, attack_target Any, deployment Perimeter, tag YT, signature_severity Major, created_at 2021_11_30, updated_at 2021_11_30`
+	tplMetadata           = `affected_product Any, attack_target Any, deployment Perimeter, tag YT, signature_severity Major, created_at 2021_11_30, updated_at 2021_11_30`
+	tplMitreMetaEncrypted = `, mitre_tactic_id TA0011, mitre_tactic_name Command_And_Control, mitre_technique_id T1573, mitre_technique_name Encrypted_Channel`
 )
 
-func template(base string, enabled bool) (tpl string) {
+func comment(base string, enabled bool) (tpl string) {
 	tpl = base
 	if !enabled {
 		tpl = "# " + base
 	}
 	return tpl
+}
+
+func sid(i IoC) int { return sidOffset + i.ID }
+
+func fmtRuleIP(tpl string, i IoC) string {
+	return fmt.Sprintf(comment(tpl, i.Enabled),
+		i.Value, i.Value, i.Type, sid(i), revision, tplMetadata)
+}
+
+func fmtRuleEncryptedTraffic(tpl string, i IoC) string {
+	return fmt.Sprintf(comment(tpl, i.Enabled),
+		i.Type, i.Value, i.Value, sid(i), revision, tplMetadata)
+}
+
+func fmtRuleHTTPReq(tpl string, i IoC) string {
+	return fmt.Sprintf(comment(tpl, i.Enabled),
+		i.Type, i.Value, i.Value, sid(i), revision, tplMetadata)
 }
 
 type IndicatorOfCompromise int
@@ -46,23 +68,22 @@ type IoC struct {
 }
 
 func (i IoC) Rule() string {
-	var tpl string
 	switch i.Type {
 	case "src_ip":
-		tpl = tplSrcIP
+		return fmtRuleIP(tplSrcIP, i)
 	case "dest_ip":
-		tpl = tplDestIP
+		return fmtRuleIP(tplDestIP, i)
+	case "tls.ja3.hash":
+		return fmtRuleEncryptedTraffic(tplJA3, i)
+	case "tls.ja3s.hash":
+		return fmtRuleEncryptedTraffic(tplJA3S, i)
+	case "tls.sni":
+		return fmtRuleEncryptedTraffic(tplTLSSNI, i)
+	case "http.hostname":
+		return fmtRuleHTTPReq(tplHTTPHost, i)
 	default:
 		return fmt.Sprintf("# unsupported ioc type for %d", i.ID)
 	}
-	return fmt.Sprintf(
-		template(tpl, i.Enabled),
-		i.Value,
-		i.Type,
-		sidOffset+i.ID,
-		revision,
-		tplMetadata,
-	)
 }
 
 func (i IoC) key() string {

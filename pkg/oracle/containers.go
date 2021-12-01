@@ -41,8 +41,12 @@ func (a *Assigner) insertIoC(item IoC, container IoCMap, idm IoCMapID, set bool)
 // DataIoC is for simple gob dumping without worrying about passing locks
 type DataIoC struct {
 	Assigner
-	DestIP IoCMap
-	SrcIP  IoCMap
+	DestIP   IoCMap
+	SrcIP    IoCMap
+	JA3S     IoCMap
+	JA3      IoCMap
+	TLSSNI   IoCMap
+	HTTPHost IoCMap
 
 	MapID IoCMapID
 }
@@ -56,7 +60,7 @@ type ContainerIoC struct {
 func (c *ContainerIoC) Offset() int {
 	c.RLock()
 	defer c.RUnlock()
-	return c.Data.Assigner.ID
+	return c.Data.ID
 }
 
 func (c *ContainerIoC) Len() int {
@@ -117,6 +121,14 @@ func (c *ContainerIoC) Add(item IoC, set bool) (int, error) {
 		return c.Data.insertIoC(item, c.Data.DestIP, c.Data.MapID, set)
 	case "src_ip":
 		return c.Data.insertIoC(item, c.Data.SrcIP, c.Data.MapID, set)
+	case "tls.ja3s.hash":
+		return c.Data.insertIoC(item, c.Data.JA3S, c.Data.MapID, set)
+	case "tls.ja3.hash":
+		return c.Data.insertIoC(item, c.Data.JA3, c.Data.MapID, set)
+	case "tls.sni":
+		return c.Data.insertIoC(item, c.Data.TLSSNI, c.Data.MapID, set)
+	case "http.hostname":
+		return c.Data.insertIoC(item, c.Data.HTTPHost, c.Data.MapID, set)
 	default:
 	}
 	return -1, errors.New("unsupported item type")
@@ -129,6 +141,10 @@ func (c *ContainerIoC) Slice() []IoC {
 	tx := make([]IoC, 0, len(c.Data.DestIP)+len(c.Data.SrcIP))
 	tx = append(tx, c.Data.DestIP.Values()...)
 	tx = append(tx, c.Data.SrcIP.Values()...)
+	tx = append(tx, c.Data.JA3.Values()...)
+	tx = append(tx, c.Data.JA3S.Values()...)
+	tx = append(tx, c.Data.TLSSNI.Values()...)
+	tx = append(tx, c.Data.HTTPHost.Values()...)
 	return tx
 }
 
@@ -142,6 +158,18 @@ func (c *ContainerIoC) verify() {
 	}
 	if c.Data.SrcIP == nil {
 		c.Data.SrcIP = make(IoCMap)
+	}
+	if c.Data.JA3S == nil {
+		c.Data.JA3S = make(IoCMap)
+	}
+	if c.Data.JA3 == nil {
+		c.Data.JA3 = make(IoCMap)
+	}
+	if c.Data.HTTPHost == nil {
+		c.Data.HTTPHost = make(IoCMap)
+	}
+	if c.Data.TLSSNI == nil {
+		c.Data.TLSSNI = make(IoCMap)
 	}
 	if c.Data.MapID == nil {
 		c.Data.MapID = make(IoCMapID)
