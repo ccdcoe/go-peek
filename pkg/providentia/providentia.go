@@ -167,7 +167,7 @@ func (r Record) IsAsset() bool { return r.Team == "blue" }
 // keep everything as-is, just copy higher-fidelity info with new IP
 func (r Record) VsphereCopy(vs models.AssetVcenter) Record {
 	return Record{
-		AnsibleName: r.HostName,
+		AnsibleName: r.AnsibleName,
 		HostName:    r.HostName,
 		Pretty:      r.Pretty,
 		Domain:      r.Domain,
