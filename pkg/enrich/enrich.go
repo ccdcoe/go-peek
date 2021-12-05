@@ -127,7 +127,7 @@ func (h *Handler) AddSidTag(item mitremeerkat.Mapping) *Handler {
 	if ok {
 		delete(h.missingSidMaps, item.SID)
 	}
-	h.Counts.MappedMitreSIDs = len(h.sidTag)
+	h.MappedMitreSIDs = len(h.sidTag)
 	return h
 }
 
@@ -146,24 +146,24 @@ func (h *Handler) AddAsset(value providentia.Record) *Handler {
 	for _, key := range value.Keys() {
 		_, ok := h.assets[key]
 		if !ok {
-			h.Counts.AssetUpdates++
+			h.AssetUpdates++
 			h.persist.Set(badgerPrefix, persist.GenericValue{Key: key, Data: value})
 			h.assets[key] = value
 		}
 	}
-	h.Counts.Assets = len(h.assets)
+	h.Assets = len(h.assets)
 	return h
 }
 
 func (h *Handler) Decode(raw []byte, kind events.Atomic) (events.GameEvent, error) {
 	var event events.GameEvent
-	h.Counts.Events++
+	h.Events++
 
 	switch kind {
 	case events.SuricataE:
 		var obj atomic.StaticSuricataEve
 		if err := json.Unmarshal(raw, &obj); err != nil {
-			h.Counts.ParseErrs.Suricata++
+			h.ParseErrs.Suricata++
 			return nil, err
 		}
 		if ts := obj.Time(); ts.IsZero() {
@@ -176,7 +176,7 @@ func (h *Handler) Decode(raw []byte, kind events.Atomic) (events.GameEvent, erro
 	case events.EventLogE, events.SysmonE:
 		var obj atomic.DynamicWinlogbeat
 		if err := json.Unmarshal(raw, &obj); err != nil {
-			h.Counts.ParseErrs.Windows++
+			h.ParseErrs.Windows++
 			return nil, err
 		}
 		event = &events.DynamicWinlogbeat{
@@ -186,14 +186,14 @@ func (h *Handler) Decode(raw []byte, kind events.Atomic) (events.GameEvent, erro
 	case events.SyslogE:
 		var obj events.Syslog
 		if err := json.Unmarshal(raw, &obj); err != nil {
-			h.Counts.ParseErrs.Syslog++
+			h.ParseErrs.Syslog++
 			return nil, err
 		}
 		event = &obj
 	case events.SnoopyE:
 		var obj events.Snoopy
 		if err := json.Unmarshal(raw, &obj); err != nil {
-			h.Counts.ParseErrs.Snoopy++
+			h.ParseErrs.Snoopy++
 			return nil, err
 		}
 		event = &obj
@@ -224,12 +224,12 @@ func (h *Handler) Enrich(event events.GameEvent) error {
 			if result, match := ruleset.EvalAll(event); match && len(result) > 0 {
 				fullAsset.SigmaResults = result
 				fullAsset.MitreAttack.ParseSigmaTags(fullAsset.SigmaResults, h.mitre.Mappings)
-				h.Counts.Enrichment.SigmaMatches++
+				h.Enrichment.SigmaMatches++
 			} else {
-				h.Counts.Enrichment.SigmaMisses++
+				h.Enrichment.SigmaMisses++
 			}
 		} else {
-			h.Counts.Enrichment.SigmaNoRuleset++
+			h.Enrichment.SigmaNoRuleset++
 		}
 	}
 
@@ -250,9 +250,9 @@ func (h *Handler) Enrich(event events.GameEvent) error {
 					meta.Technique{ID: val},
 				)
 				fullAsset.MitreAttack.Set(h.mitre.Mappings)
-				h.Counts.Enrichment.SuricataSidMatches++
+				h.Enrichment.SuricataSidMatches++
 			} else {
-				h.Counts.Enrichment.SuricataSidMisses++
+				h.Enrichment.SuricataSidMisses++
 				h.missingSidMaps[strict.Alert.SignatureID] = strict.Alert.Signature
 			}
 		}
@@ -319,7 +319,7 @@ func NewHandler(c Config) (*Handler, error) {
 		}
 	}
 	handler.assets = assets
-	handler.Counts.Assets = len(handler.assets)
+	handler.Assets = len(handler.assets)
 
 	m, err := mitre.NewMapper(c.Mitre)
 	if err != nil {
@@ -336,7 +336,7 @@ func NewHandler(c Config) (*Handler, error) {
 		return nil, err
 	}
 	handler.sidTag = sidTag
-	handler.Counts.MappedMitreSIDs = len(sidTag)
+	handler.MappedMitreSIDs = len(sidTag)
 
 	missingSidTag, err := getSidMap(badgerMissingSidKey, handler.persist)
 	if err != nil {
