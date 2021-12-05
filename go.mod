@@ -8,10 +8,12 @@ require (
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/gorilla/mux v1.8.0
 	github.com/influxdata/go-syslog v1.0.1
 	github.com/influxdata/go-syslog/v3 v3.0.0
-	github.com/klauspost/compress v1.13.6 // indirect
-	github.com/markuskont/go-sigma-rule-engine v0.2.1
+	github.com/json-iterator/go v1.1.12
+	github.com/klauspost/compress v1.13.6
+	github.com/markuskont/go-sigma-rule-engine v0.2.2
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/olivere/elastic/v7 v7.0.29
 	github.com/onsi/ginkgo v1.11.0 // indirect
@@ -45,7 +47,6 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/flatbuffers v1.12.1 // indirect
-	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
@@ -55,7 +56,6 @@ require (
 	github.com/jcmturner/gokrb5/v8 v8.4.2 // indirect
 	github.com/jcmturner/rpc/v2 v2.0.3 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mitchellh/mapstructure v1.4.2 // indirect
@@ -70,5 +70,3 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 )
-
-// replace github.com/markuskont/go-sigma-rule-engine => /home/markus/Projects/Personal/go-sigma-rule-engine/
