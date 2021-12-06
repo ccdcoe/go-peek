@@ -44,12 +44,12 @@ type Mapping struct {
 
 // Keys is for implementing CSV header
 func (m Mapping) Keys() []string {
-	return []string{"id", "msg", "name", "tactic", "sid"}
+	return []string{"sid", "tactic", "id", "name", "msg"}
 }
 
 // StrSlc is for implementing CSV rows
 func (m Mapping) StrSlc() []string {
-	return []string{m.ID, m.MSG, m.Name, m.Tactic, strconv.Itoa(m.SID)}
+	return []string{strconv.Itoa(m.SID), m.Tactic, m.ID, m.Name, m.MSG}
 }
 
 func ParseCSV(path string) ([]Mapping, error) {
