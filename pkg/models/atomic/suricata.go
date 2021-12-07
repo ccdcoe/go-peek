@@ -9,7 +9,7 @@ import (
 type DynamicSuricataEve map[string]interface{}
 
 type StaticSuricataEve struct {
-	EveBase
+	EveBase `json:"eve_base"`
 
 	Alert *EveAlert `json:"alert,omitempty"`
 
@@ -35,6 +35,7 @@ type StaticSuricataEve struct {
 	Ikev2      map[string]interface{} `json:"ikev2,omitempty"`
 	Tunnel     map[string]interface{} `json:"tunnel,omitempty"`
 	Anomaly    map[string]interface{} `json:"anomaly,omitempty"`
+	DCERPC     map[string]interface{} `json:"dcerpc,omitempty"`
 
 	Metadata map[string][]string `json:"metadata,omitempty"`
 }
