@@ -15,14 +15,14 @@ var (
 
 const (
 	// update this whenever making changes to templates
-	revision              = 2
+	revision              = 3
 	sidOffset             = 2000000000
 	sidOffsetJa3Direction = 1000000
 )
 
 var (
-	tplSrcIP    = `alert ip [%s/32] any -> $HOME_NET any (msg:"XS YT IoC - %s - %s - Known Bad IP Inbound Traffic"; threshold: type limit, track by_dst, seconds 60, count 1; classtype:misc-attack; flowbits:set,YT.Evil; sid:%d; rev:%d; metadata:%s;)`
-	tplDestIP   = `alert ip $HOME_NET any -> [%s/32] any (msg:"XS YT IoC - %s - %s - Asset Connecting to Known Bad IP"; threshold: type limit, track by_src, seconds 60, count 1; classtype:misc-attack; flowbits:set,YT.Evil; sid:%d; rev:%d; metadata:%s;)`
+	tplSrcIP    = `alert ip [%s] any -> $HOME_NET any (msg:"XS YT IoC - %s - %s - Known Bad IP Inbound Traffic"; threshold: type limit, track by_dst, seconds 60, count 1; classtype:misc-attack; flowbits:set,YT.Evil; sid:%d; rev:%d; metadata:%s;)`
+	tplDestIP   = `alert ip $HOME_NET any -> [%s] any (msg:"XS YT IoC - %s - %s - Asset Connecting to Known Bad IP"; threshold: type limit, track by_src, seconds 60, count 1; classtype:misc-attack; flowbits:set,YT.Evil; sid:%d; rev:%d; metadata:%s;)`
 	tplJA3      = `alert tls $HOME_NET any -> $EXTERNAL_NET any (msg:"XS YT IoC - %s - %s - Known Bad TLS Client Fingerprint Seen Outbound"; flow:established,to_server; flowbits:set,YT.Evil; ja3.hash; content:"%s"; classtype:trojan-activity; sid:%d; rev:%d; metadata:%s;)`
 	tplJA3recon = `alert tls $EXTERNAL_NET any -> $HOME_NET any (msg:"XS YT IoC - %s - %s - Known Bad TLS Client Fingerprint Seen Inbound"; flow:established,to_server; flowbits:set,YT.Evil; ja3.hash; content:"%s"; classtype:trojan-activity; sid:%d; rev:%d; metadata:%s;)`
 	tplJA3S     = `alert tls $EXTERNAL_NET any -> $HOME_NET any (msg:"XS YT IoC - %s - %s - Known Bad TLS Server Fingerprint Seen in Response"; flow:established,to_client; flowbits:set,YT.Evil; ja3s.hash; content:"%s"; classtype:trojan-activity; sid:%d; rev:%d; metadata:%s;)`
