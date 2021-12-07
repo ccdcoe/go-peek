@@ -9,7 +9,7 @@ import (
 type DynamicSuricataEve map[string]interface{}
 
 type StaticSuricataEve struct {
-	EveBase `json:"eve_base"`
+	EveBase
 
 	Alert *EveAlert `json:"alert,omitempty"`
 
