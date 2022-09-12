@@ -23,7 +23,7 @@ import (
 	kafkaIngest "go-peek/pkg/ingest/kafka"
 	kafkaOutput "go-peek/pkg/outputs/kafka"
 
-	"github.com/markuskont/go-sigma-rule-engine/pkg/sigma/v2"
+	"github.com/markuskont/go-sigma-rule-engine"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

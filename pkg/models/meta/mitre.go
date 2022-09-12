@@ -3,7 +3,7 @@ package meta
 import (
 	"strings"
 
-	sigma "github.com/markuskont/go-sigma-rule-engine/pkg/sigma/v2"
+	"github.com/markuskont/go-sigma-rule-engine"
 )
 
 type MitreGetter interface {

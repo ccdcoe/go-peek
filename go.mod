@@ -9,11 +9,10 @@ require (
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gorilla/mux v1.8.0
-	github.com/influxdata/go-syslog v1.0.1
 	github.com/influxdata/go-syslog/v3 v3.0.0
 	github.com/json-iterator/go v1.1.12
 	github.com/klauspost/compress v1.13.6
-	github.com/markuskont/go-sigma-rule-engine v0.2.3
+	github.com/markuskont/go-sigma-rule-engine v0.3.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/olivere/elastic/v7 v7.0.29
 	github.com/onsi/ginkgo v1.11.0 // indirect
@@ -42,6 +41,7 @@ require (
 	github.com/eapache/go-resiliency v1.2.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
+	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
@@ -63,7 +63,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
-	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect

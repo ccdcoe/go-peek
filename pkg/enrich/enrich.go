@@ -15,7 +15,7 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/markuskont/go-sigma-rule-engine/pkg/sigma/v2"
+	"github.com/markuskont/go-sigma-rule-engine"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary

@@ -10,7 +10,7 @@ import (
 	"go-peek/pkg/models/atomic"
 	"go-peek/pkg/models/meta"
 
-	"github.com/markuskont/go-sigma-rule-engine/pkg/sigma/v2"
+	"github.com/markuskont/go-sigma-rule-engine"
 )
 
 type Emitter interface {
