@@ -7,7 +7,7 @@ services:
   kafka:
     image: wurstmeister/kafka
     ports:
-    - "9092:9093"
+    - "${KAFKA_PORT:-9092}:9093"
     environment:
       KAFKA_ADVERTISED_HOST_NAME: kafka
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -18,7 +18,7 @@ services:
   kafdrop:
     image: obsidiandynamics/kafdrop
     ports:
-      - 9000:9000
+    - "${KAFDROP_PORT:-9000}:9000"
     environment:
       KAFKA_BROKERCONNECT: "kafka:9092"
       JVM_OPTS: "-Xms32M -Xmx64M"
@@ -26,7 +26,7 @@ services:
   elastic:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.15.1
     ports:
-    - "9200:9200"
+    - "${ELASTIC_PORT:-9200}:9200"
     environment:
       - node.name=elastic-peek
       - cluster.name=elastic-peek
