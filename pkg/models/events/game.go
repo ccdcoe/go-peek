@@ -208,9 +208,7 @@ func (s Suricata) GetMitreAttack() *meta.MitreAttack {
 		if len(val) != 1 {
 			return nil
 		}
-		return &meta.MitreAttack{
-			Techniques: []meta.Technique{meta.Technique{ID: val[0]}},
-		}
+		return &meta.MitreAttack{Techniques: []meta.Technique{{ID: val[0]}}}
 	}
 	return nil
 }
