@@ -14,11 +14,13 @@ func Throw(context string, err error, logger *logrus.Logger) {
 	if context == "" {
 		context = "app"
 	}
-	switch err.(type) {
-	case *providentia.ErrMissingInstances:
-		logger.Warn(err)
-	default:
-		panic(fmt.Errorf("%s: %s ", context, err))
+	if err != nil {
+		switch err.(type) {
+		case *providentia.ErrMissingInstances:
+			logger.Warn(err)
+		default:
+			panic(fmt.Errorf("%s: %s ", context, err))
+		}
 	}
 }
 
