@@ -92,11 +92,16 @@ var providentiaCmd = &cobra.Command{
 				logger.WithFields(logrus.Fields{}).Error(err)
 				return
 			}
-			logger.WithFields(logrus.Fields{
+			l := logger.WithFields(logrus.Fields{
 				"results":  len(targets),
 				"url":      viper.GetString(cmd.Name() + ".url"),
 				"endpoint": "targets",
-			}).Info("API call done")
+			})
+			if len(targets) == 0 {
+				l.Error("API call done, no inventory extracted")
+			} else {
+				l.Info("API call done")
+			}
 
 			mapped, err := providentia.MapTargets(targets, m)
 			app.Throw("target renaming", err)
