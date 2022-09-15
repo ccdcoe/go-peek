@@ -125,6 +125,11 @@ var providentiaCmd = &cobra.Command{
 			}
 		}
 
+		if viper.GetBool(cmd.Name() + ".oneshot") {
+			fn()
+			return
+		}
+
 		fn()
 	loop:
 		for {
@@ -149,6 +154,9 @@ func init() {
 
 	providentiaCmd.PersistentFlags().Duration("interval", 5*time.Minute, "Sleep between API calls")
 	viper.BindPFlag(providentiaCmd.Name()+".interval", providentiaCmd.PersistentFlags().Lookup("interval"))
+
+	providentiaCmd.PersistentFlags().Bool("oneshot", false, "Only run once and exit.")
+	viper.BindPFlag(providentiaCmd.Name()+".oneshot", providentiaCmd.PersistentFlags().Lookup("oneshot"))
 
 	app.RegisterOutputKafka(providentiaCmd.Name(), providentiaCmd.PersistentFlags())
 }
