@@ -13,8 +13,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -44,38 +42,64 @@ type network struct {
 	IPv6 string `json:"ipv6"`
 }
 
-type Targets []Target
-
 type MappedTarget struct {
-	Target Target `json:"target"`
-	Alias  string `json:"alias"`
+	Target  Instance `json:"target"`
+	Alias   string   `json:"alias"`
+	Records []Record `json:"records"`
 }
 
 type Target struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Owner string `json:"owner"`
-	Team  struct {
-		Name      string `json:"name"`
-		BTVisible bool   `json:"bt_visible"`
-	} `json:"team"`
+	ID                      string        `json:"id"`
+	Owner                   string        `json:"owner"`
+	Description             string        `json:"description"`
+	Role                    string        `json:"role"`
+	TeamName                string        `json:"team_name"`
+	BtVisible               bool          `json:"bt_visible"`
+	HardwareCPU             int           `json:"hardware_cpu"`
+	HardwareRAM             int           `json:"hardware_ram"`
+	HardwarePrimaryDiskSize int           `json:"hardware_primary_disk_size"`
+	Tags                    []string      `json:"tags"`
+	Capabilities            []interface{} `json:"capabilities"`
+	Services                []interface{} `json:"services"`
+	SequenceTag             interface{}   `json:"sequence_tag"`
+	SequenceTotal           interface{}   `json:"sequence_total"`
+	Instances               []Instance    `json:"instances"`
+}
 
-	Vars struct {
-		ID       string    `json:"id"`
-		Role     string    `json:"role"`
-		Hostname string    `json:"hostname"`
-		Networks []network `json:"networks"`
-		Groups   []string  `json:"groups"`
-	} `json:"vars"`
-
-	Groups []string `json:"groups,omitempty"`
+type Instance struct {
+	ID                string `json:"id"`
+	VMName            string `json:"vm_name"`
+	TeamUniqueID      string `json:"team_unique_id"`
+	Hostname          string `json:"hostname"`
+	Domain            string `json:"domain"`
+	Fqdn              string `json:"fqdn"`
+	ConnectionAddress string `json:"connection_address"`
+	Interfaces        []struct {
+		NetworkID  string `json:"network_id"`
+		CloudID    string `json:"cloud_id"`
+		Domain     string `json:"domain"`
+		Fqdn       string `json:"fqdn"`
+		Egress     bool   `json:"egress"`
+		Connection bool   `json:"connection"`
+		Addresses  []struct {
+			PoolID     string `json:"pool_id"`
+			Mode       string `json:"mode"`
+			Connection bool   `json:"connection"`
+			Address    string `json:"address"`
+			DNSEnabled bool   `json:"dns_enabled"`
+			Gateway    string `json:"gateway"`
+		} `json:"addresses"`
+	} `json:"interfaces"`
+	Checks    []interface{} `json:"checks"`
+	ConfigMap struct {
+	} `json:"config_map"`
 }
 
 func (t Target) extractOS() string {
-	if t.Groups == nil || len(t.Groups) == 0 {
+	if t.Tags == nil || len(t.Tags) == 0 {
 		return ""
 	}
-	for _, group := range t.Groups {
+	for _, group := range t.Tags {
 		if strings.HasPrefix(group, "os_") {
 			return group
 		}
@@ -83,57 +107,8 @@ func (t Target) extractOS() string {
 	return "unk"
 }
 
-func (t Target) extract(alias string, logger *logrus.Logger) []Record {
-	tx := make([]Record, 0)
-	for _, nw := range t.Vars.Networks {
-		if nw.IPv4 != "" {
-			if addr, _, err := net.ParseCIDR(nw.IPv4); err == nil {
-				tx = append(tx, Record{
-					AnsibleName: t.Name,
-					HostName:    t.Vars.Hostname,
-					Role:        t.Vars.Role,
-					Pretty:      alias,
-					Domain:      nw.Domain,
-					Updated:     time.Now(),
-					Addr:        addr,
-					Team:        t.Team.Name,
-					OS:          t.extractOS(),
-					NetworkName: nw.Name,
-				})
-			} else if logger != nil {
-				logger.WithFields(logrus.Fields{
-					"ip":   nw.IPv4,
-					"name": nw.Name,
-				}).Error(err)
-			}
-		}
-		if nw.IPv6 != "" {
-			if addr, _, err := net.ParseCIDR(nw.IPv6); err == nil {
-				tx = append(tx, Record{
-					AnsibleName: t.Name,
-					HostName:    t.Vars.Hostname,
-					Role:        t.Vars.Role,
-					Pretty:      alias,
-					Domain:      nw.Domain,
-					Updated:     time.Now(),
-					Addr:        addr,
-					Team:        t.Team.Name,
-					OS:          t.extractOS(),
-					NetworkName: nw.Name,
-				})
-			} else if logger != nil {
-				logger.WithFields(logrus.Fields{
-					"ip":   nw.IPv6,
-					"name": nw.Name,
-				}).Error(err)
-			}
-		}
-	}
-	return tx
-}
-
 type Response struct {
-	Hosts []Target `json:"hosts"`
+	Result []Target `json:"result"`
 }
 
 type Records []Record
@@ -159,6 +134,7 @@ type Record struct {
 	OS          string    `json:"os"`
 	NetworkName string    `json:"network_name"`
 	Updated     time.Time `json:"updated"`
+	FQDN        string    `json:"fqdn,omitempty"`
 }
 
 func (r Record) IsAsset() bool { return r.Team == "blue" }
@@ -180,12 +156,10 @@ func (r Record) VsphereCopy(vs models.AssetVcenter) Record {
 	}
 }
 
-func (r Record) FQDN() string { return r.HostName + "." + r.Domain }
-
 func (r Record) Keys() []string {
 	keys := []string{r.HostName, r.AnsibleName, r.Pretty, r.Addr.String()}
 	if r.Domain != "" {
-		keys = append(keys, r.FQDN())
+		keys = append(keys, r.FQDN)
 	}
 	out := make([]string, 0, len(keys))
 	for _, key := range keys {
@@ -213,7 +187,7 @@ func (r Record) Asset() *meta.Asset {
 	}
 }
 
-func Pull(p Params) (Targets, error) {
+func Pull(p Params) ([]Target, error) {
 	if p.URL == "" {
 		return nil, ErrMissingURL
 	}
@@ -254,28 +228,61 @@ func Pull(p Params) (Targets, error) {
 	if err := json.Unmarshal(data, &obj); err != nil {
 		return nil, ErrRespDecode{Decode: err}
 	}
-	return obj.Hosts, nil
+	return obj.Result, nil
 }
 
-func ExtractAddrs(targets []MappedTarget, logger *logrus.Logger) Records {
-	tx := make(Records, 0)
-	for _, target := range targets {
-		tx = append(tx, target.Target.extract(target.Alias, logger)...)
-	}
-	return tx
-}
-
-func MapTargets(targets Targets, anon *anonymizer.Mapper) ([]MappedTarget, error) {
+func MapTargets(targets []Target, anon *anonymizer.Mapper) ([]MappedTarget, error) {
 	tx := make([]MappedTarget, len(targets))
+	err := ErrMissingInstances{Items: make([]Target, 0)}
 	for i, tgt := range targets {
-		alias, err := anon.CheckAndUpdate(tgt.Name)
-		if err != nil {
-			return tx, err
+		if len(tgt.Instances) == 0 {
+			err.Items = append(err.Items, tgt)
 		}
-		tx[i] = MappedTarget{
-			Target: tgt,
-			Alias:  alias,
+		for _, instance := range tgt.Instances {
+			alias, err := anon.CheckAndUpdate(instance.VMName)
+			if err != nil {
+				return tx, err
+			}
+			records := make([]Record, 0)
+			for _, iface := range instance.Interfaces {
+				for _, addr := range iface.Addresses {
+					ip, _, err := net.ParseCIDR(addr.Address)
+					if err != nil {
+						return nil, err
+					}
+					if ip == nil {
+						return nil, fmt.Errorf("unable to parse %s as IP", addr.Address)
+					}
+					var os string
+					for _, tag := range tgt.Tags {
+						if strings.HasPrefix(tag, "os_") {
+							os = tag
+						}
+					}
+					records = append(records, Record{
+						AnsibleName: instance.VMName,
+						HostName:    instance.Hostname,
+						Pretty:      alias,
+						Domain:      instance.Domain,
+						Role:        tgt.Role,
+						Addr:        ip,
+						OS:          os,
+						Team:        tgt.TeamName,
+						NetworkName: iface.NetworkID,
+						Updated:     time.Now(),
+						FQDN:        instance.Fqdn,
+					})
+				}
+			}
+			tx[i] = MappedTarget{
+				Target:  instance,
+				Alias:   alias,
+				Records: records,
+			}
 		}
 	}
-	return tx, nil
+	if len(err.Items) == 0 {
+		return tx, nil
+	}
+	return tx, err
 }

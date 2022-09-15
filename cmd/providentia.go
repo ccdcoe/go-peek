@@ -105,22 +105,25 @@ var providentiaCmd = &cobra.Command{
 			}
 
 			mapped, err := providentia.MapTargets(targets, m)
-			app.Throw("target renaming", err)
+			app.Throw("target renaming", err, logger)
 			app.DumpJSON(filepath.Join(workdir, "mapped_targets.json"), mapped)
 
-			assets := providentia.ExtractAddrs(mapped, logger)
-			app.DumpJSON(filepath.Join(workdir, "assets.json"), assets)
-
 			logger.WithFields(logrus.Fields{
-				"addrs":             len(assets),
+				"addrs":             len(mapped),
 				"rename_new":        m.Misses,
 				"rename_cache_hits": m.Hits,
 			}).Info("Assets extracted")
 
+			records := make(providentia.Records, 0)
+			for _, instance := range mapped {
+				records = append(records, instance.Records...)
+			}
+			app.DumpJSON(filepath.Join(workdir, "assets.json"), records)
+
 			now := time.Now()
-			for _, item := range assets {
+			for _, item := range records {
 				encoded, err := json.Marshal(item)
-				app.Throw("Output JSON encode", err)
+				app.Throw("Output JSON encode", err, logger)
 				if viper.GetBool(cmd.Name() + ".output.kafka.enabled") {
 					tx <- consumer.Message{
 						Data: encoded,
