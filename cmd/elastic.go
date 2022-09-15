@@ -42,7 +42,7 @@ var elasticCmd = &cobra.Command{
 			Ctx:           ctxReader,
 			OffsetMode:    kafkaOffset,
 		})
-		app.Throw("kafka consumer", err)
+		app.Throw("kafka consumer", err, logger)
 
 		rx := input.Messages()
 		tx := make(chan consumer.Message, 0)
@@ -73,11 +73,11 @@ var elasticCmd = &cobra.Command{
 				return fmt.Sprintf("%s-%s-%s", prefix, topic, timestamp.Format(elastic.TimeFmt))
 			},
 		})
-		app.Throw(cmd.Name()+" output create", err)
+		app.Throw(cmd.Name()+" output create", err, logger)
 
 		logrus.Debug("starting up writer")
 		ctxWriter, cancelWriter := context.WithCancel(context.Background())
-		app.Throw("writer routine create", writer.Do(ctxWriter, &wg))
+		app.Throw("writer routine create", writer.Do(ctxWriter, &wg), logger)
 
 		chTerminate := make(chan os.Signal, 1)
 		signal.Notify(chTerminate, os.Interrupt, syscall.SIGTERM)

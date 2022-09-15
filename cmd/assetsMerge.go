@@ -46,7 +46,7 @@ var assetsMergeCmd = &cobra.Command{
 			Ctx:        ctxReader,
 			OffsetMode: kafkaOffset,
 		})
-		app.Throw(cmd.Name()+" asset stream setup", err)
+		app.Throw(cmd.Name()+" asset stream setup", err, logger)
 		defer ctxCancel()
 
 		tx := make(chan consumer.Message, 0)
@@ -57,7 +57,7 @@ var assetsMergeCmd = &cobra.Command{
 			Brokers: viper.GetStringSlice(cmd.Name() + ".output.kafka.brokers"),
 			Logger:  logger,
 		})
-		app.Throw("Sarama producer init", err)
+		app.Throw("Sarama producer init", err, logger)
 		producer.Feed(tx, cmd.Name()+" producer", ctxWriter, func(m consumer.Message) string {
 			return viper.GetString(cmd.Name() + ".output.kafka.topic")
 		}, &wg)

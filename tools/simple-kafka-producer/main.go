@@ -32,7 +32,7 @@ func main() {
 	flag.Parse()
 
 	if *FlagKafkaTopic == "" {
-		app.Throw("setup", fmt.Errorf("missing kafka topic"))
+		app.Throw("setup", fmt.Errorf("missing kafka topic"), logger)
 	}
 
 	var wg sync.WaitGroup
@@ -44,7 +44,7 @@ func main() {
 		Logger:       logger,
 		SaramaConfig: kafka.NewDefaultConfig().SaramaConfig,
 	})
-	app.Throw("setup", err)
+	app.Throw("setup", err, logger)
 	defer producer.Close()
 
 	tx := make(chan consumer.Message, 0)
@@ -56,12 +56,12 @@ func main() {
 	var reader io.Reader
 	if path := *FlagInputFile; path != "" {
 		f, err := os.Open(*FlagInputFile)
-		app.Throw(fmt.Sprintf("setup: file input: %s", *FlagInputFile), err)
+		app.Throw(fmt.Sprintf("setup: file input: %s", *FlagInputFile), err, logger)
 		defer f.Close()
 
 		if *FlagInputGzip {
 			gReader, err := gzip.NewReader(bufio.NewReader(f))
-			app.Throw(fmt.Sprintf("setup: gzip input: %s", *FlagInputFile), err)
+			app.Throw(fmt.Sprintf("setup: gzip input: %s", *FlagInputFile), err, logger)
 			defer gReader.Close()
 			reader = gReader
 		} else {
@@ -86,7 +86,7 @@ func main() {
 		}
 		count++
 	}
-	app.Throw("teardown", scanner.Err())
+	app.Throw("teardown", scanner.Err(), logger)
 	logger.WithFields(logrus.Fields{
 		"broker":   *FlagKafkaBroker,
 		"topic":    *FlagKafkaTopic,

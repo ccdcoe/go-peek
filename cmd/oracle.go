@@ -42,7 +42,7 @@ var oracleCmd = &cobra.Command{
 
 		workdir := viper.GetString("work.dir")
 		if workdir == "" {
-			app.Throw("app init", errors.New("missing working directory"))
+			app.Throw("app init", errors.New("missing working directory"), logger)
 		}
 		workdir = path.Join(workdir, cmd.Name())
 		ctxPersist, cancelPersist := context.WithCancel(context.Background())
@@ -54,7 +54,7 @@ var oracleCmd = &cobra.Command{
 			Ctx:           ctxPersist,
 			Logger:        logger,
 		})
-		app.Throw("persist setup", err)
+		app.Throw("persist setup", err, logger)
 		defer persist.Close()
 		defer cancelPersist()
 
@@ -77,7 +77,7 @@ var oracleCmd = &cobra.Command{
 			Ctx:        ctxReader,
 			OffsetMode: kafkaOffset,
 		})
-		app.Throw(cmd.Name()+" event stream setup", err)
+		app.Throw(cmd.Name()+" event stream setup", err, logger)
 		defer cancelReader()
 
 		chTerminate := make(chan os.Signal, 1)
@@ -92,7 +92,7 @@ var oracleCmd = &cobra.Command{
 		if err != nil && err == badger.ErrKeyNotFound {
 			logger.Warn("no persistance to load")
 		} else if err != nil {
-			app.Throw("persist load", err)
+			app.Throw("persist load", err, logger)
 		}
 
 		tickUpdateData := time.NewTicker(5 * time.Second)

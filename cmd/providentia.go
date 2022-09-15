@@ -47,7 +47,7 @@ var providentiaCmd = &cobra.Command{
 				Brokers: viper.GetStringSlice(cmd.Name() + ".output.kafka.brokers"),
 				Logger:  logger,
 			})
-			app.Throw("Sarama producer init", err)
+			app.Throw("Sarama producer init", err, logger)
 			topic := viper.GetString(cmd.Name() + ".output.kafka.topic")
 			producer.Feed(tx, cmd.Name()+" producer", ctx, func(m consumer.Message) string {
 				return topic
@@ -56,7 +56,7 @@ var providentiaCmd = &cobra.Command{
 
 		workdir := viper.GetString("work.dir")
 		if workdir == "" {
-			app.Throw("app init", errors.New("missing working directory"))
+			app.Throw("app init", errors.New("missing working directory"), logger)
 		}
 		workdir = path.Join(workdir, cmd.Name())
 
@@ -68,7 +68,7 @@ var providentiaCmd = &cobra.Command{
 			Ctx:           context.TODO(),
 			Logger:        logger,
 		})
-		app.Throw("persist setup", err)
+		app.Throw("persist setup", err, logger)
 		defer persist.Close()
 
 		m, err := anonymizer.NewMapper(
@@ -77,7 +77,7 @@ var providentiaCmd = &cobra.Command{
 				Logger:  logger,
 			},
 		)
-		app.Throw("Anonymizer creation", err)
+		app.Throw("Anonymizer creation", err, logger)
 
 		chTerminate := make(chan os.Signal, 1)
 		signal.Notify(chTerminate, os.Interrupt, syscall.SIGTERM)

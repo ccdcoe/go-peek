@@ -41,7 +41,7 @@ var preprocessCmd = &cobra.Command{
 		topics, err := app.ParseKafkaTopicItems(
 			viper.GetStringSlice(cmd.Name() + ".input.kafka.topic_map"),
 		)
-		app.Throw("topic map parse", err)
+		app.Throw("topic map parse", err, logger)
 
 		logger.Info("Creating kafka consumer")
 		input, err := kafkaIngest.NewConsumer(&kafkaIngest.Config{
@@ -52,7 +52,7 @@ var preprocessCmd = &cobra.Command{
 			Ctx:           ctxReader,
 			OffsetMode:    kafkaIngest.OffsetLastCommit,
 		})
-		app.Throw("kafka consumer", err)
+		app.Throw("kafka consumer", err, logger)
 
 		topicMapFn := topics.TopicMap()
 
@@ -65,7 +65,7 @@ var preprocessCmd = &cobra.Command{
 			Brokers: viper.GetStringSlice(cmd.Name() + ".output.kafka.brokers"),
 			Logger:  logger,
 		})
-		app.Throw("Sarama producer init", err)
+		app.Throw("Sarama producer init", err, logger)
 		topic := viper.GetString(cmd.Name() + ".output.kafka.topic")
 		producer.Feed(tx, cmd.Name()+" producer", ctxWriter, func(m consumer.Message) string {
 			if m.Key != "" {
@@ -184,10 +184,10 @@ var preprocessCmd = &cobra.Command{
 			}
 			return scanner.Err()
 		}, viper.GetInt(cmd.Name()+".input.syslog.udp.port"))
-		app.Throw("udp syslog setup", err)
+		app.Throw("udp syslog setup", err, logger)
 
 		ctxUDPSyslog, cancelUDPSyslog := context.WithCancel(context.Background())
-		app.Throw("udp syslog worker spawn", udpSyslogSuricata.Run(&wg, ctxUDPSyslog))
+		app.Throw("udp syslog worker spawn", udpSyslogSuricata.Run(&wg, ctxUDPSyslog), logger)
 
 		report := time.NewTicker(15 * time.Second)
 		defer report.Stop()

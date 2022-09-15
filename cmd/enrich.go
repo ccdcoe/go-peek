@@ -49,7 +49,7 @@ var enrichCmd = &cobra.Command{
 		topics, err := app.ParseKafkaTopicItems(
 			viper.GetStringSlice(cmd.Name() + ".input.kafka.topic_map"),
 		)
-		app.Throw("topic map parse", err)
+		app.Throw("topic map parse", err, logger)
 
 		logger.Info("Creating kafka consumer for event stream")
 		streamEvents, err := kafkaIngest.NewConsumer(&kafkaIngest.Config{
@@ -60,7 +60,7 @@ var enrichCmd = &cobra.Command{
 			Ctx:           ctxReader,
 			OffsetMode:    kafkaOffset,
 		})
-		app.Throw(cmd.Name()+" event stream setup", err)
+		app.Throw(cmd.Name()+" event stream setup", err, logger)
 
 		logger.Info("Creating kafka consumer for asset stream")
 		streamAssets, err := kafkaIngest.NewConsumer(&kafkaIngest.Config{
@@ -71,7 +71,7 @@ var enrichCmd = &cobra.Command{
 			Ctx:           ctxReader,
 			OffsetMode:    kafkaOffset,
 		})
-		app.Throw(cmd.Name()+" asset stream setup", err)
+		app.Throw(cmd.Name()+" asset stream setup", err, logger)
 
 		logger.Info("Creating kafka consumer for sid map stream")
 		streamSidMap, err := kafkaIngest.NewConsumer(&kafkaIngest.Config{
@@ -82,7 +82,7 @@ var enrichCmd = &cobra.Command{
 			Ctx:           ctxReader,
 			OffsetMode:    kafkaOffset,
 		})
-		app.Throw(cmd.Name()+" sid map stream setup", err)
+		app.Throw(cmd.Name()+" sid map stream setup", err, logger)
 
 		tx := make(chan consumer.Message, 0)
 		defer close(tx)
@@ -91,7 +91,7 @@ var enrichCmd = &cobra.Command{
 			Brokers: viper.GetStringSlice(cmd.Name() + ".output.kafka.brokers"),
 			Logger:  logger,
 		})
-		app.Throw("Sarama producer init", err)
+		app.Throw("Sarama producer init", err, logger)
 		topic := viper.GetString(cmd.Name() + ".output.kafka.topic")
 		streamOutput.Feed(tx, cmd.Name()+" output producer", context.TODO(),
 			func(m consumer.Message) string {
@@ -114,7 +114,7 @@ var enrichCmd = &cobra.Command{
 
 		workdir := viper.GetString("work.dir")
 		if workdir == "" {
-			app.Throw("app init", errors.New("missing working directory"))
+			app.Throw("app init", errors.New("missing working directory"), logger)
 		}
 		workdir = path.Join(workdir, cmd.Name())
 
@@ -127,7 +127,7 @@ var enrichCmd = &cobra.Command{
 			Ctx:           ctxPersist,
 			Logger:        logger,
 		})
-		app.Throw("persist setup", err)
+		app.Throw("persist setup", err, logger)
 		defer persist.Close()
 		defer cancelPersist()
 
@@ -137,7 +137,7 @@ var enrichCmd = &cobra.Command{
 		if err != nil && err == app.ErrInvalidTopicFlags {
 			logger.Warn("no sigma rulesets found, IDS feature is disabled")
 		} else {
-			app.Throw("sigma ruleset init", err)
+			app.Throw("sigma ruleset init", err, logger)
 		}
 
 		sigmaRuleMap := make(map[events.Atomic]sigma.Ruleset)
@@ -149,7 +149,7 @@ var enrichCmd = &cobra.Command{
 			ruleset, err := sigma.NewRuleset(sigma.Config{
 				Directory: []string{rs.Topic},
 			})
-			app.Throw("sigma "+rs.Topic+" init", err)
+			app.Throw("sigma "+rs.Topic+" init", err, logger)
 			sigmaRuleMap[rs.Type] = *ruleset
 			logger.WithFields(logrus.Fields{
 				"path":         rs.Topic,
@@ -171,7 +171,7 @@ var enrichCmd = &cobra.Command{
 				Sigma: sigmaRuleMap,
 			},
 		)
-		app.Throw("enrich handler create", err)
+		app.Throw("enrich handler create", err, logger)
 		defer func() {
 			if err := enricher.Close(); err != nil {
 				logger.WithField("err", err).Error("problem closing enricher")

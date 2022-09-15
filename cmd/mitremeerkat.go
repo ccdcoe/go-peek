@@ -29,7 +29,7 @@ var mitremeerkatCmd = &cobra.Command{
 		csvPath := viper.GetString(cmd.Name() + ".input.file")
 		logger.WithField("path", csvPath).Info("parsing csv")
 		mappings, err := mitremeerkat.ParseCSV(csvPath)
-		app.Throw("CSV parse", err)
+		app.Throw("CSV parse", err, logger)
 
 		logger.WithField("items", len(mappings)).Info("csv parse done")
 
@@ -40,7 +40,7 @@ var mitremeerkatCmd = &cobra.Command{
 			Brokers: viper.GetStringSlice(cmd.Name() + ".output.kafka.brokers"),
 			Logger:  logger,
 		})
-		app.Throw("Sarama producer init", err)
+		app.Throw("Sarama producer init", err, logger)
 		defer output.Close()
 
 		topic := viper.GetString(cmd.Name() + ".output.kafka.topic")

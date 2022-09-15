@@ -30,7 +30,7 @@ var archiveCmd = &cobra.Command{
 
 		folder := viper.GetString(cmd.Name() + ".output.folder")
 		if folder == "" {
-			app.Throw("init", fmt.Errorf("Please configure output folder"))
+			app.Throw("init", fmt.Errorf("Please configure output folder"), logger)
 		}
 
 		ctxReader, cancelReader := context.WithCancel(context.Background())
@@ -46,7 +46,7 @@ var archiveCmd = &cobra.Command{
 			Ctx:           ctxReader,
 			OffsetMode:    kafkaOffset,
 		})
-		app.Throw("archive consumer", err)
+		app.Throw("archive consumer", err, logger)
 
 		logger.Debug("creating channels")
 		rx := input.Messages()
@@ -60,11 +60,11 @@ var archiveCmd = &cobra.Command{
 			Stream:         tx,
 			Logger:         logger,
 		})
-		app.Throw("logfile output creation", err)
+		app.Throw("logfile output creation", err, logger)
 
 		logrus.Debug("starting up writer")
 		ctxWriter, cancelWriter := context.WithCancel(context.Background())
-		app.Throw("writer routine create", arch.Do(ctxWriter, &wg))
+		app.Throw("writer routine create", arch.Do(ctxWriter, &wg), logger)
 
 		chTerminate := make(chan os.Signal, 1)
 		signal.Notify(chTerminate, os.Interrupt, syscall.SIGTERM)
@@ -81,7 +81,7 @@ var archiveCmd = &cobra.Command{
 			case <-chTerminate:
 				break loop
 			case err := <-arch.Errors:
-				app.Throw("writer error", err)
+				app.Throw("writer error", err, logger)
 			}
 		}
 		cancelReader()

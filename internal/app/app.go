@@ -3,17 +3,21 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"go-peek/pkg/providentia"
 	"os"
 	"time"
 
 	"github.com/sirupsen/logrus"
 )
 
-func Throw(context string, err error) {
+func Throw(context string, err error, logger *logrus.Logger) {
 	if context == "" {
 		context = "app"
 	}
-	if err != nil {
+	switch err.(type) {
+	case *providentia.ErrMissingInstances:
+		logger.Warn(err)
+	default:
 		panic(fmt.Errorf("%s: %s ", context, err))
 	}
 }
