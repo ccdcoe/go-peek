@@ -99,6 +99,7 @@ var providentiaCmd = &cobra.Command{
 			})
 			if len(targets) == 0 {
 				l.Error("API call done, no inventory extracted")
+				return
 			} else {
 				l.Info("API call done")
 			}
