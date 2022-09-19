@@ -125,13 +125,11 @@ var assetsMergeCmd = &cobra.Command{
 						}).Error("unable to parse asset")
 						continue loop
 					}
-					if len(seenRecords) > 0 {
-						if val, ok := seenRecords[obj.AnsibleName]; ok {
-							out = val.VsphereCopy(obj)
-							key = obj.IP.String()
-							seenAddrs[obj.IP.String()] = true
-							counts.NewAssetsFound++
-						}
+					if val, ok := seenRecords[obj.AnsibleName]; ok {
+						out = val.VsphereCopy(obj)
+						key = obj.IP.String()
+						seenAddrs[obj.IP.String()] = true
+						counts.NewAssetsFound++
 					}
 
 					counts.TotalVcenter++
