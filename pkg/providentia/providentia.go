@@ -148,7 +148,7 @@ func (r Record) VsphereCopy(vs models.AssetVcenter) Record {
 		Pretty:      r.Pretty,
 		Domain:      r.Domain,
 		Role:        r.Role,
-		Addr:        vs.IP,
+		Addr:        vs.IP.IP,
 		Team:        r.Team,
 		OS:          r.OS,
 		NetworkName: r.NetworkName,
