@@ -11,6 +11,7 @@ import (
 	"go-peek/pkg/providentia"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -105,7 +106,11 @@ var assetsMergeCmd = &cobra.Command{
 						}).Error("unable to parse asset")
 						continue loop
 					}
-					seenRecords[obj.AnsibleName] = obj
+					lookupKey := strings.TrimLeft(
+						obj.AnsibleName,
+						viper.GetString(cmd.Name()+".strip_prefix"),
+					)
+					seenRecords[lookupKey] = obj
 
 					out = obj
 					key = obj.Addr.String()
@@ -123,7 +128,11 @@ var assetsMergeCmd = &cobra.Command{
 						}).Error("unable to parse asset")
 						continue loop
 					}
-					if val, ok := seenRecords[obj.AnsibleName]; ok {
+					lookupKey := strings.TrimLeft(
+						obj.AnsibleName,
+						viper.GetString(cmd.Name()+".strip_prefix"),
+					)
+					if val, ok := seenRecords[lookupKey]; ok {
 						out = val.VsphereCopy(obj)
 						key = obj.IP.String()
 						counts.NewAssetsFound++
@@ -160,6 +169,9 @@ var assetsMergeCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(assetsMergeCmd)
+
+	assetsMergeCmd.PersistentFlags().String("strip-prefix", "", "Strip this prefix from asset key.")
+	viper.BindPFlag(assetsMergeCmd.Name()+".strip_prefix", assetsMergeCmd.PersistentFlags().Lookup("strip-prefix"))
 
 	app.RegisterInputKafkaAssetMerge(assetsMergeCmd.Name(), assetsMergeCmd.PersistentFlags())
 	app.RegisterOutputKafka(assetsMergeCmd.Name(), assetsMergeCmd.PersistentFlags())
