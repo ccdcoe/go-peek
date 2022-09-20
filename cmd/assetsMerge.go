@@ -129,13 +129,26 @@ var assetsMergeCmd = &cobra.Command{
 						continue loop
 					}
 					lookupKey := strings.TrimLeft(
-						obj.AnsibleName,
+						obj.Name,
 						viper.GetString(cmd.Name()+".strip_prefix"),
 					)
+					if lookupKey == "" {
+						logger.
+							WithField("ip", obj.IP).
+							WithField("name", obj.HostName).
+							WithField("raw", string(msg.Data)).
+							Error("missing lookup key")
+					}
 					if val, ok := seenRecords[lookupKey]; ok {
-						out = val.VsphereCopy(obj)
+						cpy := val.VsphereCopy(obj)
+						out = cpy
 						key = obj.IP.String()
 						counts.NewAssetsFound++
+						logger.
+							WithField("key", lookupKey).
+							WithField("pretty", cpy.Pretty).
+							WithField("ip", cpy.Addr).
+							Trace("vcenter mapping pickup")
 					}
 
 					counts.TotalVcenter++

@@ -22,11 +22,11 @@ func (n *ipNet) UnmarshalJSON(b []byte) error {
 }
 
 type AssetVcenter struct {
-	TS          time.Time `json:"ts"`
-	AnsibleName string    `json:"ansible_name"`
-	HostName    string    `json:"host_name"`
-	Domain      string    `json:"domain"`
-	IP          *ipNet    `json:"ip"`
-	MAC         string    `json:"mac"`
-	Team        string    `json:"team"`
+	TS       time.Time `json:"ts"`
+	Name     string    `json:"name"`
+	HostName string    `json:"host_name"`
+	Domain   string    `json:"domain"`
+	IP       *ipNet    `json:"ip"`
+	MAC      string    `json:"mac"`
+	Team     string    `json:"team"`
 }
