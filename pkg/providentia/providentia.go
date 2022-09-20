@@ -233,9 +233,9 @@ func Pull(p Params) ([]Target, error) {
 }
 
 func MapTargets(targets []Target, anon *anonymizer.Mapper) ([]MappedTarget, error) {
-	tx := make([]MappedTarget, len(targets))
+	tx := make([]MappedTarget, 0)
 	err := ErrMissingInstances{Items: make([]Target, 0)}
-	for i, tgt := range targets {
+	for _, tgt := range targets {
 		if len(tgt.Instances) == 0 {
 			err.Items = append(err.Items, tgt)
 		}
@@ -275,11 +275,11 @@ func MapTargets(targets []Target, anon *anonymizer.Mapper) ([]MappedTarget, erro
 					})
 				}
 			}
-			tx[i] = MappedTarget{
+			tx = append(tx, MappedTarget{
 				Target:  instance,
 				Alias:   alias,
 				Records: records,
-			}
+			})
 		}
 	}
 	if len(err.Items) == 0 {
