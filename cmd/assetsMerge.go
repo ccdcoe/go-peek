@@ -63,7 +63,6 @@ var assetsMergeCmd = &cobra.Command{
 		}, &wg)
 		defer cancelWriter()
 
-		seenAddrs := make(map[string]bool)
 		seenRecords := make(map[string]providentia.Record)
 
 		chTerminate := make(chan os.Signal, 1)
@@ -106,7 +105,6 @@ var assetsMergeCmd = &cobra.Command{
 						}).Error("unable to parse asset")
 						continue loop
 					}
-					seenAddrs[obj.Addr.String()] = true
 					seenRecords[obj.AnsibleName] = obj
 
 					out = obj
@@ -128,7 +126,6 @@ var assetsMergeCmd = &cobra.Command{
 					if val, ok := seenRecords[obj.AnsibleName]; ok {
 						out = val.VsphereCopy(obj)
 						key = obj.IP.String()
-						seenAddrs[obj.IP.String()] = true
 						counts.NewAssetsFound++
 					}
 
