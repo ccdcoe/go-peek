@@ -120,6 +120,7 @@ var providentiaCmd = &cobra.Command{
 			}
 			app.DumpJSON(filepath.Join(workdir, "assets.json"), records)
 
+			var count int
 			now := time.Now()
 			for _, item := range records {
 				encoded, err := json.Marshal(item)
@@ -130,8 +131,13 @@ var providentiaCmd = &cobra.Command{
 						Time: now,
 						Key:  cmd.Name(),
 					}
+					count++
 				}
 			}
+			logger.
+				WithField("count", count).
+				WithField("took", time.Since(now)).
+				Debug("sent items to kafka")
 		}
 
 		if viper.GetBool(cmd.Name() + ".oneshot") {
