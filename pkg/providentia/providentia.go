@@ -153,6 +153,7 @@ func (r Record) VsphereCopy(vs models.AssetVcenter) Record {
 		OS:          r.OS,
 		NetworkName: r.NetworkName,
 		Updated:     vs.TS,
+		FQDN:        r.FQDN,
 	}
 }
 
@@ -260,7 +261,7 @@ func MapTargets(targets []Target, anon *anonymizer.Mapper) ([]MappedTarget, erro
 						}
 					}
 					records = append(records, Record{
-						AnsibleName: instance.VMName,
+						AnsibleName: instance.ID,
 						HostName:    instance.Hostname,
 						Pretty:      alias,
 						Domain:      instance.Domain,
