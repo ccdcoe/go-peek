@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"go-peek/internal/app"
 	kafkaIngest "go-peek/pkg/ingest/kafka"
 	"go-peek/pkg/models"
@@ -11,6 +12,8 @@ import (
 	"go-peek/pkg/providentia"
 	"os"
 	"os/signal"
+	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -30,6 +33,13 @@ var assetsMergeCmd = &cobra.Command{
 
 		defer app.Catch(logger)
 		defer app.Done(cmd.Name(), start, logger)
+
+		workdir := viper.GetString("work.dir")
+		if workdir == "" {
+			app.Throw("app init", errors.New("missing working directory"), logger)
+		}
+		workdir = path.Join(workdir, cmd.Name())
+		_ = os.Mkdir(workdir, os.ModePerm)
 
 		var wg sync.WaitGroup
 		defer wg.Wait()
@@ -65,15 +75,17 @@ var assetsMergeCmd = &cobra.Command{
 		defer cancelWriter()
 
 		seenRecords := make(map[string]providentia.Record)
+		badLookups := make(map[string]bool)
 
 		chTerminate := make(chan os.Signal, 1)
 		signal.Notify(chTerminate, os.Interrupt, syscall.SIGTERM)
 
 		var counts struct {
-			TotalVcenter     uint
-			TotalProvidentia uint
-			NewAssetsFound   uint
-			NewAssetsSent    uint
+			TotalVcenter         uint
+			TotalProvidentia     uint
+			NewAssetsFound       uint
+			NewAssetsSent        uint
+			MissedVcenterLookups uint
 		}
 
 		report := time.NewTicker(5 * time.Second)
@@ -84,6 +96,10 @@ var assetsMergeCmd = &cobra.Command{
 			select {
 			case <-report.C:
 				logger.Infof("%+v", counts)
+				app.DumpJSON(filepath.Join(workdir, "seen_records.json"), seenRecords)
+				if len(badLookups) > 0 {
+					app.DumpJSON(filepath.Join(workdir, "bad_lookups.json"), badLookups)
+				}
 			case <-chTerminate:
 				break loop
 			case msg, ok := <-input.Messages():
@@ -149,6 +165,15 @@ var assetsMergeCmd = &cobra.Command{
 							WithField("pretty", cpy.Pretty).
 							WithField("ip", cpy.Addr).
 							Trace("vcenter mapping pickup")
+						if badLookups[lookupKey] {
+							delete(badLookups, lookupKey)
+						}
+					} else {
+						counts.MissedVcenterLookups++
+						logger.
+							WithField("key", lookupKey).
+							Warning("lookup fail")
+						badLookups[lookupKey] = true
 					}
 
 					counts.TotalVcenter++
