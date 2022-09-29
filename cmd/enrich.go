@@ -301,7 +301,6 @@ var enrichCmd = &cobra.Command{
 				tx <- consumer.Message{
 					Data:  encoded,
 					Time:  event.Time(),
-					Key:   kind.String(),
 					Event: kind,
 				}
 
