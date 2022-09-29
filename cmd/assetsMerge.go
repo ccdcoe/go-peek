@@ -44,7 +44,9 @@ var assetsMergeCmd = &cobra.Command{
 		var wg sync.WaitGroup
 		defer wg.Wait()
 
-		ctxReader, ctxCancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		logger.Info("Creating kafka consumer for asset stream")
 		input, err := kafkaIngest.NewConsumer(&kafkaIngest.Config{
 			Name:          cmd.Name() + " event stream",
@@ -54,25 +56,22 @@ var assetsMergeCmd = &cobra.Command{
 				viper.GetString(cmd.Name() + ".input.kafka.topic_assets_providentia"),
 				viper.GetString(cmd.Name() + ".input.kafka.topic_assets_vcenter"),
 			},
-			Ctx:        ctxReader,
+			Ctx:        ctx,
 			OffsetMode: kafkaOffset,
 		})
 		app.Throw(cmd.Name()+" asset stream setup", err, logger)
-		defer ctxCancel()
 
 		tx := make(chan consumer.Message, 0)
 		defer close(tx)
 
-		ctxWriter, cancelWriter := context.WithCancel(context.Background())
 		producer, err := kafkaOutput.NewProducer(&kafkaOutput.Config{
 			Brokers: viper.GetStringSlice(cmd.Name() + ".output.kafka.brokers"),
 			Logger:  logger,
 		})
 		app.Throw("Sarama producer init", err, logger)
-		producer.Feed(tx, cmd.Name()+" producer", ctxWriter, func(m consumer.Message) string {
+		producer.Feed(tx, cmd.Name()+" producer", ctx, func(m consumer.Message) string {
 			return viper.GetString(cmd.Name() + ".output.kafka.topic")
 		}, &wg)
-		defer cancelWriter()
 
 		seenRecords := make(map[string]providentia.Record)
 		badLookups := make(map[string]bool)
