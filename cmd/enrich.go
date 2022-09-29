@@ -105,7 +105,7 @@ var enrichCmd = &cobra.Command{
 					return viper.GetString(cmd.Name() + ".output.kafka.topic_emit")
 				}
 				if viper.GetBool(cmd.Name() + ".output.kafka.topic_split") {
-					return topic + "-" + m.Key
+					return topic + "-" + m.Source
 				}
 				return topic
 			}, &wg)
@@ -299,9 +299,10 @@ var enrichCmd = &cobra.Command{
 
 				// send to generic topics
 				tx <- consumer.Message{
-					Data:  encoded,
-					Time:  event.Time(),
-					Event: kind,
+					Data:   encoded,
+					Time:   event.Time(),
+					Event:  kind,
+					Source: kind.String(),
 				}
 
 			case <-chTerminate:
