@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -73,7 +72,6 @@ type Handle struct {
 	indexer *olivere.BulkProcessor
 	client  *olivere.Client
 	active  bool
-	feeders *sync.WaitGroup
 	RX      <-chan consumer.Message
 	Fn      consumer.TopicMapFn
 	Logger  *logrus.Logger
@@ -109,8 +107,7 @@ func NewHandle(c *Config) (*Handle, error) {
 		return nil, err
 	}
 	h := &Handle{
-		client:  client,
-		feeders: &sync.WaitGroup{},
+		client: client,
 	}
 	b, err := client.BulkProcessor().
 		Workers(c.Workers).
@@ -131,14 +128,6 @@ func NewHandle(c *Config) (*Handle, error) {
 	h.Fn = c.Fn
 
 	return h, nil
-}
-
-func (h Handle) add(item []byte, idx string) {
-	h.indexer.Add(
-		olivere.NewBulkIndexRequest().
-			Index(idx).
-			Doc(json.RawMessage(item)),
-	)
 }
 
 func (h Handle) Do(ctx context.Context, wg *sync.WaitGroup) error {
@@ -168,7 +157,11 @@ func (h Handle) Do(ctx context.Context, wg *sync.WaitGroup) error {
 				if !ok {
 					break loop
 				}
-				h.add(msg.Data, h.Fn(msg))
+				h.indexer.Add(
+					olivere.NewBulkIndexRequest().
+						Index(h.Fn(msg)).
+						Doc(json.RawMessage(msg.Data)),
+				)
 			case <-ctx.Done():
 				break loop
 			}
@@ -177,80 +170,11 @@ func (h Handle) Do(ctx context.Context, wg *sync.WaitGroup) error {
 	return nil
 }
 
-// Feed implements outputs.Feeder
-func (h Handle) Feed(
-	rx <-chan consumer.Message,
-	name string,
-	ctx context.Context,
-	fn consumer.TopicMapFn,
-) error {
-	if !h.active {
-		return fmt.Errorf(
-			"elastic bulk handler is not active, cannot feed to base index %s",
-			name,
-		)
-	}
-	if rx == nil {
-		return fmt.Errorf(
-			"missing channel, cannot feed elastic bulk indexer with %s",
-			name,
-		)
-	}
-
-	if fn == nil {
-		fn = func(consumer.Message) string {
-			return fmt.Sprintf(
-				"%s-%s",
-				name,
-				time.Now().Format(TimeFmt),
-			)
-		}
-	}
-
-	h.feeders.Add(1)
-	go func(ctx context.Context) {
-		defer h.feeders.Done()
-	loop:
-		for h.active {
-			select {
-			case msg, ok := <-rx:
-				if !ok {
-					break loop
-				}
-				h.add(msg.Data, fn(msg))
-			case <-ctx.Done():
-				break loop
-			}
-		}
-		// TODO: might be better handled elsewhere
-		h.indexer.Flush()
-	}(func() context.Context {
-		if ctx == nil {
-			return context.Background()
-		}
-		return ctx
-	}())
-	return nil
-}
-
-// TODO - Close and Wait are not handled well atm
-
-// Wait wraps around sync.WaitGroup to properly wait all bulk feeders to finish their work
-// then flush the tail of message bulk
-func (h Handle) Wait() {
-	if h.feeders == nil {
-		return
-	}
-	h.feeders.Wait()
-}
-
 func (h Handle) Close() error {
-	if h.indexer == nil {
-		return fmt.Errorf("unable to close elastic bulk indexer")
+	if h.indexer != nil {
+		return h.indexer.Close()
 	}
-	// may already be handled by return statement
-	h.indexer.Flush()
-	return h.indexer.Close()
+	return nil
 }
 
 func (b Handle) Stats() olivere.BulkProcessorStats {

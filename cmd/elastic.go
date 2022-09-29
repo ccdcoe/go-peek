@@ -41,6 +41,8 @@ var elasticCmd = &cobra.Command{
 			Topics:        viper.GetStringSlice(cmd.Name() + ".input.kafka.topics"),
 			Ctx:           ctxReader,
 			OffsetMode:    kafkaOffset,
+			Logger:        logger,
+			LogInterval:   viper.GetDuration(cmd.Name() + ".log.interval"),
 		})
 		app.Throw("kafka consumer", err, logger)
 
@@ -74,6 +76,7 @@ var elasticCmd = &cobra.Command{
 			},
 		})
 		app.Throw(cmd.Name()+" output create", err, logger)
+		defer writer.Close()
 
 		logrus.Debug("starting up writer")
 		ctxWriter, cancelWriter := context.WithCancel(context.Background())
@@ -110,6 +113,7 @@ var elasticCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(elasticCmd)
 
+	app.RegisterLogging(elasticCmd.Name(), elasticCmd.PersistentFlags())
 	app.RegisterInputKafkaGenericSimple(elasticCmd.Name(), elasticCmd.PersistentFlags())
 	app.RegisterOutputElastic(elasticCmd.Name(), elasticCmd.PersistentFlags())
 }
