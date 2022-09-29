@@ -50,7 +50,7 @@ var preprocessCmd = &cobra.Command{
 			Brokers:       viper.GetStringSlice(cmd.Name() + ".input.kafka.brokers"),
 			Topics:        topics.Topics(),
 			Ctx:           ctxReader,
-			OffsetMode:    kafkaIngest.OffsetLastCommit,
+			OffsetMode:    kafkaOffset,
 			Logger:        logger,
 			LogInterval:   viper.GetDuration(cmd.Name() + ".log.interval"),
 		})
@@ -70,10 +70,7 @@ var preprocessCmd = &cobra.Command{
 		app.Throw("Sarama producer init", err, logger)
 		topic := viper.GetString(cmd.Name() + ".output.kafka.topic")
 		producer.Feed(tx, cmd.Name()+" producer", ctxWriter, func(m consumer.Message) string {
-			if m.Key != "" {
-				return topic + "-" + m.Key
-			}
-			return topic
+			return topic + "-" + m.Source
 		}, &wg)
 
 		chTerminate := make(chan os.Signal, 1)
@@ -96,21 +93,17 @@ var preprocessCmd = &cobra.Command{
 						if err != nil {
 							logger.Error(err)
 						} else {
-							var key string
 							var kind events.Atomic
 							switch obj.(type) {
 							case *events.Syslog:
 								kind = events.SyslogE
-								key = kind.String()
 							case *events.Snoopy:
 								kind = events.SnoopyE
-								key = kind.String()
 							}
-							// TODO - topic map per object type
 							tx <- consumer.Message{
-								Data:  bin,
-								Key:   key,
-								Event: kind,
+								Data:   bin,
+								Event:  kind,
+								Source: kind.String(),
 							}
 						}
 					}
@@ -133,9 +126,9 @@ var preprocessCmd = &cobra.Command{
 					slc := make([]byte, len(scanner.Bytes()))
 					copy(slc, scanner.Bytes())
 					tx <- consumer.Message{
-						Data:  slc,
-						Key:   events.EventLogE.String(),
-						Event: events.EventLogE,
+						Data:   slc,
+						Event:  events.EventLogE,
+						Source: events.EventLogE.String(),
 					}
 				}
 				return scanner.Err()
@@ -173,14 +166,10 @@ var preprocessCmd = &cobra.Command{
 				}
 				slc := make([]byte, len(bits[1]))
 				copy(slc, bits[1])
-				key := events.SuricataE.String()
-				if process.IsSuricataAlert(slc) {
-					key += "-alert"
-				}
 				tx <- consumer.Message{
-					Data:  slc,
-					Event: events.SuricataE,
-					Key:   key,
+					Data:   slc,
+					Event:  events.SuricataE,
+					Source: events.SuricataE.String(),
 				}
 				counts.syslogSuricata++
 			}

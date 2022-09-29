@@ -130,12 +130,15 @@ func (p Producer) Feed(
 				if !ok {
 					break loop
 				}
-				p.handle.Input() <- &sarama.ProducerMessage{
+				m := &sarama.ProducerMessage{
 					Timestamp: msg.Time,
-					Key:       sarama.ByteEncoder(msg.Key),
 					Value:     sarama.ByteEncoder(msg.Data),
 					Topic:     fn(msg),
 				}
+				if msg.Key != "" {
+					m.Key = sarama.ByteEncoder(msg.Key)
+				}
+				p.handle.Input() <- m
 				count++
 			case <-debug.C:
 				if p.logger != nil {
