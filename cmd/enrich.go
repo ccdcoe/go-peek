@@ -70,6 +70,7 @@ var enrichCmd = &cobra.Command{
 			Topics:        []string{viper.GetString(cmd.Name() + ".input.kafka.topic_assets")},
 			Ctx:           ctxReader,
 			OffsetMode:    kafkaOffset,
+			Logger:        logger,
 		})
 		app.Throw(cmd.Name()+" asset stream setup", err, logger)
 
@@ -81,6 +82,8 @@ var enrichCmd = &cobra.Command{
 			Topics:        []string{viper.GetString(cmd.Name() + ".input.kafka.topic_sid_mitre")},
 			Ctx:           ctxReader,
 			OffsetMode:    kafkaOffset,
+			Logger:        logger,
+			LogInterval:   viper.GetDuration(cmd.Name() + ".log.interval"),
 		})
 		app.Throw(cmd.Name()+" sid map stream setup", err, logger)
 

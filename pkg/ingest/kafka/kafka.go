@@ -37,7 +37,9 @@ func NewConsumer(c *Config) (*Consumer, error) {
 		config: sarama.NewConfig(),
 		handle: &handle{
 			messages:    make(chan *consumer.Message, 0),
-			logInterval: 30 * time.Second,
+			logInterval: c.LogInterval,
+			logger:      c.Logger,
+			name:        c.Name,
 		},
 		errs: utils.NewErrChan(100, fmt.Sprintf(
 			"kafka consumer for brokers %+v topics %+v",
@@ -101,30 +103,59 @@ func (c Consumer) Errors() <-chan error {
 
 // handle represents a Sarama consumer group consumer
 type handle struct {
+	mu          sync.RWMutex
+	consumed    map[string]int64
 	messages    chan *consumer.Message
 	logInterval time.Duration
 	name        string
+	logger      *logrus.Logger
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
 func (c *handle) Setup(session sarama.ConsumerGroupSession) error {
-	logrus.Tracef("Sarama consumer claimed: %+v", session.Claims())
+	if c.logger != nil {
+		c.logger.Tracef("Sarama consumer claimed: %+v", session.Claims())
+	}
 	return nil
 }
 
 // Cleanup is run at the end of a session, once all ConsumeClaim goroutines have exited
 func (c *handle) Cleanup(sarama.ConsumerGroupSession) error {
+	c.partitionLog()
 	return nil
 }
 
-func (c handle) traceLog(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) {
-	logrus.Tracef(
-		"name: %s session_member_id: %s high_watermark_offset: %d topic: %s",
-		c.name,
-		session.MemberID(),
-		claim.HighWaterMarkOffset(),
-		claim.Topic(),
-	)
+func (c *handle) consumeLog(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) {
+	if c.logger != nil {
+		c.logger.
+			WithField("name", c.name).
+			WithField("member_id", session.MemberID()).
+			WithField("high_watermark_offset", claim.HighWaterMarkOffset()).
+			WithField("topic", claim.Topic()).
+			WithField("partition", claim.Partition()).
+			Trace("sarama partition info")
+	}
+}
+
+func (c *handle) partitionLog() {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.logger != nil && len(c.consumed) != 0 {
+		fields := make(map[string]any)
+		for k, v := range c.consumed {
+			fields[k] = v
+		}
+		c.logger.WithFields(fields).Info("consumed from partitions")
+	}
+}
+
+func (c *handle) updateConsumed(claim sarama.ConsumerGroupClaim) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.consumed == nil {
+		c.consumed = make(map[string]int64)
+	}
+	c.consumed[fmt.Sprintf("%s-%d", claim.Topic(), claim.Partition())] = claim.HighWaterMarkOffset()
 }
 
 // ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages().
@@ -136,9 +167,11 @@ loop:
 	for {
 		select {
 		case <-first.C:
-			c.traceLog(session, claim)
+			c.consumeLog(session, claim)
+			c.updateConsumed(claim)
 		case <-logTick.C:
-			c.traceLog(session, claim)
+			c.consumeLog(session, claim)
+			c.updateConsumed(claim)
 		case msg, ok := <-claim.Messages():
 			if !ok {
 				break loop

@@ -51,6 +51,8 @@ var preprocessCmd = &cobra.Command{
 			Topics:        topics.Topics(),
 			Ctx:           ctxReader,
 			OffsetMode:    kafkaIngest.OffsetLastCommit,
+			Logger:        logger,
+			LogInterval:   viper.GetDuration(cmd.Name() + ".log.interval"),
 		})
 		app.Throw("kafka consumer", err, logger)
 
@@ -116,7 +118,7 @@ var preprocessCmd = &cobra.Command{
 				return scanner.Err()
 			},
 			Size:   64 * 1024,
-			Ticker: time.NewTicker(1 * time.Second),
+			Ticker: time.NewTicker(viper.GetDuration(cmd.Name() + ".log.interval")),
 		}
 
 		windowsCollector := &process.Collector{
@@ -139,7 +141,7 @@ var preprocessCmd = &cobra.Command{
 				return scanner.Err()
 			},
 			Size:   64 * 1024,
-			Ticker: time.NewTicker(1 * time.Second),
+			Ticker: time.NewTicker(viper.GetDuration(cmd.Name() + ".log.interval")),
 		}
 
 		var counts struct {
@@ -236,6 +238,7 @@ var preprocessCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(preprocessCmd)
 
+	app.RegisterLogging(preprocessCmd.Name(), preprocessCmd.PersistentFlags())
 	app.RegisterInputKafkaPreproc(preprocessCmd.Name(), preprocessCmd.PersistentFlags())
 	app.RegisterOutputKafka(preprocessCmd.Name(), preprocessCmd.PersistentFlags())
 	app.RegisterInputSyslogUDP(preprocessCmd.Name(), preprocessCmd.PersistentFlags())

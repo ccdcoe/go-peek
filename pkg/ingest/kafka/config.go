@@ -2,6 +2,9 @@ package kafka
 
 import (
 	"context"
+	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 type Config struct {
@@ -11,6 +14,8 @@ type Config struct {
 	Topics        []string
 	Ctx           context.Context
 	OffsetMode    OffsetMode
+	Logger        *logrus.Logger
+	LogInterval   time.Duration
 }
 
 func NewDefaultConfig() *Config {
@@ -40,6 +45,9 @@ func (c *Config) Validate() error {
 	}
 	if c.Ctx == nil {
 		c.Ctx = context.Background()
+	}
+	if c.LogInterval == 0 {
+		c.LogInterval = 1 * time.Minute
 	}
 	return nil
 }
