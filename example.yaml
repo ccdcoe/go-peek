@@ -1,6 +1,111 @@
+archive:
+    input:
+        kafka:
+            brokers:
+                - localhost:9092
+            consumer_group: peek
+            topics: []
+    output:
+        folder: ""
+        rotate:
+            interval: 1h0m0s
+assetsmerge:
+    input:
+        kafka:
+            brokers:
+                - localhost:9092
+            consumer_group: peek
+            topic_assets_providentia: peek-assets-providentia
+            topic_assets_vcenter: peek-assets-vcenter
+    output:
+        kafka:
+            brokers:
+                - localhost:9092
+            enabled: false
+            topic: peek
+    strip_prefix: ""
+elastic:
+    input:
+        kafka:
+            brokers:
+                - localhost:9092
+            consumer_group: peek
+            topics: []
+    output:
+        elasticsearch:
+            hosts:
+                - http://localhost:9200
+            prefix: peek
+            xpack:
+                pass: ""
+                user: ""
+enrich:
+    input:
+        kafka:
+            brokers:
+                - localhost:9092
+            consumer_group: peek
+            topic_assets: assets
+            topic_map: []
+            topic_sid_mitre: meerkat_sid_mitre_map
+    log:
+        interval: 30s
+    output:
+        kafka:
+            brokers:
+                - localhost:9092
+            enabled: false
+            topic: peek
+            topic_emit: emit
+            topic_oracle: peek-oracle
+            topic_split: false
+    sigma:
+        ruleset_path: []
+mitremeerkat:
+    input:
+        file: ""
+    output:
+        kafka:
+            brokers:
+                - localhost:9092
+            enabled: false
+            topic: peek
+oracle:
+    input:
+        kafka:
+            brokers:
+                - localhost:9092
+            consumer_group: peek
+            topic_assets: assets
+            topic_oracle: peek-oracle
+            topic_sid_mitre: meerkat_sid_mitre_map
+    port: 8085
+preprocess:
+    input:
+        kafka:
+            brokers:
+                - localhost:9092
+            consumer_group: peek
+            topic_map: []
+        syslog:
+            udp:
+                port: 514
+    output:
+        kafka:
+            brokers:
+                - localhost:9092
+            enabled: false
+            topic: peek
 providentia:
-  interval: 5m0s
-  token: ""
-  url: ""
+    interval: 5m0s
+    oneshot: false
+    output:
+        kafka:
+            brokers:
+                - localhost:9092
+            enabled: false
+            topic: peek
+    token: ""
+    url: ""
 work:
-  dir: /home/markus/.local/peek
+    dir: /home/markus/.local/peek
