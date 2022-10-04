@@ -197,16 +197,16 @@ var preprocessCmd = &cobra.Command{
 				}
 				switch val, ok := topicMapFn(msg.Source); ok {
 				case val == events.SyslogE, val == events.SnoopyE:
-					syslogCollector.Collect(msg.Data)
+					app.ErrLog(syslogCollector.Collect(msg.Data), logger)
 				case val == events.EventLogE:
-					windowsCollector.Collect(msg.Data)
+					app.ErrLog(windowsCollector.Collect(msg.Data), logger)
 				case val == events.SuricataE:
-					suricataCollector.Collect(msg.Data)
+					app.ErrLog(suricataCollector.Collect(msg.Data), logger)
 				}
 			case <-flush.C:
-				syslogCollector.Flush()
-				windowsCollector.Flush()
-				suricataCollector.Flush()
+				app.ErrLog(syslogCollector.Flush(), logger)
+				app.ErrLog(windowsCollector.Flush(), logger)
+				app.ErrLog(suricataCollector.Flush(), logger)
 			case <-chTerminate:
 				break loop
 			case <-report.C:

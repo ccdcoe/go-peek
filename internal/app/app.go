@@ -64,3 +64,10 @@ func DumpJSON(path string, data interface{}) error {
 	f.Write(bin)
 	return nil
 }
+
+func ErrLog(err error, logger *logrus.Logger) {
+	if err == nil || logger == nil {
+		return
+	}
+  logger.Error(err)
+}
