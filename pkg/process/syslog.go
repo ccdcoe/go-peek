@@ -76,7 +76,6 @@ func NewSyslogServer(fn CollectBulkFullFn, port int) (*SyslogServer, error) {
 	server.Listener = listener
 	server.Collector = &Collector{
 		Size:        256 * 1024,
-		Ticker:      time.NewTicker(1 * time.Second),
 		HandlerFunc: fn,
 	}
 	server.Errors = make(chan error, 10)

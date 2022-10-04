@@ -77,13 +77,22 @@ var preprocessCmd = &cobra.Command{
 		chTerminate := make(chan os.Signal, 1)
 		signal.Notify(chTerminate, os.Interrupt, syscall.SIGTERM)
 
+		var batches struct {
+			syslog   int
+			windows  int
+			suricata int
+		}
+
+		var messages struct {
+			syslog   int
+			windows  int
+			suricata int
+		}
+
 		normalizer := process.NewNormalizer()
 		syslogCollector := &process.Collector{
 			HandlerFunc: func(b *bytes.Buffer) error {
-				logger.WithFields(logrus.Fields{
-					"len": b.Len(),
-				}).Trace("syslog collect handler called")
-
+				batches.syslog++
 				scanner := bufio.NewScanner(b)
 				for scanner.Scan() {
 					obj, err := normalizer.NormalizeSyslog(scanner.Bytes())
@@ -106,21 +115,18 @@ var preprocessCmd = &cobra.Command{
 								Event:  kind,
 								Source: kind.String(),
 							}
+							messages.syslog++
 						}
 					}
 				}
 				return scanner.Err()
 			},
-			Size:   64 * 1024,
-			Ticker: time.NewTicker(viper.GetDuration(cmd.Name() + ".log.interval")),
+			Size: 64 * 1024,
 		}
 
 		windowsCollector := &process.Collector{
 			HandlerFunc: func(b *bytes.Buffer) error {
-				logger.WithFields(logrus.Fields{
-					"len": b.Len(),
-				}).Trace("windows collect handler called")
-
+				batches.windows++
 				scanner := bufio.NewScanner(b)
 				for scanner.Scan() {
 					// TODO - topic map per object type
@@ -131,18 +137,16 @@ var preprocessCmd = &cobra.Command{
 						Event:  events.EventLogE,
 						Source: events.EventLogE.String(),
 					}
+					messages.windows++
 				}
 				return scanner.Err()
 			},
-			Size:   64 * 1024,
-			Ticker: time.NewTicker(viper.GetDuration(cmd.Name() + ".log.interval")),
+			Size: 64 * 1024,
 		}
 
 		suricataCollector := &process.Collector{
 			HandlerFunc: func(b *bytes.Buffer) error {
-				logger.WithFields(logrus.Fields{
-					"len": b.Len(),
-				}).Trace("suricata collect handler called")
+				batches.suricata++
 				scanner := bufio.NewScanner(b)
 			loop:
 				for scanner.Scan() {
@@ -166,16 +170,10 @@ var preprocessCmd = &cobra.Command{
 						Event:  events.SuricataE,
 						Source: events.SuricataE.String(),
 					}
+					messages.suricata++
 				}
 				return scanner.Err()
 			},
-		}
-
-		var counts struct {
-			total        int
-			kafkaSyslog  int
-			kafkaWindows int
-			suricata     int
 		}
 
 		logger.
@@ -183,8 +181,12 @@ var preprocessCmd = &cobra.Command{
 			WithField("proto", "udp").
 			Info("starting up syslog server")
 
-		report := time.NewTicker(15 * time.Second)
+		report := time.NewTicker(viper.GetDuration(cmd.Name() + ".log.interval"))
 		defer report.Stop()
+
+		flush := time.NewTicker(1 * time.Second)
+		defer flush.Stop()
+
 		logger.Info("Starting main loop")
 	loop:
 		for {
@@ -196,26 +198,32 @@ var preprocessCmd = &cobra.Command{
 				switch val, ok := topicMapFn(msg.Source); ok {
 				case val == events.SyslogE, val == events.SnoopyE:
 					syslogCollector.Collect(msg.Data)
-					counts.kafkaSyslog++
 				case val == events.EventLogE:
 					windowsCollector.Collect(msg.Data)
-					counts.kafkaWindows++
 				case val == events.SuricataE:
 					suricataCollector.Collect(msg.Data)
-					counts.suricata++
 				}
-				counts.total++
+			case <-flush.C:
+				syslogCollector.Flush()
+				windowsCollector.Flush()
+				suricataCollector.Flush()
 			case <-chTerminate:
 				break loop
 			case <-report.C:
 				logger.WithFields(
 					logrus.Fields{
-						"total":           counts.total,
-						"kafka_windows":   counts.kafkaWindows,
-						"kafka_syslog":    counts.kafkaSyslog,
-						"syslog_suricata": counts.suricata,
+						"windows":  batches.windows,
+						"syslog":   batches.syslog,
+						"suricata": batches.suricata,
 					},
-				).Debug(cmd.Name())
+				).Trace("batches")
+				logger.WithFields(
+					logrus.Fields{
+						"windows":  messages.windows,
+						"syslog":   messages.syslog,
+						"suricata": messages.suricata,
+					},
+				).Debug("messages")
 			}
 		}
 

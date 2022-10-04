@@ -3,7 +3,6 @@ package process
 import (
 	"bytes"
 	"errors"
-	"time"
 )
 
 var (
@@ -19,7 +18,6 @@ type Collector struct {
 	Size int
 
 	HandlerFunc CollectBulkFullFn
-	Ticker      *time.Ticker
 }
 
 func (h *Collector) Collect(data []byte) error {
@@ -27,13 +25,9 @@ func (h *Collector) Collect(data []byte) error {
 		return err
 	}
 	if len(data)+len(newline)+h.Data.Len() >= h.Size {
-		if err := h.HandlerFunc(h.Data); err != nil {
+		if err := h.Flush(); err != nil {
 			return err
 		}
-		h.rotate()
-	}
-	if err := h.checkTick(); err != nil {
-		return err
 	}
 	h.Data.Write(data)
 	if !bytes.HasSuffix(data, newline) {
@@ -42,23 +36,15 @@ func (h *Collector) Collect(data []byte) error {
 	return nil
 }
 
-func (h Collector) checkTick() error {
+func (h *Collector) Flush() error {
 	if err := h.validate(); err != nil {
 		return err
 	}
-	if h.Ticker == nil {
-		return nil
+	if err := h.HandlerFunc(h.Data); err != nil {
+		return err
 	}
-	select {
-	case <-h.Ticker.C:
-		if err := h.HandlerFunc(h.Data); err != nil {
-			return err
-		}
-		h.rotate()
-		return nil
-	default:
-		return nil
-	}
+	h.rotate()
+	return nil
 }
 
 func (h *Collector) rotate() *Collector {
