@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -165,8 +166,13 @@ var preprocessCmd = &cobra.Command{
 						}).Error("suricata message extract")
 						continue loop
 					}
+					m := *msg.Message
+					if bits := strings.SplitN(m, "LOGSTASH[-]:", 2); len(bits) == 2 {
+						m = bits[1]
+					}
+					m = strings.TrimLeft(m, " ")
 					tx <- consumer.Message{
-						Data:   []byte(*msg.Message),
+						Data:   []byte(m),
 						Event:  events.SuricataE,
 						Source: events.SuricataE.String(),
 					}
