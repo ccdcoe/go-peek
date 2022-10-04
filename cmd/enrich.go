@@ -264,6 +264,7 @@ var enrichCmd = &cobra.Command{
 					logrus.WithFields(logrus.Fields{
 						"raw":  string(msg.Data),
 						"kind": kind.String(),
+						"err":  err.Error(),
 					}).Error("unable to decode")
 					continue loop
 				}
