@@ -19,6 +19,7 @@ import (
 	kafkaIngest "go-peek/pkg/ingest/kafka"
 	kafkaOutput "go-peek/pkg/outputs/kafka"
 
+	"github.com/influxdata/go-syslog/v3/rfc5424"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -137,48 +138,50 @@ var preprocessCmd = &cobra.Command{
 			Ticker: time.NewTicker(viper.GetDuration(cmd.Name() + ".log.interval")),
 		}
 
+		suricataCollector := &process.Collector{
+			HandlerFunc: func(b *bytes.Buffer) error {
+				logger.WithFields(logrus.Fields{
+					"len": b.Len(),
+				}).Trace("suricata collect handler called")
+				scanner := bufio.NewScanner(b)
+			loop:
+				for scanner.Scan() {
+					obj, err := normalizer.RFC5424.Parse(scanner.Bytes())
+					if err != nil {
+						logger.WithFields(logrus.Fields{
+							"msg": scanner.Text(),
+							"err": err,
+						}).Error("suricata syslog entry parse")
+						continue loop
+					}
+					msg, ok := obj.(*rfc5424.SyslogMessage)
+					if !ok || msg == nil || msg.Message == nil {
+						logger.WithFields(logrus.Fields{
+							"msg": scanner.Text(),
+						}).Error("suricata message extract")
+						continue loop
+					}
+					tx <- consumer.Message{
+						Data:   []byte(*msg.Message),
+						Event:  events.SuricataE,
+						Source: events.SuricataE.String(),
+					}
+				}
+				return scanner.Err()
+			},
+		}
+
 		var counts struct {
-			total          int
-			kafkaSyslog    int
-			kafkaWindows   int
-			syslogSuricata int
+			total        int
+			kafkaSyslog  int
+			kafkaWindows int
+			suricata     int
 		}
 
 		logger.
 			WithField("port", viper.GetInt(cmd.Name()+".input.syslog.udp.port")).
 			WithField("proto", "udp").
 			Info("starting up syslog server")
-
-		udpSyslogSuricata, err := process.NewSyslogServer(func(b *bytes.Buffer) error {
-			logger.WithFields(logrus.Fields{
-				"len": b.Len(),
-			}).Trace("udp syslog collect handler called")
-			scanner := bufio.NewScanner(b)
-		loop:
-			for scanner.Scan() {
-				// FIXME - refactor hardcoded logstash cutset
-				bits := bytes.SplitN(scanner.Bytes(), []byte("LOGSTASH[-]: "), 2)
-				if bits == nil && len(bits) != 2 {
-					logger.WithFields(logrus.Fields{
-						"msg": scanner.Text(),
-					}).Error("udp syslog msg split")
-					continue loop
-				}
-				slc := make([]byte, len(bits[1]))
-				copy(slc, bits[1])
-				tx <- consumer.Message{
-					Data:   slc,
-					Event:  events.SuricataE,
-					Source: events.SuricataE.String(),
-				}
-				counts.syslogSuricata++
-			}
-			return scanner.Err()
-		}, viper.GetInt(cmd.Name()+".input.syslog.udp.port"))
-		app.Throw("udp syslog setup", err, logger)
-
-		ctxUDPSyslog, cancelUDPSyslog := context.WithCancel(context.Background())
-		app.Throw("udp syslog worker spawn", udpSyslogSuricata.Run(&wg, ctxUDPSyslog), logger)
 
 		report := time.NewTicker(15 * time.Second)
 		defer report.Stop()
@@ -197,12 +200,11 @@ var preprocessCmd = &cobra.Command{
 				case val == events.EventLogE:
 					windowsCollector.Collect(msg.Data)
 					counts.kafkaWindows++
+				case val == events.SuricataE:
+					suricataCollector.Collect(msg.Data)
+					counts.suricata++
 				}
 				counts.total++
-			case err, ok := <-udpSyslogSuricata.Errors:
-				if ok && err != nil {
-					logger.Error(err)
-				}
 			case <-chTerminate:
 				break loop
 			case <-report.C:
@@ -211,7 +213,7 @@ var preprocessCmd = &cobra.Command{
 						"total":           counts.total,
 						"kafka_windows":   counts.kafkaWindows,
 						"kafka_syslog":    counts.kafkaSyslog,
-						"syslog_suricata": counts.syslogSuricata,
+						"syslog_suricata": counts.suricata,
 					},
 				).Debug(cmd.Name())
 			}
@@ -219,7 +221,6 @@ var preprocessCmd = &cobra.Command{
 
 		cancelReader()
 		cancelWriter()
-		cancelUDPSyslog()
 		wg.Wait()
 	},
 }
@@ -230,5 +231,4 @@ func init() {
 	app.RegisterLogging(preprocessCmd.Name(), preprocessCmd.PersistentFlags())
 	app.RegisterInputKafkaPreproc(preprocessCmd.Name(), preprocessCmd.PersistentFlags())
 	app.RegisterOutputKafka(preprocessCmd.Name(), preprocessCmd.PersistentFlags())
-	app.RegisterInputSyslogUDP(preprocessCmd.Name(), preprocessCmd.PersistentFlags())
 }
