@@ -200,20 +200,22 @@ func (s Suricata) Emit() bool {
 func (s Suricata) Kind() Atomic { return SuricataE }
 
 func (s Suricata) GetMitreAttack() *meta.MitreAttack {
-	metadata, ok := s.Data["metadata"].(map[string]any)
+	technique, ok := getField("alert.metadata.mitre_technique_id", s.Data)
 	if !ok {
-		return &meta.MitreAttack{}
+		return nil
 	}
-	technique, ok := metadata["mitre_technique_id"].([]any)
-	if !ok || len(technique) != 1 {
-		return &meta.MitreAttack{}
-	}
-	val, ok := technique[0].(string)
+	val, ok := technique.([]any)
 	if !ok {
-		return &meta.MitreAttack{}
+		return nil
 	}
-
-	return &meta.MitreAttack{Techniques: []meta.Technique{{ID: val}}}
+	if len(val) != 1 {
+		return nil
+	}
+	v2, ok := val[0].(string)
+	if !ok {
+		return nil
+	}
+	return &meta.MitreAttack{Techniques: []meta.Technique{{ID: v2}}}
 }
 
 // DumpEventData implements EventDataDumper
