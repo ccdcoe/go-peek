@@ -161,7 +161,7 @@ func (h *Handler) Decode(raw []byte, kind events.Atomic) (events.GameEvent, erro
 
 	switch kind {
 	case events.SuricataE:
-		var obj atomic.StaticSuricataEve
+		var obj atomic.DynamicSuricataEve
 		if err := json.Unmarshal(raw, &obj); err != nil {
 			h.ParseErrs.Suricata++
 			return nil, err
@@ -170,8 +170,8 @@ func (h *Handler) Decode(raw []byte, kind events.Atomic) (events.GameEvent, erro
 			h.Problems.MissingSuricataTimestamp++
 		}
 		event = &events.Suricata{
-			Timestamp:         obj.Time(),
-			StaticSuricataEve: obj,
+			Timestamp: obj.Time(),
+			Data:      obj,
 		}
 	case events.EventLogE, events.SysmonE:
 		var obj atomic.DynamicWinlogbeat

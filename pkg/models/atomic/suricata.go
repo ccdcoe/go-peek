@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type DynamicSuricataEve map[string]interface{}
+type DynamicSuricataEve map[string]any
 
 func (d DynamicSuricataEve) Time() time.Time {
 	key := "@timestamp"

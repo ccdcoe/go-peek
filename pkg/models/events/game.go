@@ -3,12 +3,11 @@ package events
 import (
 	"encoding/json"
 	"fmt"
+	"go-peek/pkg/models/atomic"
+	"go-peek/pkg/models/meta"
 	"net"
 	"strings"
 	"time"
-
-	"go-peek/pkg/models/atomic"
-	"go-peek/pkg/models/meta"
 
 	"github.com/markuskont/go-sigma-rule-engine"
 )
@@ -188,7 +187,7 @@ func (d DynamicWinlogbeat) JSONFormat() ([]byte, error) {
 }
 
 type Suricata struct {
-	atomic.StaticSuricataEve
+	Data      atomic.DynamicSuricataEve
 	Timestamp time.Time       `json:"@timestamp"`
 	Syslog    *atomic.Syslog  `json:"syslog,omitempty"`
 	GameMeta  *meta.GameAsset `json:"GameMeta,omitempty"`
@@ -201,106 +200,101 @@ func (s Suricata) Emit() bool {
 func (s Suricata) Kind() Atomic { return SuricataE }
 
 func (s Suricata) GetMitreAttack() *meta.MitreAttack {
-	if s.Metadata == nil || len(s.Metadata) == 0 {
-		return nil
+	metadata, ok := s.Data["metadata"].(map[string]any)
+	if !ok {
+		return &meta.MitreAttack{}
 	}
-	if val, ok := s.Metadata["mitre_technique_id"]; ok {
-		if len(val) != 1 {
-			return nil
-		}
-		return &meta.MitreAttack{Techniques: []meta.Technique{{ID: val[0]}}}
+	technique, ok := metadata["mitre_technique_id"].([]any)
+	if !ok || len(technique) != 1 {
+		return &meta.MitreAttack{}
 	}
-	return nil
+	val, ok := technique[0].(string)
+	if !ok {
+		return &meta.MitreAttack{}
+	}
+
+	return &meta.MitreAttack{Techniques: []meta.Technique{{ID: val}}}
 }
 
 // DumpEventData implements EventDataDumper
 func (s Suricata) DumpEventData() *meta.EventData {
-	return &meta.EventData{
-		ID: func() int {
-			if s.Alert != nil {
-				return s.Alert.SignatureID
-			}
-			return 0
-		}(),
-		Key: s.EventType,
-		Fields: func() []string {
-			if s.Alert == nil {
-				return nil
-			}
-			return []string{
-				s.Alert.Signature,
-				s.Alert.Category,
-			}
-		}(),
+	evType, ok := s.Data["event_type"].(string)
+	if !ok {
+		return nil
 	}
+	meta := &meta.EventData{Key: evType, Fields: []string{}}
+	if evType != "alert" {
+		// Ignore other event types for now, too much variance and final dashboard only consumes alerts
+		return meta
+	}
+	// extract signature_id
+	rawSigID, ok := getField("alert.signature_id", s.Data)
+	if !ok {
+		return meta
+	}
+	// TODO - can generics help here?
+	switch sigID := rawSigID.(type) {
+	case float64:
+		meta.ID = int(sigID)
+	case int:
+		meta.ID = sigID
+	case int64:
+		meta.ID = int(sigID)
+	}
+	rawSigName, ok := getField("alert.signature_id", s.Data)
+	if ok {
+		sigName, ok := rawSigName.(string)
+		if ok {
+			meta.Fields = append(meta.Fields, sigName)
+		}
+	}
+	rawSigCat, ok := getField("alert.category", s.Data)
+	if ok {
+		sigCat, ok := rawSigCat.(string)
+		if ok {
+			meta.Fields = append(meta.Fields, sigCat)
+		}
+	}
+
+	return meta
 }
 
 // Keywords implements Keyworder
 func (s Suricata) Keywords() ([]string, bool) {
-	out := []string{s.PayloadPrintable}
-	if s.Alert != nil {
-		out = append(out, []string{s.Alert.Signature, s.Alert.Category}...)
+	tx := make([]string, 0)
+	evType, ok := s.Data["event_type"].(string)
+	if !ok {
+		return tx, false
 	}
-	return out, true
+	if evType == "alert" {
+		rawSigName, ok := getField("alert.signature_id", s.Data)
+		if ok {
+			sigName, ok := rawSigName.(string)
+			if ok {
+				tx = append(tx, sigName)
+			}
+		}
+		rawSigCat, ok := getField("alert.category", s.Data)
+		if ok {
+			sigCat, ok := rawSigCat.(string)
+			if ok {
+				tx = append(tx, sigCat)
+			}
+		}
+	}
+	pp, ok := s.Data["payload_printable"].(string)
+	if ok {
+		tx = append(tx, pp)
+	}
+
+	if len(tx) == 0 {
+		return tx, false
+	}
+	return tx, true
 }
 
 // Select returns a success status and arbitrary field content if requested map key is present
-func (s Suricata) Select(key string) (interface{}, bool) {
-	if !strings.Contains(key, ".") {
-		return s.StaticSuricataEve.EveBase.GetField(key)
-	}
-	bits := strings.SplitN(key, ".", 1)
-	if len(bits) == 2 && strings.HasPrefix(bits[0], "alert") && s.Alert != nil {
-		return s.Alert.GetField(bits[1])
-	}
-	switch bits[0] {
-	case "alert":
-		if s.Alert != nil {
-			return s.Alert.GetField(bits[1])
-		}
-	case "ssh":
-		return getField(bits[1], s.SSH)
-	case "tls":
-		return getField(bits[1], s.TLS)
-	case "tcp":
-		return getField(bits[1], s.TCP)
-	case "dns":
-		return getField(bits[1], s.DNS)
-	case "http":
-		return getField(bits[1], s.HTTP)
-	case "rdp":
-		return getField(bits[1], s.RDP)
-	case "smb":
-		return getField(bits[1], s.SMB)
-	case "dhcp":
-		return getField(bits[1], s.DHCP)
-	case "snmp":
-		return getField(bits[1], s.SNMP)
-	case "tftp":
-		return getField(bits[1], s.TFTP)
-	case "sip":
-		return getField(bits[1], s.SIP)
-	case "ftp_data":
-		return getField(bits[1], s.FTPdata)
-	case "packet_info":
-		return getField(bits[1], s.PacketInfo)
-	case "traffic":
-		return getField(bits[1], s.Traffic)
-	case "fileinfo":
-		return getField(bits[1], s.Fileinfo)
-	case "flow":
-		return getField(bits[1], s.Flow)
-	case "krb5":
-		return getField(bits[1], s.Krb5)
-	case "ikev2":
-		return getField(bits[1], s.Ikev2)
-	case "tunnel":
-		return getField(bits[1], s.Tunnel)
-	case "anomaly":
-		return getField(bits[1], s.Anomaly)
-	}
-	return nil, false
-}
+func (s Suricata) Select(key string) (any, bool) { return getField(key, s.Data) }
 
 // JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
 func (s Suricata) JSONFormat() ([]byte, error) { return json.Marshal(s) }
@@ -309,42 +303,17 @@ func (s Suricata) JSONFormat() ([]byte, error) { return json.Marshal(s) }
 // For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters
 // Should provide needed information for doing external asset table lookups
 func (s Suricata) GetAsset() *meta.GameAsset {
-	return &meta.GameAsset{
-		Asset: meta.Asset{
-			Host: s.StaticSuricataEve.Host,
-			IP: func() net.IP {
-				if s.Syslog == nil || s.Syslog.IP == nil {
-					return nil
-				}
-				return s.Syslog.IP.IP
-			}(),
-		},
-		MitreAttack: &meta.MitreAttack{
-			Techniques: make([]meta.Technique, 0),
-		},
-		Source: &meta.Asset{
-			IP: func() net.IP {
-				if s.StaticSuricataEve.Alert != nil && s.StaticSuricataEve.Alert.Source != nil {
-					return s.StaticSuricataEve.Alert.Source.IP.IP
-				}
-				if s.StaticSuricataEve.SrcIP == nil {
-					return nil
-				}
-				return s.StaticSuricataEve.SrcIP.IP
-			}(),
-		},
-		Destination: &meta.Asset{
-			IP: func() net.IP {
-				if s.StaticSuricataEve.Alert != nil && s.StaticSuricataEve.Alert.Target != nil {
-					return s.StaticSuricataEve.Alert.Target.IP.IP
-				}
-				if s.StaticSuricataEve.DestIP == nil {
-					return nil
-				}
-				return s.StaticSuricataEve.DestIP.IP
-			}(),
-		},
+	asset := &meta.GameAsset{}
+	if host, ok := s.Data["host"].(string); ok {
+		asset.Asset = meta.Asset{Host: host}
 	}
+	if ipSrc, ok := s.Data["src_ip"].(string); ok {
+		asset.Source = &meta.Asset{IP: net.ParseIP(ipSrc)}
+	}
+	if ipDest, ok := s.Data["dest_ip"].(string); ok {
+		asset.Destination = &meta.Asset{IP: net.ParseIP(ipDest)}
+	}
+	return asset
 }
 
 // SetAsset is a setter for setting meta to object without knowing the object type
@@ -355,15 +324,15 @@ func (s *Suricata) SetAsset(data *meta.GameAsset) {
 
 // Time implements atomic.Event
 // Timestamp in event, should default to time.Time{} so time.IsZero() could be used to verify success
-func (s Suricata) Time() time.Time { return s.StaticSuricataEve.Time() }
+func (s Suricata) Time() time.Time { return s.Data.Time() }
 
 // Source implements atomic.Event
 // Source of message, usually emitting program
-func (s Suricata) Source() string { return s.StaticSuricataEve.Source() }
+func (s Suricata) Source() string { return s.Data.Source() }
 
 // Sender implements atomic.Event
 // Sender of message, usually a host
-func (s Suricata) Sender() string { return s.StaticSuricataEve.Sender() }
+func (s Suricata) Sender() string { return s.Data.Sender() }
 
 type Syslog struct {
 	atomic.Syslog

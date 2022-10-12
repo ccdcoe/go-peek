@@ -114,14 +114,14 @@ func TryFixBrokenMessage(data []byte) []byte {
 	return data
 }
 
-func getField(key string, data map[string]interface{}) (interface{}, bool) {
+func getField(key string, data map[string]interface{}) (any, bool) {
 	if data == nil {
 		return nil, false
 	}
 	bits := strings.SplitN(key, ".", 2)
 	if val, ok := data[bits[0]]; ok {
 		switch res := val.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			return getField(bits[1], res)
 		default:
 			return val, ok
