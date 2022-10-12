@@ -297,7 +297,7 @@ func (s Suricata) Keywords() ([]string, bool) {
 func (s Suricata) Select(key string) (any, bool) { return getField(key, s.Data) }
 
 // JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
-func (s Suricata) JSONFormat() ([]byte, error) { return json.Marshal(s) }
+func (s Suricata) JSONFormat() ([]byte, error) { return json.Marshal(s.Data) }
 
 // GetAsset is a getter for receiving event source and target information
 // For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters
