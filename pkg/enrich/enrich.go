@@ -6,14 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"go-peek/pkg/intel/mitre"
-	"go-peek/pkg/mitremeerkat"
 	"go-peek/pkg/models/atomic"
 	"go-peek/pkg/models/events"
 	"go-peek/pkg/models/meta"
 	"go-peek/pkg/persist"
 	"go-peek/pkg/providentia"
 
-	"github.com/dgraph-io/badger/v3"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/markuskont/go-sigma-rule-engine"
 )
@@ -95,9 +93,6 @@ type Handler struct {
 
 	sigma map[events.Atomic]sigma.Ruleset
 
-	// mitre tag per suricata SID
-	sidTag map[int]string
-
 	mitre   *mitre.Mapper
 	assets  map[string]providentia.Record
 	persist *persist.Badger
@@ -118,23 +113,7 @@ func (h Handler) MissingKeys() []string {
 	return keys
 }
 
-func (h *Handler) AddSidTag(item mitremeerkat.Mapping) *Handler {
-	if h.sidTag == nil {
-		h.sidTag = make(map[int]string)
-	}
-	h.sidTag[item.SID] = item.ID
-	_, ok := h.missingSidMaps[item.SID]
-	if ok {
-		delete(h.missingSidMaps, item.SID)
-	}
-	h.MappedMitreSIDs = len(h.sidTag)
-	return h
-}
-
 func (h Handler) Persist() error {
-	if err := h.persist.SetSingle(badgerSidMapKey, h.sidTag); err != nil {
-		return err
-	}
 	if err := h.persist.SetSingle(badgerMissingSidKey, h.missingSidMaps); err != nil {
 		return err
 	}
@@ -312,33 +291,5 @@ func NewHandler(c Config) (*Handler, error) {
 		handler.sigma = c.Sigma
 	}
 
-	sidTag, err := getSidMap(badgerSidMapKey, handler.persist)
-	if err != nil {
-		return nil, err
-	}
-	handler.sidTag = sidTag
-	handler.MappedMitreSIDs = len(sidTag)
-
-	missingSidTag, err := getSidMap(badgerMissingSidKey, handler.persist)
-	if err != nil {
-		return nil, err
-	}
-	handler.missingSidMaps = missingSidTag
-
 	return handler, nil
-}
-
-func getSidMap(key string, p *persist.Badger) (map[int]string, error) {
-	var data map[int]string
-	err := p.GetSingle(key, func(b []byte) error {
-		buf := bytes.NewBuffer(b)
-		return gob.NewDecoder(buf).Decode(&data)
-	})
-	if err != nil && err != badger.ErrKeyNotFound {
-		return data, err
-	}
-	if data == nil {
-		data = make(map[int]string)
-	}
-	return data, nil
 }

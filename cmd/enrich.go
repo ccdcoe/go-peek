@@ -74,19 +74,6 @@ var enrichCmd = &cobra.Command{
 		})
 		app.Throw(cmd.Name()+" asset stream setup", err, logger)
 
-		logger.Info("Creating kafka consumer for sid map stream")
-		streamSidMap, err := kafkaIngest.NewConsumer(&kafkaIngest.Config{
-			Name:          cmd.Name() + " asset stream",
-			ConsumerGroup: viper.GetString(cmd.Name() + ".input.kafka.consumer_group"),
-			Brokers:       viper.GetStringSlice(cmd.Name() + ".input.kafka.brokers"),
-			Topics:        []string{viper.GetString(cmd.Name() + ".input.kafka.topic_sid_mitre")},
-			Ctx:           ctxReader,
-			OffsetMode:    kafkaOffset,
-			Logger:        logger,
-			LogInterval:   viper.GetDuration(cmd.Name() + ".log.interval"),
-		})
-		app.Throw(cmd.Name()+" sid map stream setup", err, logger)
-
 		tx := make(chan consumer.Message, 0)
 		defer close(tx)
 
@@ -218,20 +205,6 @@ var enrichCmd = &cobra.Command{
 					}
 				}
 				enricher.Persist()
-			case msg, ok := <-streamSidMap.Messages():
-				if !ok {
-					continue loop
-				}
-				var obj mitremeerkat.Mapping
-				if err := json.Unmarshal(msg.Data, &obj); err != nil {
-					logger.WithFields(logrus.Fields{
-						"raw":    string(msg.Data),
-						"source": msg.Source,
-						"err":    err,
-					}).Error("unable to parse sid mapping")
-					continue loop
-				}
-				enricher.AddSidTag(obj)
 			case msg, ok := <-streamAssets.Messages():
 				if !ok {
 					continue loop
