@@ -3,9 +3,8 @@ package atomic
 import (
 	"encoding/json"
 	"fmt"
-	"time"
-
 	"go-peek/pkg/models/fields"
+	"time"
 )
 
 type Syslog struct {
@@ -71,7 +70,7 @@ func ParseSyslogMessage(s Syslog) (interface{}, error) {
 	if isCommonEventExpression(s.Message) {
 		switch s.Program {
 		case "suricata":
-			var obj StaticSuricataEve
+			var obj DynamicSuricataEve
 			if err := json.Unmarshal(getCommonEventExpressionPayload(s.Message), &obj); err != nil {
 				return nil, err
 			}
