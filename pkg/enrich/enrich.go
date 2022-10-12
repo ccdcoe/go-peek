@@ -239,25 +239,6 @@ func (h *Handler) Enrich(event events.GameEvent) error {
 		fullAsset.MitreAttack = mitreInfo
 	}
 
-	switch event.Kind() {
-	case events.SuricataE:
-		// need alert SID, doubt theres any other way than typecasting...
-		strict, ok := event.(*events.Suricata)
-		if ok && h.sidTag != nil && strict.Alert != nil {
-			if val, present := h.sidTag[strict.Alert.SignatureID]; present {
-				fullAsset.MitreAttack.Techniques = append(
-					fullAsset.MitreAttack.Techniques,
-					meta.Technique{ID: val},
-				)
-				fullAsset.MitreAttack.Set(h.mitre.Mappings)
-				h.Enrichment.SuricataSidMatches++
-			} else {
-				h.Enrichment.SuricataSidMisses++
-				h.missingSidMaps[strict.Alert.SignatureID] = strict.Alert.Signature
-			}
-		}
-	}
-
 	fullAsset.EventData = event.DumpEventData()
 	fullAsset.EventType = event.Kind().String()
 
