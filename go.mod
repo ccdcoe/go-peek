@@ -12,7 +12,7 @@ require (
 	github.com/influxdata/go-syslog/v3 v3.0.0
 	github.com/json-iterator/go v1.1.12
 	github.com/klauspost/compress v1.15.11
-	github.com/markuskont/go-sigma-rule-engine v0.3.0
+	github.com/markuskont/go-sigma-rule-engine v0.3.1-0.20221013093703-32f8cdbfd99e
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/olivere/elastic/v7 v7.0.32
 	github.com/onsi/ginkgo v1.11.0 // indirect
