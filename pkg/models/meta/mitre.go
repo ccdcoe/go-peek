@@ -62,15 +62,18 @@ func (m *MitreAttack) ParseSigmaTags(results sigma.Results, mapping Techniques) 
 	}
 
 	for _, res := range results {
+	tagLoop:
 		for _, tag := range res.Tags {
-			if strings.HasPrefix(tag, "attack.t") {
-				if id := strings.Split(tag, "."); len(id) == 2 && len(id[1]) == 5 {
-					key := strings.ToUpper(id[1])
-					if mapping == nil && !m.Contains(key) {
-						m.Techniques = append(m.Techniques, Technique{ID: key})
-					} else if val, ok := mapping[key]; ok && !m.Contains(key) {
-						m.Techniques = append(m.Techniques, val)
-					}
+			if !strings.HasPrefix(tag, "attack.t") {
+				continue tagLoop
+			}
+
+			if id := strings.SplitN(tag, ".", 2); len(id) == 2 {
+				key := strings.ToUpper(id[1])
+				if mapping == nil && !m.Contains(key) {
+					m.Techniques = append(m.Techniques, Technique{ID: key})
+				} else if val, ok := mapping[key]; ok && !m.Contains(key) {
+					m.Techniques = append(m.Techniques, val)
 				}
 			}
 		}
