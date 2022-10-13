@@ -23,6 +23,12 @@ services:
       KAFKA_BROKERCONNECT: "kafka:9092"
       JVM_OPTS: "-Xms32M -Xmx64M"
       SERVER_SERVLET_CONTEXTPATH: /
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.6
+    ports:
+    - "${KIBANA_PORT:-5601}:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: '["http://elastic:9200"]'
   elastic:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.17.6
     ports:
