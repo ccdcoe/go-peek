@@ -261,22 +261,33 @@ var enrichCmd = &cobra.Command{
 				}
 
 				if event.Emit() {
-					// mitre-enriched events should be fast-tracked
-					tx <- consumer.Message{
-						Data:   encoded,
-						Time:   event.Time(),
-						Key:    kind.String(),
-						Event:  kind,
-						Source: "emit",
+					if viper.GetBool(cmd.Name() + ".stdout-emit") {
+						os.Stdout.Write(append(encoded, []byte("\n")...))
+					}
+					if !viper.GetBool(cmd.Name() + ".noproduce") {
+						// mitre-enriched events should be fast-tracked
+						tx <- consumer.Message{
+							Data:   encoded,
+							Time:   event.Time(),
+							Key:    kind.String(),
+							Event:  kind,
+							Source: "emit",
+						}
 					}
 				}
 
-				// send to generic topics
-				tx <- consumer.Message{
-					Data:   encoded,
-					Time:   event.Time(),
-					Event:  kind,
-					Source: kind.String(),
+				if viper.GetBool(cmd.Name() + ".stdout-events") {
+					os.Stdout.Write(append(encoded, []byte("\n")...))
+				}
+
+				if !viper.GetBool(cmd.Name() + ".noproduce") {
+					// send to generic topics
+					tx <- consumer.Message{
+						Data:   encoded,
+						Time:   event.Time(),
+						Event:  kind,
+						Source: kind.String(),
+					}
 				}
 
 			case <-chTerminate:
@@ -288,6 +299,17 @@ var enrichCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(enrichCmd)
+
+	pFlags := enrichCmd.PersistentFlags()
+
+	pFlags.Bool("stdout-events", false, "Write results to stdout. Mostly for debug.")
+	viper.BindPFlag(enrichCmd.Name()+".stdout.events", pFlags.Lookup("stdout-events"))
+
+	pFlags.Bool("stdout-emit", false, "Write results to stdout. Mostly for debug.")
+	viper.BindPFlag(enrichCmd.Name()+".stdout.emit", pFlags.Lookup("stdout.emit"))
+
+	pFlags.Bool("no-produce", false, "Do not write to kafka. Mostly for debug.")
+	viper.BindPFlag(enrichCmd.Name()+".noproduce", pFlags.Lookup("no-produce"))
 
 	app.RegisterLogging(enrichCmd.Name(), enrichCmd.PersistentFlags())
 	app.RegisterInputKafkaCore(enrichCmd.Name(), enrichCmd.PersistentFlags())
