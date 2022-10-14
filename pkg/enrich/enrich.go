@@ -239,10 +239,6 @@ func (h *Handler) Enrich(event events.GameEvent) error {
 	asset.EventData = event.DumpEventData()
 	asset.EventType = event.Kind().String()
 
-	// object is initialized with empty techniques, set nil if still empty for later emit check
-	if asset.MitreAttack != nil && len(asset.MitreAttack.Techniques) == 0 {
-		asset.MitreAttack = nil
-	}
 	event.SetAsset(asset.SetDirection())
 
 	return nil
