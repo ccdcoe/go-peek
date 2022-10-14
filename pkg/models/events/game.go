@@ -56,7 +56,32 @@ func (d DynamicWinlogbeat) Emit() bool {
 func (d DynamicWinlogbeat) Kind() Atomic { return EventLogE }
 
 func (d DynamicWinlogbeat) GetMitreAttack() *meta.MitreAttack {
-	return d.MitreAttack()
+	val, ok := d.Select("rule.name")
+	if !ok {
+		return nil
+	}
+	s, ok := val.(string)
+	if !ok {
+		return nil
+	}
+	bits := strings.Split(s, ",")
+	if len(bits) != 2 {
+		return nil
+	}
+	technique := &meta.Technique{}
+
+	techniqueBits := strings.Split(bits[0], "=")
+	if len(techniqueBits) != 2 {
+		return nil
+	}
+	technique.ID = strings.ToUpper(techniqueBits[1])
+
+	if name := strings.Split(bits[1], "="); len(name) == 2 {
+		technique.Name = name[1]
+	}
+	return &meta.MitreAttack{
+		Techniques: []meta.Technique{*technique},
+	}
 }
 
 // DumpEventData implements EventDataDumper
@@ -64,7 +89,7 @@ func (d DynamicWinlogbeat) DumpEventData() *meta.EventData {
 	return &meta.EventData{
 		Key: d.Source(),
 		ID: func() int {
-			if val, ok := getField("winlog.event_id", d.DynamicWinlogbeat); ok {
+			if val, ok := getDotField("winlog.event_id", d.DynamicWinlogbeat); ok {
 				num, ok := val.(float64)
 				if ok {
 					return int(num)
@@ -74,25 +99,25 @@ func (d DynamicWinlogbeat) DumpEventData() *meta.EventData {
 		}(),
 		Fields: func() []string {
 			out := make([]string, 0)
-			if val, ok := getField("process.name", d.DynamicWinlogbeat); ok {
+			if val, ok := getDotField("process.name", d.DynamicWinlogbeat); ok {
 				s, ok := val.(string)
 				if ok {
 					out = append(out, s)
 				}
 			}
-			if val, ok := getField("winlog.event_data.TargetImage", d.DynamicWinlogbeat); ok {
+			if val, ok := getDotField("winlog.event_data.TargetImage", d.DynamicWinlogbeat); ok {
 				s, ok := val.(string)
 				if ok {
 					out = append(out, s)
 				}
 			}
-			if val, ok := getField("winlog.task", d.DynamicWinlogbeat); ok {
+			if val, ok := getDotField("winlog.task", d.DynamicWinlogbeat); ok {
 				s, ok := val.(string)
 				if ok {
 					out = append(out, s)
 				}
 			}
-			if val, ok := getField("winlog.user.name", d.DynamicWinlogbeat); ok {
+			if val, ok := getDotField("winlog.user.name", d.DynamicWinlogbeat); ok {
 				s, ok := val.(string)
 				if ok {
 					out = append(out, s)
@@ -101,29 +126,6 @@ func (d DynamicWinlogbeat) DumpEventData() *meta.EventData {
 			return out
 		}(),
 	}
-}
-
-func (d DynamicWinlogbeat) MitreAttack() *meta.MitreAttack {
-	if val, ok := d.Select("rule.name"); ok {
-		if s, ok := val.(string); ok {
-			if bits := strings.Split(s, ","); len(bits) == 2 {
-				technique := &meta.Technique{}
-				if id := strings.Split(bits[0], "="); len(id) == 2 {
-					technique.ID = id[1]
-					if !strings.HasPrefix(strings.ToLower(technique.ID), "t") {
-						technique.ID = "T" + technique.ID
-					}
-				}
-				if name := strings.Split(bits[1], "="); len(name) == 2 {
-					technique.Name = name[1]
-				}
-				return &meta.MitreAttack{
-					Techniques: []meta.Technique{*technique},
-				}
-			}
-		}
-	}
-	return nil
 }
 
 // Keywords implements Keyworder
@@ -137,7 +139,7 @@ func (d DynamicWinlogbeat) Keywords() ([]string, bool) {
 
 // Select returns a success status and arbitrary field content if requested map key is present
 func (d DynamicWinlogbeat) Select(key string) (interface{}, bool) {
-	return getField(key, d.DynamicWinlogbeat)
+	return getDotField(key, d.DynamicWinlogbeat)
 }
 
 // Time implements atomic.Event
@@ -158,17 +160,7 @@ func (d DynamicWinlogbeat) Sender() string {
 // For exampe, event source for syslog is usually the shipper, while suricata alert has affected source and destination IP addresses whereas directionality matters
 // Should provide needed information for doing external asset table lookups
 func (d DynamicWinlogbeat) GetAsset() *meta.GameAsset {
-	return &meta.GameAsset{
-		Asset: meta.Asset{
-			Host: d.Sender(),
-			IP:   nil,
-		},
-		MitreAttack: &meta.MitreAttack{
-			Techniques: make([]meta.Technique, 0),
-		},
-		Source:      nil,
-		Destination: nil,
-	}
+	return &meta.GameAsset{Asset: meta.Asset{Host: d.Sender()}}
 }
 
 // SetAsset is a setter for setting meta to object without knowing the object type
@@ -200,7 +192,7 @@ func (s Suricata) Emit() bool {
 func (s Suricata) Kind() Atomic { return SuricataE }
 
 func (s Suricata) GetMitreAttack() *meta.MitreAttack {
-	technique, ok := getField("alert.metadata.mitre_technique_id", s.Data)
+	technique, ok := getDotField("alert.metadata.mitre_technique_id", s.Data)
 	if !ok {
 		return nil
 	}
@@ -215,7 +207,11 @@ func (s Suricata) GetMitreAttack() *meta.MitreAttack {
 	if !ok {
 		return nil
 	}
-	return &meta.MitreAttack{Techniques: []meta.Technique{{ID: v2}}}
+	t := meta.Technique{ID: v2}
+	return &meta.MitreAttack{
+		Technique:  t,
+		Techniques: []meta.Technique{t},
+	}
 }
 
 // DumpEventData implements EventDataDumper
@@ -230,7 +226,7 @@ func (s Suricata) DumpEventData() *meta.EventData {
 		return meta
 	}
 	// extract signature_id
-	rawSigID, ok := getField("alert.signature_id", s.Data)
+	rawSigID, ok := getDotField("alert.signature_id", s.Data)
 	if !ok {
 		return meta
 	}
@@ -243,14 +239,14 @@ func (s Suricata) DumpEventData() *meta.EventData {
 	case int64:
 		meta.ID = int(sigID)
 	}
-	rawSigName, ok := getField("alert.signature_id", s.Data)
+	rawSigName, ok := getDotField("alert.signature_id", s.Data)
 	if ok {
 		sigName, ok := rawSigName.(string)
 		if ok {
 			meta.Fields = append(meta.Fields, sigName)
 		}
 	}
-	rawSigCat, ok := getField("alert.category", s.Data)
+	rawSigCat, ok := getDotField("alert.category", s.Data)
 	if ok {
 		sigCat, ok := rawSigCat.(string)
 		if ok {
@@ -269,14 +265,14 @@ func (s Suricata) Keywords() ([]string, bool) {
 		return tx, false
 	}
 	if evType == "alert" {
-		rawSigName, ok := getField("alert.signature_id", s.Data)
+		rawSigName, ok := getDotField("alert.signature_id", s.Data)
 		if ok {
 			sigName, ok := rawSigName.(string)
 			if ok {
 				tx = append(tx, sigName)
 			}
 		}
-		rawSigCat, ok := getField("alert.category", s.Data)
+		rawSigCat, ok := getDotField("alert.category", s.Data)
 		if ok {
 			sigCat, ok := rawSigCat.(string)
 			if ok {
@@ -296,7 +292,7 @@ func (s Suricata) Keywords() ([]string, bool) {
 }
 
 // Select returns a success status and arbitrary field content if requested map key is present
-func (s Suricata) Select(key string) (any, bool) { return getField(key, s.Data) }
+func (s Suricata) Select(key string) (any, bool) { return getDotField(key, s.Data) }
 
 // JSONFormat implements atomic.JSONFormatter by wrapping json.Marshal
 func (s Suricata) JSONFormat() ([]byte, error) {

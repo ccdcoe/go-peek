@@ -182,18 +182,18 @@ func (h *Handler) Decode(raw []byte, kind events.Atomic) (events.GameEvent, erro
 
 func (h *Handler) Enrich(event events.GameEvent) error {
 	// get blank asset template with info from message
-	fullAsset := event.GetAsset()
-	if fullAsset == nil {
+	asset := event.GetAsset()
+	if asset == nil {
 		return ErrMissingAssetData{event}
 	}
 
 	// do asset db lookup
-	fullAsset.Asset = *h.assetLookup(fullAsset.Asset)
-	if fullAsset.Source != nil {
-		fullAsset.Source = h.assetLookup(*fullAsset.Source)
+	asset.Asset = *h.assetLookup(asset.Asset)
+	if asset.Source != nil {
+		asset.Source = h.assetLookup(*asset.Source)
 	}
-	if fullAsset.Destination != nil {
-		fullAsset.Destination = h.assetLookup(*fullAsset.Destination)
+	if asset.Destination != nil {
+		asset.Destination = h.assetLookup(*asset.Destination)
 	}
 
 	// SIGMA match
@@ -201,8 +201,7 @@ func (h *Handler) Enrich(event events.GameEvent) error {
 		ruleset, ok := h.sigma[event.Kind()]
 		if ok {
 			if result, match := ruleset.EvalAll(event); match && len(result) > 0 {
-				fullAsset.SigmaResults = result
-				fullAsset.MitreAttack.ParseSigmaTags(fullAsset.SigmaResults, h.mitre.Mappings)
+				asset.SigmaResults = result
 				h.Enrichment.SigmaMatches++
 			} else {
 				h.Enrichment.SigmaMisses++
@@ -215,17 +214,36 @@ func (h *Handler) Enrich(event events.GameEvent) error {
 	// add MITRE ATT&CK info
 	if mitreInfo := event.GetMitreAttack(); mitreInfo != nil {
 		mitreInfo.Set(h.mitre.Mappings)
-		fullAsset.MitreAttack = mitreInfo
+		asset.MitreAttack = mitreInfo
 	}
 
-	fullAsset.EventData = event.DumpEventData()
-	fullAsset.EventType = event.Kind().String()
+	if len(asset.SigmaResults) > 0 {
+		for _, result := range asset.SigmaResults {
+			if st := parseMitreTags(result.Tags, h.mitre.Mappings); len(st) > 0 {
+				if asset.MitreAttack == nil {
+					asset.MitreAttack = &meta.MitreAttack{
+						Techniques: st,
+						Technique:  st[0],
+					}
+				} else {
+					asset.MitreAttack.Techniques = append(asset.MitreAttack.Techniques, st...)
+				}
+			}
+		}
+	}
+
+	if asset.MitreAttack != nil {
+		asset.MitreAttack.Update()
+	}
+
+	asset.EventData = event.DumpEventData()
+	asset.EventType = event.Kind().String()
 
 	// object is initialized with empty techniques, set nil if still empty for later emit check
-	if fullAsset.MitreAttack != nil && len(fullAsset.MitreAttack.Techniques) == 0 {
-		fullAsset.MitreAttack = nil
+	if asset.MitreAttack != nil && len(asset.MitreAttack.Techniques) == 0 {
+		asset.MitreAttack = nil
 	}
-	event.SetAsset(fullAsset.SetDirection())
+	event.SetAsset(asset.SetDirection())
 
 	return nil
 }

@@ -1,11 +1,5 @@
 package meta
 
-import (
-	"strings"
-
-	"github.com/markuskont/go-sigma-rule-engine"
-)
-
 type MitreGetter interface {
 	GetMitreAttack() *MitreAttack
 }
@@ -25,21 +19,34 @@ func (m MitreAttack) Contains(key string) bool {
 	return false
 }
 
-func (m *MitreAttack) Update() *MitreAttack {
+func (m *MitreAttack) Update() {
 	if m.Techniques == nil || len(m.Techniques) < 1 {
-		return m
+		return
 	}
+	// set to deduplicate values
+	seen := make(map[string]bool)
+	// new slice to deduplicate values
+	techniques := make([]Technique, 0, len(m.Techniques))
+	// shorthand list of technique names
+	items := make([]string, 0, len(m.Techniques))
+
+loop:
+	for _, t := range m.Techniques {
+		if seen[t.ID] {
+			continue loop
+		}
+		seen[t.ID] = true
+		items = append(items, t.Name)
+		techniques = append(techniques, t)
+	}
+	m.Items = items
+	m.Techniques = techniques
 	m.Technique = m.Techniques[0]
-	m.Items = make([]string, len(m.Techniques))
-	for i, t := range m.Techniques {
-		m.Items[i] = t.Name
-	}
-	return m
 }
 
-func (m *MitreAttack) Set(mapping Techniques) *MitreAttack {
+func (m *MitreAttack) Set(mapping Techniques) {
 	if m.Techniques == nil || len(m.Techniques) < 1 {
-		return m
+		return
 	}
 	if mapping != nil {
 		for i, t := range m.Techniques {
@@ -53,32 +60,6 @@ func (m *MitreAttack) Set(mapping Techniques) *MitreAttack {
 			}
 		}
 	}
-	return m.Update()
-}
-
-func (m *MitreAttack) ParseSigmaTags(results sigma.Results, mapping Techniques) *MitreAttack {
-	if results == nil || len(results) == 0 {
-		return m
-	}
-
-	for _, res := range results {
-	tagLoop:
-		for _, tag := range res.Tags {
-			if !strings.HasPrefix(tag, "attack.t") {
-				continue tagLoop
-			}
-
-			if id := strings.SplitN(tag, ".", 2); len(id) == 2 {
-				key := strings.ToUpper(id[1])
-				if mapping == nil && !m.Contains(key) {
-					m.Techniques = append(m.Techniques, Technique{ID: key})
-				} else if val, ok := mapping[key]; ok && !m.Contains(key) {
-					m.Techniques = append(m.Techniques, val)
-				}
-			}
-		}
-	}
-	return m.Update()
 }
 
 type Technique struct {

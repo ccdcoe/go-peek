@@ -114,20 +114,28 @@ func TryFixBrokenMessage(data []byte) []byte {
 	return data
 }
 
-func getField(key string, data map[string]interface{}) (any, bool) {
-	if data == nil {
+func getField(data map[string]interface{}, key ...string) (any, bool) {
+	if len(key) == 0 {
 		return nil, false
 	}
-	bits := strings.SplitN(key, ".", 2)
-	if val, ok := data[bits[0]]; ok {
+	if val, ok := data[key[0]]; ok {
 		switch res := val.(type) {
 		case map[string]any:
-			return getField(bits[1], res)
+			// key has only one item, user wants the map itselt, not subelement
+			if len(key) == 1 {
+				return res, ok
+			}
+			// recurse with key remainder
+			return getField(res, key[1:]...)
 		default:
 			return val, ok
 		}
 	}
 	return nil, false
+}
+
+func getDotField(key string, d map[string]any) (any, bool) {
+	return getField(d, strings.Split(key, ".")...)
 }
 
 type EventMapFn func(string) Atomic
