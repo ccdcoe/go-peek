@@ -12,7 +12,7 @@ func parseMitreTags(tags []string, mappings meta.Techniques) []meta.Technique {
 	tx := make([]meta.Technique, 0, len(tags))
 loop:
 	for _, tag := range tags {
-		if !strings.HasPrefix("attack.t", tag) {
+		if !strings.HasPrefix(tag, "attack.t") {
 			continue loop
 		}
 		id := strings.SplitN(tag, ".", 2)
