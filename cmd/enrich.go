@@ -261,7 +261,7 @@ var enrichCmd = &cobra.Command{
 				}
 
 				if event.Emit() {
-					if viper.GetBool(cmd.Name() + ".stdout-emit") {
+					if viper.GetBool(cmd.Name() + ".stdout.emit") {
 						os.Stdout.Write(append(encoded, []byte("\n")...))
 					}
 					if !viper.GetBool(cmd.Name() + ".noproduce") {
@@ -276,7 +276,7 @@ var enrichCmd = &cobra.Command{
 					}
 				}
 
-				if viper.GetBool(cmd.Name() + ".stdout-events") {
+				if viper.GetBool(cmd.Name() + ".stdout.events") {
 					os.Stdout.Write(append(encoded, []byte("\n")...))
 				}
 
@@ -306,7 +306,7 @@ func init() {
 	viper.BindPFlag(enrichCmd.Name()+".stdout.events", pFlags.Lookup("stdout-events"))
 
 	pFlags.Bool("stdout-emit", false, "Write results to stdout. Mostly for debug.")
-	viper.BindPFlag(enrichCmd.Name()+".stdout.emit", pFlags.Lookup("stdout.emit"))
+	viper.BindPFlag(enrichCmd.Name()+".stdout.emit", pFlags.Lookup("stdout-emit"))
 
 	pFlags.Bool("no-produce", false, "Do not write to kafka. Mostly for debug.")
 	viper.BindPFlag(enrichCmd.Name()+".noproduce", pFlags.Lookup("no-produce"))
