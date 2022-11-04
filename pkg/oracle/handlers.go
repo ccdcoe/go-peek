@@ -33,7 +33,11 @@ func (s *Server) handleIndex() http.HandlerFunc {
 
 func (s *Server) handleAssets() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		respJSON(rw, &s.Assets)
+		if r.URL.Query().Get("format") == "arkime" {
+			s.Assets.FmtWISE(rw)
+		} else {
+			respJSON(rw, &s.Assets)
+		}
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go-peek/pkg/mitremeerkat"
 	"go-peek/pkg/providentia"
+	"io"
 	"sync"
 )
 
@@ -243,4 +244,25 @@ func (c *ContainerAssets) JSONFormat() ([]byte, error) {
 		c.Data = make([]providentia.Record, 0)
 	}
 	return json.Marshal(c.Data)
+}
+
+func (c *ContainerAssets) FmtWISE(rw io.Writer) {
+	c.RLock()
+	defer c.RUnlock()
+	fmt.Fprintf(rw, "#field:target.name;shortcut:0\n")
+	fmt.Fprintf(rw, "#field:target.pretty;shortcut:1\n")
+	fmt.Fprintf(rw, "#field:target.team;shortcut:2\n")
+	fmt.Fprintf(rw, "#field:target.os;shortcut:3\n")
+	fmt.Fprintf(rw, "#field:target.network_name;shortcut:4\n")
+	for _, record := range c.Data {
+		fmt.Fprintf(rw,
+			"%s;0=%s;1=%s;2=%s;3=%s;4=%s\n",
+			record.Addr.String(),
+			record.FQDN,
+			record.Pretty,
+			record.Team,
+			record.OS,
+			record.NetworkName,
+		)
+	}
 }
