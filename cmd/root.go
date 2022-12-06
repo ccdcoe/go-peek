@@ -23,7 +23,7 @@ var (
 
 var logger = logrus.New()
 
-var kafkaOffset = kafka.OffsetLastCommit
+var kafkaOffset = kafka.OffsetLatest
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
